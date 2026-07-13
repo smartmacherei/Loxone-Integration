@@ -1,0 +1,23 @@
+Loxone-Integration
+Copyright 2026 smartmacherei
+
+This product is a fork of and includes software from PyLoxone
+(https://github.com/JoDehli/PyLoxone), Copyright the PyLoxone authors,
+licensed under the Apache License, Version 2.0.
+
+A copy of the Apache License 2.0 is provided in the LICENSE file.
+
+Modifications made by smartmacherei relative to the upstream PyLoxone project
+(see git history for details):
+
+  * Physical device topology: the full Miniserver program (sps*.LoxCC) is
+    downloaded and decoded (LZ4) to group entities under their real physical
+    Loxone device (TreeDevice) instead of one HA device per control.
+    (custom_components/loxone/topology.py, helpers.py, __init__.py)
+  * Auto-discovery of physical terminals that are not exposed in the Loxone
+    visualization ("Visu"), injected as entities and grouped by device.
+  * device_class / icon mapping: sensor units (incl. "°"->°C, "Lx"->lx,
+    case-insensitive matching) and binary-sensor name keywords
+    (motion / presence / window / ...). (sensor.py, binary_sensor.py)
+  * HTTP initial-value seeding for values the Miniserver does not push over
+    the WebSocket stream (config analog values).

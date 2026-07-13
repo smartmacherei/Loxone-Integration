@@ -1,0 +1,89 @@
+# Describes the format for available Loxone services
+
+event_websocket_command:
+  fields:
+    uuid:
+      name: UUID
+      description: Uuid for entity which you want to send a command
+      example: 0f1e0b31-0178-7f77-ffff402fb0c34b9e
+      selector:
+        text:
+    device:
+      name: Entity
+      description: Device which you want to send a command
+      example: Switch 1
+      selector:
+        entity:
+          integration: loxone
+    value:
+      name: Command
+      description: Command which you want to send
+      example: pulse
+      selector:
+        text:
+
+event_secured_websocket_command:
+  fields:
+    uuid:
+      name: UUID
+      description: Uuid for entity which you want to send a command
+      example: 0f1e0b31-0178-7f77-ffff402fb0c34b9e
+      selector:
+        text:
+    device:
+      name: Entity
+      description: Device which you want to send a command
+      example: Switch 1
+      selector:
+        entity:
+          integration: loxone
+    value:
+      name: Command
+      description: Command which you want to send
+      example: pulse
+      selector:
+        text:
+    code:
+      name: Code
+      description: Code for the entity
+      example: 1234
+      selector:
+        text:
+
+sync_areas:
+  description:
+    Applies areas to the loxone entites based on the room from loxone. If area not exists entites will not be
+    changed
+  fields:
+    create_areas:
+      name: Area create
+      description: Force to create areas when they not exist in HA
+      example: true
+      default: false
+      selector:
+        boolean:
+
+reload:
+  description: >
+    Reloads the Loxone integration by reconnecting to the Miniserver and 
+    refreshing all entities. This is useful after making configuration 
+    changes in Loxone Config or when connection issues occur. All current 
+    entity states will be re\-synchronized from the Miniserver.
+
+enable_sun_automation:
+  description: Enable Sun automation for Loxone Jalousie
+  target:
+    entity:
+      domain: cover
+
+disable_sun_automation:
+  description: Disable Sun automation for Loxone Jalousie
+  target:
+    entity:
+      domain: cover
+
+quick_shade:
+  description: Move Loxone Jalousie to shade position. Position is set by Loxone depends on multiple values.
+  target:
+    entity:
+      domain: cover
