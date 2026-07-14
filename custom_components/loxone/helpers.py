@@ -47,6 +47,8 @@ def get_or_create_device(device_uuid, device_name, device_type, device_room):
 
 
 def map_range(value, in_min, in_max, out_min, out_max):
+    if in_max == in_min:
+        return out_min
     return out_min + (((value - in_min) / (in_max - in_min)) * (out_max - out_min))
 
 
@@ -145,14 +147,11 @@ def get_miniserver_type(t):
 
 def get_all(json_data, name):
     controls = []
-    if isinstance(name, list):
-        for c in json_data["controls"].keys():
-            if json_data["controls"][c]["type"] in name:
-                controls.append(json_data["controls"][c])
-    else:
-        for c in json_data["controls"].keys():
-            if json_data["controls"][c]["type"] == name:
-                controls.append(json_data["controls"][c])
+    all_controls = json_data.get("controls", {})
+    names = name if isinstance(name, list) else [name]
+    for c in all_controls:
+        if all_controls[c].get("type") in names:
+            controls.append(all_controls[c])
     return controls
 
 

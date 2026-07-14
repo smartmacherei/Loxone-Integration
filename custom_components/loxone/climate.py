@@ -377,13 +377,13 @@ class LoxoneRoomControllerV2(LoxoneEntity, ClimateEntity, ABC):
 
     @property
     def is_overridden(self) -> bool:
-        # Needed because loxone uses these variables names. Simply workaround define it also here.
-        true = True
-        false = False
-        null = None
         _override_entries = self.get_state_value("overrideEntries")
         if _override_entries:
-            _override_entries = eval(_override_entries)
+            if isinstance(_override_entries, str):
+                try:
+                    _override_entries = json.loads(_override_entries)
+                except (ValueError, TypeError):
+                    return False
             if isinstance(_override_entries, list) and len(_override_entries) > 0:
                 return True
         return False
