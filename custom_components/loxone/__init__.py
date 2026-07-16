@@ -10,6 +10,7 @@ import logging
 import re
 import sys
 import traceback
+from datetime import timedelta
 from functools import cached_property
 
 import homeassistant.components.group as group
@@ -28,6 +29,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.setup import async_setup_component
 
 from .const import (ATTR_AREA_CREATE, ATTR_CODE, ATTR_COMMAND, ATTR_DEVICE,
@@ -50,6 +52,12 @@ from .pyloxone_api.exceptions import (LoxoneConnectionClosedOk,
 REQUIREMENTS = ["websockets", "pycryptodome", "numpy"]
 
 _LOGGER = logging.getLogger(__name__)
+
+# Taktung, in der auto-entdeckte Klemmen per HTTP nachgezogen werden. Sie sind
+# dem WS-Push-Kanal des Miniservers unbekannt (kein Visu-Haekchen), waeren ohne
+# das also fuer immer auf ihrem Startwert eingefroren. 30s ist der Kompromiss
+# aus Aktualitaet und Last: eine Abfrage je Klemme und Intervall.
+DISCOVERY_POLL_INTERVAL = timedelta(seconds=30)
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -340,6 +348,46 @@ async def async_setup_entry(hass, config_entry):
                         _LOGGER.info(
                             "Loxone Auto-Discovery: %s Initialwerte via HTTP geholt",
                             len(_lox_helpers.initial_values),
+                        )
+
+                        # Der Miniserver pusht ueber den WS-Stream NUR Bausteine
+                        # mit Visu-Haekchen. Auto-entdeckte Klemmen sind per
+                        # Definition genau die ohne -- sie kaemen nach dem
+                        # Startwert also nie wieder und blieben fuer immer auf
+                        # dem Stand des Setups stehen. Deshalb zyklisch per HTTP
+                        # nachziehen und in denselben Event-Bus einspeisen, den
+                        # der WS-Stream nutzt; die vorhandenen event_handler
+                        # greifen dadurch unveraendert.
+                        # GRENZE: Kurze Impulse (Taster) liegen prinzipbedingt
+                        # zwischen zwei Abfragen und werden verpasst. Wer die
+                        # braucht, setzt in Loxone Config das Visu-Haekchen --
+                        # dann pusht der Miniserver die Klemme von selbst.
+                        _poll_uuids = [_u for _u, _c in _new]
+                        _session = async_get_clientsession(hass)
+                        _opts = config_entry.options
+
+                        async def _poll_discovered(_now, _uuids=_poll_uuids):
+                            values = await async_fetch_values(
+                                _session,
+                                _opts.get(CONF_HOST),
+                                _opts.get(CONF_PORT),
+                                _opts.get(CONF_USERNAME),
+                                _opts.get(CONF_PASSWORD),
+                                _uuids,
+                            )
+                            if values:
+                                hass.bus.async_fire(EVENT, values)
+
+                        config_entry.async_on_unload(
+                            async_track_time_interval(
+                                hass, _poll_discovered, DISCOVERY_POLL_INTERVAL
+                            )
+                        )
+                        _LOGGER.info(
+                            "Loxone Auto-Discovery: %s Klemmen werden alle %ss "
+                            "per HTTP nachgezogen (WS pusht sie nicht)",
+                            len(_poll_uuids),
+                            DISCOVERY_POLL_INTERVAL.total_seconds(),
                         )
             except Exception as _e:  # noqa: BLE001
                 _LOGGER.warning("Loxone Auto-Discovery uebersprungen: %s", _e)
