@@ -14,18 +14,25 @@ leere Map und PyLoxone gruppiert wie bisher (ein Geraet pro Control).
 """
 from __future__ import annotations
 
+import io
 import logging
 import re
 import struct
+import zipfile
 import xml.etree.ElementTree as ET
 
 _LOGGER = logging.getLogger(__name__)
 
 LOXCC_MAGIC = 0xAABBCCEE
-# physische Geraete-Container im Loxone-Programm
-_DEVICE_TYPES = {"TreeDevice"}
+# physische Geraete-Container im Loxone-Programm.
+# LoxLIVE = der Miniserver selbst; seine Onboard-Klemmen (DigitalIn/VoltageIn/
+# Actor) haengen unter Caption-Knoten direkt darunter.
+_DEVICE_TYPES = {"TreeDevice", "LoxAIRDevice", "LoxLIVE"}
 # Bausteine, die zu einem Geraet gehoeren (Ein-/Ausgaenge)
-_CHILD_PREFIX = "Tree"
+_CHILD_PREFIXES = ("Tree", "LoxAIR")
+# Geraetename aufhuebschen: der LoxLIVE-Title ist der Projektname ("Demo Case")
+# und kollidiert sonst mit dem gleichnamigen Raum.
+_DEVICE_NAME_FMT = {"LoxLIVE": "Miniserver {}"}
 
 
 def _lz4_block_decompress(src: bytes, dst_size: int) -> bytes:
@@ -96,13 +103,17 @@ def build_device_map(program_xml: bytes) -> dict[str, tuple[str, str]]:
         cur = el
         while cur in parent:
             cur = parent[cur]
-            if cur.tag == "C" and cur.attrib.get("Type") in _DEVICE_TYPES:
-                return cur.attrib.get("U"), cur.attrib.get("Title", "")
+            if cur.tag == "C" and (dty := cur.attrib.get("Type")) in _DEVICE_TYPES:
+                title = cur.attrib.get("Title", "")
+                fmt = _DEVICE_NAME_FMT.get(dty)
+                return cur.attrib.get("U"), (fmt.format(title) if fmt else title)
         return None, None
 
     for el in root.iter("C"):
         ty = el.attrib.get("Type", "")
-        if ty.startswith(_CHILD_PREFIX) and ty not in _DEVICE_TYPES:
+        if (
+            ty.startswith(_CHILD_PREFIXES) or ty in _READ_TERMINALS
+        ) and ty not in _DEVICE_TYPES:
             du, dt = parent_device(el)
             u = el.attrib.get("U")
             if du and u:
@@ -111,24 +122,58 @@ def build_device_map(program_xml: bytes) -> dict[str, tuple[str, str]]:
 
 
 def _newest_program_file(listing: str) -> str | None:
-    """Aus einer /dev/fslist/prog-Ausgabe den neuesten sps_*.LoxCC-Namen holen."""
+    """Aus einer /dev/fslist/prog-Ausgabe das neueste Programm holen.
+
+    Der Miniserver legt das Programm je nach Speichervorgang als nacktes
+    sps_*.LoxCC ODER als sps_*.zip (mit sps0.LoxCC darin) ab. Nur auf .LoxCC zu
+    schauen liefert stillschweigend ein veraltetes Programm, sobald die letzten
+    Speicherungen als .zip abgelegt wurden -- neue Geraete fehlen dann komplett.
+    Bei gleichem Zeitstempel gewinnt .LoxCC (spart das Entpacken).
+    """
     best = None
-    best_ts = -1
+    best_key = (-1, -1)
     for line in listing.splitlines():
-        m = re.search(r"(sps_\d+_(\d+)\.LoxCC)\s*$", line.strip())
+        m = re.search(r"(sps_\d+_(\d+)\.(LoxCC|zip))\s*$", line.strip())
         if m:
-            ts = int(m.group(2))
-            if ts > best_ts:
-                best_ts, best = ts, m.group(1)
+            key = (int(m.group(2)), 1 if m.group(3) == "LoxCC" else 0)
+            if key > best_key:
+                best_key, best = key, m.group(1)
     return best
+
+
+def _loxcc_from_zip(data: bytes) -> bytes | None:
+    """sps0.LoxCC aus einem sps_*.zip-Programmpaket holen."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            for name in zf.namelist():
+                if name.lower().endswith(".loxcc") and name.lower().startswith("sps"):
+                    return zf.read(name)
+        _LOGGER.warning("Kein sps*.LoxCC im Programm-ZIP")
+    except Exception as err:  # noqa: BLE001 - best effort
+        _LOGGER.warning("Programm-ZIP nicht lesbar: %s", err)
+    return None
 
 
 # --- Voll-Auto-Discovery: physische Klemmen ohne Visu-Haekchen -----------------
 
 # Loxone-Klemmentyp (im Programm) -> (synthetischer LoxAPP3-Typ, is_analog)
+# Aktoren werden bewusst nur lesend abgebildet: Ihr Zustand ist interessant,
+# geschaltet wird weiterhin ueber den zustaendigen Funktionsbaustein.
 _READ_TERMINALS = {
+    # Tree-Geraete
     "TreeSensor": ("InfoOnlyDigital", False),
     "TreeAsensor": ("InfoOnlyAnalog", True),
+    # Air-Geraete
+    "LoxAIRsensor": ("InfoOnlyDigital", False),
+    "LoxAIRAsensor": ("InfoOnlyAnalog", True),
+    "LoxAIRactor": ("InfoOnlyDigital", False),
+    "LoxAIRAactor": ("InfoOnlyAnalog", True),
+    # Onboard-Klemmen des Miniservers
+    "DigitalIn": ("InfoOnlyDigital", False),
+    "VoltageIn": ("InfoOnlyAnalog", True),
+    "Actor": ("InfoOnlyDigital", False),
+    # Verbindungsstatus je Geraet/Extension
+    "Online": ("InfoOnlyDigital", False),
 }
 
 
@@ -201,6 +246,26 @@ def enumerate_discoverable(program_xml: bytes, loxconfig: dict) -> list[tuple[st
     return out
 
 
+def _numeric_value(raw):
+    """'0%' -> 0.0, '0.0°' -> 0.0, '0Lx' -> 0.0, '0.0' -> 0.0. None wenn zahllos.
+
+    Anders als der WebSocket-Stream liefert /jdev/sps/io/<uuid> den fertig
+    formatierten Anzeigewert INKLUSIVE Einheit. Reicht man den ungefiltert
+    weiter, wirft HA fuer numerische Sensoren einen ValueError ("non-numeric
+    value") und die Entity stirbt beim ersten Schreiben -- betrifft genau die
+    Klemmen mit Einheit (%, °, Lx), waehrend einheitenlose durchrutschen.
+    """
+    if isinstance(raw, (int, float)):
+        return raw
+    m = re.match(r"\s*([-+]?\d+(?:[.,]\d+)?)", str(raw))
+    if not m:
+        return None
+    try:
+        return float(m.group(1).replace(",", "."))
+    except ValueError:
+        return None
+
+
 async def async_fetch_values(session, host, port, username, password, uuids) -> dict:
     """Aktuelle Werte einzelner UUIDs per HTTP holen (/jdev/sps/io/<uuid>).
 
@@ -221,7 +286,9 @@ async def async_fetch_values(session, host, port, username, password, uuids) -> 
                 data = await resp.json(content_type=None)
                 val = data.get("LL", {}).get("value")
                 if val is not None and str(val).strip() not in ("", "<v.i>"):
-                    out[u] = val
+                    num = _numeric_value(val)
+                    if num is not None:
+                        out[u] = num
         except Exception:  # noqa: BLE001 - best effort
             continue
     return out
@@ -242,13 +309,17 @@ async def async_fetch_program(session, host, port, username, password) -> bytes 
             listing = await resp.text()
         fname = _newest_program_file(listing)
         if not fname:
-            _LOGGER.warning("Kein sps_*.LoxCC in /prog gefunden")
+            _LOGGER.warning("Kein sps_*.LoxCC/.zip in /prog gefunden")
             return None
         async with session.get(base + "/dev/fsget/prog/" + fname, auth=auth, timeout=timeout) as resp:
             if resp.status != 200:
                 _LOGGER.warning("fsget %s -> HTTP %s", fname, resp.status)
                 return None
             data = await resp.read()
+        if fname.endswith(".zip"):
+            data = _loxcc_from_zip(data)
+            if data is None:
+                return None
     except Exception as err:  # noqa: BLE001 - best effort
         _LOGGER.warning("Programm-Download fehlgeschlagen: %s", err)
         return None
