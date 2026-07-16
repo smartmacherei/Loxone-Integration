@@ -157,23 +157,26 @@ def _loxcc_from_zip(data: bytes) -> bytes | None:
 # --- Voll-Auto-Discovery: physische Klemmen ohne Visu-Haekchen -----------------
 
 # Loxone-Klemmentyp (im Programm) -> (synthetischer LoxAPP3-Typ, is_analog)
-# Aktoren werden bewusst nur lesend abgebildet: Ihr Zustand ist interessant,
-# geschaltet wird weiterhin ueber den zustaendigen Funktionsbaustein.
+#
+# Richtung zaehlt: Ein digitaler AUSGANG als InfoOnlyDigital abzubilden macht
+# aus einer Klemme, die man schalten kann, einen reinen Melder -- Ausgaenge
+# tauchen dann als Eingaenge auf. Digitale Ausgaenge sind am Miniserver per
+# /jdev/sps/io/<uuid>/On|Off schaltbar (verifiziert), also -> "Switch".
+# Analoge Ausgaenge bleiben lesend: dafuer gibt es hier keine Schreib-Semantik.
 _READ_TERMINALS = {
-    # Tree-Geraete
+    # --- Eingaenge / Sensoren (lesend) ---
     "TreeSensor": ("InfoOnlyDigital", False),
     "TreeAsensor": ("InfoOnlyAnalog", True),
-    # Air-Geraete
     "LoxAIRsensor": ("InfoOnlyDigital", False),
     "LoxAIRAsensor": ("InfoOnlyAnalog", True),
-    "LoxAIRactor": ("InfoOnlyDigital", False),
-    "LoxAIRAactor": ("InfoOnlyAnalog", True),
-    # Onboard-Klemmen des Miniservers
     "DigitalIn": ("InfoOnlyDigital", False),
     "VoltageIn": ("InfoOnlyAnalog", True),
-    "Actor": ("InfoOnlyDigital", False),
-    # Verbindungsstatus je Geraet/Extension
+    # Verbindungsstatus je Geraet/Extension (lesend)
     "Online": ("InfoOnlyDigital", False),
+    # --- Ausgaenge ---
+    "Actor": ("Switch", False),  # Onboard-Relais/Digitalausgang des Miniservers
+    "LoxAIRactor": ("Switch", False),
+    "LoxAIRAactor": ("InfoOnlyAnalog", True),
 }
 
 

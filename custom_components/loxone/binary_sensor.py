@@ -38,6 +38,16 @@ LOXONE_DEVICE_CLASS_MAP: dict[str, BinarySensorDeviceClass] = {
 # wenn der Loxone-Typ allein keine device_class hergibt (z.B. generische
 # InfoOnlyDigital-Bausteine wie "Motion" oder "Presence").
 NAME_DEVICE_CLASS_MAP: tuple[tuple[tuple[str, ...], BinarySensorDeviceClass], ...] = (
+    # ACHTUNG Reihenfolge: Der erste Treffer gewinnt. Statusmeldungen tragen den
+    # Geraetenamen mit ("Onlinestatus Wassersensor Air", "Onlinestatus
+    # Bewegungsmelder Air") und wuerden sonst als Feuchte- bzw. Bewegungsmelder
+    # durchgehen. Sie muessen daher VOR den Geraete-Schluesselwoertern stehen.
+    (("onlinestatus", "online status", "online"), BinarySensorDeviceClass.CONNECTIVITY),
+    (("batterie schwach", "battery low", "akku schwach"), BinarySensorDeviceClass.BATTERY),
+    (
+        ("steckt fest", "kein ventil", "störung", "stoerung", "fehler"),
+        BinarySensorDeviceClass.PROBLEM,
+    ),
     (("motion", "bewegung"), BinarySensorDeviceClass.MOTION),
     (("presence", "präsenz", "praesenz", "anwesen"), BinarySensorDeviceClass.OCCUPANCY),
     (("window", "fenster"), BinarySensorDeviceClass.WINDOW),

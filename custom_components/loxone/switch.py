@@ -227,6 +227,22 @@ class LoxoneSwitch(LoxoneEntity, SwitchEntity):
             self._attr_is_on = False
             self.schedule_update_ha_state()
 
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        # Auto-entdeckte physische Ausgangsklemmen pusht der Miniserver nicht
+        # von sich aus ueber den WS-Stream. Ohne Seeding blieben sie dauerhaft
+        # "unavailable" -- der Schalter waere zwar da, aber nicht bedienbar.
+        if not self._attr_available:
+            from .helpers import initial_values
+
+            if self.uuidAction in initial_values:
+                try:
+                    self._attr_is_on = bool(float(initial_values[self.uuidAction]))
+                except (TypeError, ValueError):
+                    return
+                self._attr_available = True
+                self.async_schedule_update_ha_state()
+
     async def event_handler(self, event):
         if self.uuidAction in event.data or self.states["active"] in event.data:
             if not self._attr_available:
