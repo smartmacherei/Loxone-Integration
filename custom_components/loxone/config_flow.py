@@ -1,8 +1,8 @@
 """
-Config Flow for PyLoxone
+Config Flow for Loxone (smartmacherei)
 
 For more details about this component, please refer to the documentation at
-https://github.com/JoDehli/PyLoxone
+https://github.com/smartmacherei/Loxone-Integration
 """
 
 from typing import Any, Mapping, cast
@@ -126,5 +126,4 @@ class LoxoneFlowHandler(SchemaConfigFlowHandler, domain=DOMAIN):
 
     def async_config_entry_title(self, options: Mapping[str, Any]) -> str:
         """Return config entry title."""
-        host = options.get(CONF_HOST, "Loxone")
-        return f"PyLoxone ({host})"
+        return "Loxone (smartmacherei)"
