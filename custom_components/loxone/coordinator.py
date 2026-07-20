@@ -57,7 +57,10 @@ class LoxoneCoordinator(DataUpdateCoordinator):
             )
         try:
             session = async_get_clientsession(self.hass)
-            await self.api.open(session)
+            # max_tries=1: beim Setup schnell scheitern, wenn der Miniserver fehlt.
+            # HA retryt dann selbst (ConfigEntryNotReady) -> HA startet auch ohne
+            # Miniserver zuegig, statt an der internen 100er-Retry-Schleife zu haengen.
+            await self.api.open(session, max_tries=1)
         except LoxoneException as e:
             _LOGGER.error("Could not connect to Loxone Miniserver")
             raise e

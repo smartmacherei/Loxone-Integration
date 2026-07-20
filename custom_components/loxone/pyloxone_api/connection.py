@@ -784,8 +784,16 @@ class LoxoneConnection(LoxoneBaseConnection):
             raise
 
     async def open(
-        self, session: aiohttp.ClientSession | None = None
+        self,
+        session: aiohttp.ClientSession | None = None,
+        max_tries: int = RECONNECT_TRIES,
     ) -> LoxoneClientConnection:
+        # max_tries begrenzt die internen Verbindungsversuche. Beim HA-Setup wird
+        # bewusst max_tries=1 uebergeben: Faellt der Miniserver aus, scheitert der
+        # Aufbau SOFORT statt RECONNECT_TRIES(=100)x mit je RECONNECT_DELAY Pause zu
+        # blockieren (~8 min+). HA retryt dann selbst ueber ConfigEntryNotReady im
+        # Hintergrund -> HA startet auch OHNE Miniserver zuegig. Die Laufzeit-
+        # Reconnection (start_listening) nutzt weiter den Default.
 
         if self._closed:
             raise RuntimeError("Cannot open a closed connection")
@@ -800,7 +808,7 @@ class LoxoneConnection(LoxoneBaseConnection):
                 session=session,
             )
             api_resp = None
-            for attempt in range(RECONNECT_TRIES):
+            for attempt in range(max_tries):
                 try:
                     api_resp = await connector.get(CMD_GET_API_KEY)
                     break  # connection successful
@@ -810,16 +818,16 @@ class LoxoneConnection(LoxoneBaseConnection):
                     OSError,
                     TimeoutError,
                 ) as e:
-                    if attempt < RECONNECT_TRIES - 1:
+                    if attempt < max_tries - 1:
                         _LOGGER.debug(
-                            f"Connection error (attempt {attempt + 1}/{RECONNECT_TRIES}), retrying in {RECONNECT_DELAY} seconds: {e}"
+                            f"Connection error (attempt {attempt + 1}/{max_tries}), retrying in {RECONNECT_DELAY} seconds: {e}"
                         )
                         await asyncio.sleep(RECONNECT_DELAY)
                     else:
                         _LOGGER.exception("Max connection tries exceeded. Stopping.")
                         raise
                 except TimeoutError:
-                    if attempt < RECONNECT_TRIES - 1:
+                    if attempt < max_tries - 1:
                         _LOGGER.debug(
                             f"TimeoutError, try again in {RECONNECT_DELAY} seconds..."
                         )
@@ -828,7 +836,7 @@ class LoxoneConnection(LoxoneBaseConnection):
                         _LOGGER.error("Max tries exceeded. Stopping.")
                         raise
                 except ConnectionError:
-                    if attempt < RECONNECT_TRIES - 1:
+                    if attempt < max_tries - 1:
                         _LOGGER.debug(
                             f"ConnectionError, try again in {RECONNECT_DELAY} seconds..."
                         )
