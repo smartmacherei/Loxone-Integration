@@ -20,6 +20,19 @@ mit Erweiterungen, die den Miniserver deutlich „plug & play" in Home Assistant
   pusht (z. B. Konfig-Analogwerte), werden per HTTP nachgeholt, damit Entities nicht
   „unavailable" bleiben.
 
+## Dokumentation
+
+Der Demo-Koffer, an dem diese Integration entwickelt und getestet wird, ist vollständig
+dokumentiert — inklusive Zugängen, Netz-Aufbau und den Fallstricken, die dabei Zeit gekostet haben:
+
+- **[`docs/STATUS.md`](docs/STATUS.md)** — hier anfangen: aktueller Stand, Blocker, offene Aufgaben
+- [`docs/demokoffer.md`](docs/demokoffer.md) — Aufbau, Netz, Zugänge, was auf den Laptop muss
+- [`docs/entwicklung.md`](docs/entwicklung.md) — Deploy-Weg, `.LoxCC`-Format, Messmethode, Fallen
+- [`docs/zigbee2mqtt.md`](docs/zigbee2mqtt.md) — Zigbee-Stack und Demo-Automationen der Koffer-Box
+- [`docs/simulation-testplan.md`](docs/simulation-testplan.md) — Control-Typen systematisch durchtesten
+- [`addons/koffer_netz/`](addons/koffer_netz/) — Add-on, das den Miniserver per MAC findet und den
+  Integrations-Host automatisch nachführt
+
 ## Installation (HACS)
 
 1. HACS → drei Punkte → **Benutzerdefinierte Repositories**
