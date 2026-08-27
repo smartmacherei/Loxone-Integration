@@ -3,3 +3,12 @@ __pycache__/
 *.egg-info/
 .DS_Store
 .vscode/
+
+# Interne Doku/Notizen, Workspaces, Secrets — bleiben lokal bzw. im privaten Repo
+*.code-workspace
+.remember/
+.env
+.env.*
+docs/intern/
+*.LoxCC
+*.Loxone
