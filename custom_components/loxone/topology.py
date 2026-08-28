@@ -175,6 +175,8 @@ _READ_TERMINALS = {
     "Online": ("InfoOnlyDigital", False),
     # --- Ausgaenge ---
     "Actor": ("Switch", False),  # Onboard-Relais/Digitalausgang des Miniservers
+    "TreeActor": ("Switch", False),
+    "TreeAactor": ("InfoOnlyAnalog", True),
     "LoxAIRactor": ("Switch", False),
     "LoxAIRAactor": ("InfoOnlyAnalog", True),
 }
