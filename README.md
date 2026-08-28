@@ -19,7 +19,7 @@ mit Erweiterungen, die den Miniserver deutlich „plug & play" in Home Assistant
   Status-LED. Die physischen Ein-/Ausgänge des Miniservers (`I`, `AI`, `Q`) und die
   schaltbaren Geräteausgänge kommen dagegen immer mit — auch ohne sprechenden Namen,
   denn genau die fasst man am Verteiler an. Ganz abschaltbar über die Option
-  **„Physische Klemmen automatisch entdecken"**.
+  **„Physische Klemmen automatisch entdecken“**.
 - **Sinnvolle Symbole / `device_class`.** Ableitung aus Einheit (z. B. `Lx` → Helligkeit,
   `°` → Temperatur) und Namensschlüsselwörtern (Motion → Bewegung, Presence → Anwesenheit …).
 - **HTTP-Initialwerte.** Werte, die der Miniserver nicht über den WebSocket-Stream
@@ -32,6 +32,12 @@ mit Erweiterungen, die den Miniserver deutlich „plug & play" in Home Assistant
 > 30 s per HTTP nachgezogen; kurze Impulse (Tasterdrücke) liegen dabei prinzipbedingt
 > zwischen zwei Abfragen. Wer eine Klemme in Echtzeit braucht, setzt in Loxone Config ihr
 > Visu-Häkchen — dann pusht der Miniserver sie von selbst.
+
+> **Achtung bei auto-entdeckten Schaltern.** Schaltbare Ausgänge werden als HA-`switch`
+> angelegt und schreiben **direkt auf die Klemme** — am Loxone-Programm vorbei. Ist derselbe
+> Ausgang zusätzlich über einen Baustein visualisiert, gibt es zwei Schalter für dasselbe
+> Relais, die voneinander nichts wissen. Wo das stört: Auto-Discovery abschalten oder die
+> betreffenden Entities in HA deaktivieren.
 
 ## Installation (HACS)
 

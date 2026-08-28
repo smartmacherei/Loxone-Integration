@@ -4,6 +4,39 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.1.2] – 2026-08-28
+
+Behebt zwei Fehler, die ein Code-Review an 1.1.0/1.1.1 gefunden hat.
+
+### Behoben
+
+- **Analoge Klemmen blieben ohne `device_class`, wenn sie nur über den Gerätenamen erkannt
+  wurden.** Der Filter in `topology.classify_terminal()` gibt den Gerätenamen als Kategorie
+  an `match_sensor_description()` — die Entity in `sensor.py` klassifizierte anschließend
+  aber **erneut**, ohne diesen Kontext. Eine `%`-Klemme an einem „Feuchtesensor" kam damit
+  zwar durch den Filter, landete in HA aber ohne `device_class`, ohne Einheiten-
+  Normalisierung (`°`→`°C`, `Lx`→`lx`) und mit nacktem `MEASUREMENT`. Filter und Entity
+  sehen jetzt dieselben Eingaben (`auto_category`).
+
+- **Änderungen im Options-Dialog wirkten erst nach einem Neustart.** Die Integration
+  registrierte keinen Update-Listener; `async_config_entry_updated` existierte, wurde aber
+  nie angemeldet. Wer Auto-Discovery abschaltete, sah schlicht keine Wirkung. Jetzt lädt
+  sich der Config-Entry bei jeder Optionsänderung selbst neu — verifiziert: Umschalten
+  wirkt nach ~5 s ohne Neustart (50 → 22 Entities und zurück).
+
+### Geändert
+
+- `enumerate_discoverable()` nimmt die bereits gebaute `device_map` entgegen, statt das
+  Programm-XML ein zweites Mal zu parsen und die Map neu aufzubauen. Bei großen Projekten
+  spart das spürbar Zeit im Event-Loop.
+
+- README: Hinweis ergänzt, dass auto-entdeckte Schalter **direkt auf die Klemme schreiben**
+  — am Loxone-Programm vorbei. Ist derselbe Ausgang zusätzlich visualisiert, existieren
+  zwei Schalter für dasselbe Relais.
+
+- `_ALWAYS_KEEP_TYPES` enthält bewusst nur Miniserver-Klemmen und schaltbare Ausgänge,
+  nicht die Eingänge von Tree-/Air-Geräten. Diese Asymmetrie ist jetzt im Code begründet.
+
 ## [1.1.1] – 2026-08-28
 
 ### Behoben

@@ -195,10 +195,15 @@ async def async_set_options(hass, config_entry):
 async def async_config_entry_updated(hass, entry) -> None:
     """Handle signals of config entry being updated.
 
-    This is a static method because a class method (bound method), can not be used with weak references.
-    Causes for this is either discovery updating host address or config entry options changing.
+    Causes for this is either discovery updating host address or config entry
+    options changing.
+
+    Die Optionen werden ausschliesslich in async_setup_entry gelesen. Ohne
+    Reload bliebe eine Aenderung im Options-Dialog daher wirkungslos, bis
+    jemand HA neu startet - am deutlichsten beim Abschalten von
+    CONF_AUTO_DISCOVERY, das sichtbar "nichts tut".
     """
-    pass
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def create_group_for_loxone_entities(hass, entities, name, object_id):
@@ -299,6 +304,14 @@ async def async_setup_entry(hass, config_entry):
 
     hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = coordinator
 
+    # Optionsaenderungen wirken sonst erst nach einem HA-Neustart, weil die
+    # Optionen nur hier gelesen werden. Bewusst NACH async_set_options
+    # registriert: das schreibt beim allerersten Setup selbst am Eintrag und
+    # wuerde sonst einen Reload direkt im Setup ausloesen.
+    config_entry.async_on_unload(
+        config_entry.add_update_listener(async_config_entry_updated)
+    )
+
     # Physische Geraete-Topologie aus dem Miniserver-Programm laden, damit die
     # Entities nach echtem Loxone-Geraet (TreeDevice) gruppiert werden statt je
     # Control ein eigenes HA-Geraet zu erzeugen. Best-effort: bei Fehlern bleibt
@@ -345,7 +358,12 @@ async def async_setup_entry(hass, config_entry):
                     and isinstance(_loxconfig, dict)
                     and isinstance(_loxconfig.get("controls"), dict)
                 ):
-                    _new = enumerate_discoverable(_program, _loxconfig)
+                    # device_map durchreichen: sie ist oben schon gebaut,
+                    # sonst parst enumerate_discoverable das Programm-XML
+                    # ein zweites Mal synchron im Event-Loop.
+                    _new = enumerate_discoverable(
+                        _program, _loxconfig, _lox_helpers.device_map
+                    )
                     for _u, _ctrl in _new:
                         _loxconfig["controls"][_u] = _ctrl
                     _LOGGER.info(

@@ -214,6 +214,13 @@ _ALWAYS_KEEP_TYPES = frozenset(
         "LoxAIRactor",  # digitale Ausgaenge an Air-Geraeten
     }
 )
+# Bewusst NICHT enthalten: die EINGAENGE von Tree-/Air-Geraeten (TreeSensor,
+# TreeAsensor, LoxAIRsensor, LoxAIRAsensor). Die Liste sieht dadurch asymmetrisch
+# aus, ist es aber mit Absicht: Geraete-Eingaenge sind ueberwiegend Interna
+# ("Stromfluss", "Channel Free", "Computing power throttling"), waehrend die
+# Miniserver-Klemmen und die schaltbaren Ausgaenge das sind, was man am Verteiler
+# bzw. am Geraet tatsaechlich benutzt. Geraete-Eingaenge mit echter Funktion
+# ("Bewegung", "Batterie schwach") kommen ueber classify_terminal ohnehin durch.
 
 
 def classify_terminal(
@@ -267,7 +274,9 @@ def classify_terminal(
     return str(dc) if dc else None
 
 
-def enumerate_discoverable(program_xml: bytes, loxconfig: dict) -> list[tuple[str, dict]]:
+def enumerate_discoverable(
+    program_xml: bytes, loxconfig: dict, device_map: dict | None = None
+) -> list[tuple[str, dict]]:
     """Synthetische InfoOnly-Controls fuer physische Klemmen, die (noch) NICHT in
     der Visu/loxconfig stehen. Read-only: TreeSensor->binary_sensor,
     TreeAsensor->sensor. Rueckgabe: Liste (uuid, control_dict) zur Injektion.
@@ -278,8 +287,11 @@ def enumerate_discoverable(program_xml: bytes, loxconfig: dict) -> list[tuple[st
     except ET.ParseError:
         return []
     existing = {u.lower() for u in loxconfig.get("controls", {})}
-    # Geraetename je Klemme - classify_terminal braucht ihn als Kontext.
-    device_names = build_device_map(program_xml)
+    # Geraetename je Klemme - classify_terminal braucht ihn als Kontext. Der
+    # Aufrufer hat die Map beim Setup ohnehin schon gebaut; sie durchzureichen
+    # spart bei grossen Projekten ein komplettes Parsen des Programm-XML im
+    # Event-Loop.
+    device_names = build_device_map(program_xml) if device_map is None else device_map
     out: list[tuple[str, dict]] = []
     for el in root.iter("C"):
         info = _READ_TERMINALS.get(el.attrib.get("Type", ""))
@@ -325,6 +337,12 @@ def enumerate_discoverable(program_xml: bytes, loxconfig: dict) -> list[tuple[st
             # kwarg, und device_class ist an der Entity eine Property ohne Setter
             # -> das gaebe je Entity eine Fehlermeldung im Log.
             "auto_device_class": device_class,
+            # Der Geraetename als Kategorie-Kontext. classify_terminal hat ihn
+            # oben benutzt; die Analog-Entity klassifiziert in sensor.py selbst
+            # noch einmal und wuerde ohne ihn zu einem ANDEREN Ergebnis kommen
+            # (z.B. "%"-Klemme an einem Feuchtesensor: hier durchgelassen, dort
+            # ohne device_class). Beide muessen dieselben Eingaben sehen.
+            "auto_category": device_name,
         }
         if is_analog:
             ctrl["details"] = {"format": _lox_format(unit, precision)}

@@ -428,7 +428,12 @@ class LoxoneSensor(LoxoneEntity, SensorEntity):
         desc = match_sensor_description(
             unit=self._attr_native_unit_of_measurement,
             name=self.name,
-            category=kwargs.get("cat", ""),
+            # auto_category: bei auto-entdeckten Klemmen der Geraetename. Genau
+            # damit hat topology.classify_terminal die Klemme durchgelassen; ohne
+            # ihn klassifiziert die Entity anders als der Filter und bliebe ohne
+            # device_class ("Batterie"-Klemme an einem Geraet mit sprechendem
+            # Namen). Die echte Loxone-Kategorie hat weiter Vorrang.
+            category=kwargs.get("cat", "") or getattr(self, "auto_category", ""),
         )
         if desc:
             self.entity_description = desc
