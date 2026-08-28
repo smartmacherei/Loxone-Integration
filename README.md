@@ -13,12 +13,24 @@ mit Erweiterungen, die den Miniserver deutlich „plug & play" in Home Assistant
   physischen Loxone-Geräts landen unter **einem** HA-Gerät mit dem echten Gerätenamen.
 - **Auto-Discovery ohne Visu-Klicken.** Physische Klemmen, die (noch) nicht in der
   Loxone-Visualisierung sichtbar gemacht wurden, werden automatisch als Entities
-  ergänzt und korrekt dem Gerät zugeordnet.
+  ergänzt und korrekt dem Gerät zugeordnet. Angelegt wird dabei nur, was eine echte
+  Gerätefunktion ist — Bewegung, Helligkeit, Temperatur, Leckmelder, Fensterkontakt,
+  Batteriestand, Störung, Erreichbarkeit —, nicht jeder Konfigparameter und jede
+  Status-LED. Ausgänge bleiben außen vor, damit nichts auf Klemmen schreibt, die
+  bewusst nicht freigegeben sind. Ganz abschaltbar über die Option
+  **„Physische Klemmen automatisch entdecken"**.
 - **Sinnvolle Symbole / `device_class`.** Ableitung aus Einheit (z. B. `Lx` → Helligkeit,
   `°` → Temperatur) und Namensschlüsselwörtern (Motion → Bewegung, Presence → Anwesenheit …).
 - **HTTP-Initialwerte.** Werte, die der Miniserver nicht über den WebSocket-Stream
   pusht (z. B. Konfig-Analogwerte), werden per HTTP nachgeholt, damit Entities nicht
   „unavailable" bleiben.
+
+> **Live oder Polling?** Der Miniserver pusht ausschließlich Bausteine mit Visu-Häkchen —
+> gemessen kam über den WebSocket keine einzige nicht-visualisierte Klemme an. Diese
+> Bausteine sind also live (Millisekunden). Auto-entdeckte Klemmen werden stattdessen alle
+> 30 s per HTTP nachgezogen; kurze Impulse (Tasterdrücke) liegen dabei prinzipbedingt
+> zwischen zwei Abfragen. Wer eine Klemme in Echtzeit braucht, setzt in Loxone Config ihr
+> Visu-Häkchen — dann pusht der Miniserver sie von selbst.
 
 ## Installation (HACS)
 
