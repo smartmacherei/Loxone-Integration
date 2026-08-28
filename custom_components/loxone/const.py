@@ -54,6 +54,11 @@ CONF_ACTIONID = "uuidAction"
 CONF_SCENE_GEN = "generate_scenes"
 CONF_SCENE_GEN_DELAY = "generate_scenes_delay"
 CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN = "generate_lightcontroller_subcontrols"
+# Auto-Discovery: physische Klemmen ohne Visu-Haekchen als Entities ergaenzen.
+# Vorgabe True = bisheriges Verhalten. Fuer Kundenprojekte abschaltbar, weil
+# grosse Projekte sonst hunderte ungewollte Entities erzeugen.
+CONF_AUTO_DISCOVERY = "auto_discovery"
+DEFAULT_AUTO_DISCOVERY = True
 DEFAULT_FORCE_UPDATE = False
 
 SUPPORT_SUN_AUTOMATION = 1024

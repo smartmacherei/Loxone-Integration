@@ -33,11 +33,12 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.setup import async_setup_component
 
 from .const import (ATTR_AREA_CREATE, ATTR_CODE, ATTR_COMMAND, ATTR_DEVICE,
-                    ATTR_UUID, ATTR_VALUE,
+                    ATTR_UUID, ATTR_VALUE, CONF_AUTO_DISCOVERY,
                     CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, CONF_SCENE_GEN,
-                    CONF_SCENE_GEN_DELAY, DEFAULT, DEFAULT_DELAY_SCENE,
-                    DEFAULT_PORT, DOMAIN, DOMAIN_DEVICES, ERROR_VALUE, EVENT,
-                    LOXONE_PLATFORMS, SECUREDSENDDOMAIN, SENDDOMAIN, cfmt)
+                    CONF_SCENE_GEN_DELAY, DEFAULT, DEFAULT_AUTO_DISCOVERY,
+                    DEFAULT_DELAY_SCENE, DEFAULT_PORT, DOMAIN, DOMAIN_DEVICES,
+                    ERROR_VALUE, EVENT, LOXONE_PLATFORMS, SECUREDSENDDOMAIN,
+                    SENDDOMAIN, cfmt)
 from .coordinator import LoxoneCoordinator
 from .helpers import get_miniserver_type
 from .miniserver import MiniServer, get_miniserver_from_hass
@@ -182,6 +183,9 @@ async def async_set_options(hass, config_entry):
         CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN: options_in.pop(
             CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, ""
         ),
+        CONF_AUTO_DISCOVERY: options_in.pop(
+            CONF_AUTO_DISCOVERY, DEFAULT_AUTO_DISCOVERY
+        ),
     }
     hass.config_entries.async_update_entry(
         config_entry, data=config_entry.data, options=options
@@ -323,9 +327,23 @@ async def async_setup_entry(hass, config_entry):
             # Auto-Discovery: physische Klemmen OHNE Visu-Haekchen aus dem
             # Programm als Entities ergaenzen (gruppiert ueber die device_map).
             try:
+                # Abschaltbar, weil grosse Kundenprojekte sonst hunderte
+                # ungewollte Entities erzeugen. Die Geraete-Gruppierung oben
+                # (device_map) bleibt davon unberuehrt - abgeschaltet wird nur
+                # das Anlegen zusaetzlicher Entities.
+                _auto_disc = config_entry.options.get(
+                    CONF_AUTO_DISCOVERY, DEFAULT_AUTO_DISCOVERY
+                )
+                if not _auto_disc:
+                    _LOGGER.info(
+                        "Loxone Auto-Discovery ist per Option deaktiviert - es "
+                        "entstehen nur Entities fuer Bausteine mit Visu-Haekchen"
+                    )
                 _loxconfig = coordinator.miniserver.lox_config.json
-                if isinstance(_loxconfig, dict) and isinstance(
-                    _loxconfig.get("controls"), dict
+                if (
+                    _auto_disc
+                    and isinstance(_loxconfig, dict)
+                    and isinstance(_loxconfig.get("controls"), dict)
                 ):
                     _new = enumerate_discoverable(_program, _loxconfig)
                     for _u, _ctrl in _new:

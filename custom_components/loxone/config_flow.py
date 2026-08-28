@@ -19,8 +19,9 @@ from homeassistant.helpers.selector import (BooleanSelector, NumberSelector,
                                             TextSelectorConfig,
                                             TextSelectorType)
 
-from .const import (CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, CONF_SCENE_GEN,
-                    CONF_SCENE_GEN_DELAY, DEFAULT_DELAY_SCENE, DEFAULT_IP,
+from .const import (CONF_AUTO_DISCOVERY, CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN,
+                    CONF_SCENE_GEN, CONF_SCENE_GEN_DELAY,
+                    DEFAULT_AUTO_DISCOVERY, DEFAULT_DELAY_SCENE, DEFAULT_IP,
                     DEFAULT_PORT, DOMAIN)
 
 
@@ -75,6 +76,9 @@ DATA_SCHEMA_SETUP = vol.Schema(
         vol.Required(
             CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, default=False
         ): BooleanSelector(),
+        vol.Required(
+            CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
+        ): BooleanSelector(),
     }
 )
 
@@ -98,6 +102,9 @@ DATA_SCHEMA_OPTIONS = vol.Schema(
         ),
         vol.Required(
             CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, default=False
+        ): BooleanSelector(),
+        vol.Required(
+            CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
         ): BooleanSelector(),
     }
 )

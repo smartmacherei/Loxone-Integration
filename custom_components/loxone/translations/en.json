@@ -14,7 +14,8 @@
           "password": "Password",
           "generate_scenes": "generate scenes",
           "generate_lightcontroller_subcontrols": "Enable LightControllerV2 subcontrols by default",
-          "generate_scenes_delay": "Delay for the scene generation if enabled"
+          "generate_scenes_delay": "Delay for the scene generation if enabled",
+          "auto_discovery": "Auto-discover physical terminals (without Visu checkbox)"
         }
       }
     }
@@ -29,7 +30,8 @@
           "password": "Password",
           "generate_scenes": "Generate scenes",
           "generate_lightcontroller_subcontrols": "Enable LightControllerV2 subcontrols by default",
-          "generate_scenes_delay": "Delay for the scene generation if enabled"
+          "generate_scenes_delay": "Delay for the scene generation if enabled",
+          "auto_discovery": "Auto-discover physical terminals (without Visu checkbox)"
         },
         "description": "PyLoxone edit settings:",
         "title": "PyLoxone settings"
