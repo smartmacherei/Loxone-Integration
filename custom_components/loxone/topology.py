@@ -201,15 +201,67 @@ def _lox_format(unit: str, precision: int) -> str:
     return "%.{}f{}".format(precision, unit)
 
 
+def classify_terminal(
+    name: str,
+    unit: str,
+    is_analog: bool,
+    is_actor: bool,
+    device_name: str = "",
+) -> str | None:
+    """device_class einer Klemme, oder None wenn sie keine Geraetefunktion ist.
+
+    Die Auto-Discovery FINDET alle physischen Klemmen. Die wenigsten davon sind
+    eine Geraetefunktion: der Grossteil sind Konfigparameter ("Overrun Time
+    Presence", "Volume Maximum"), Anzeige-LEDs oder Interna ("Computing power
+    throttling"). Angelegt wird deshalb nur, was sich einer Geraetefunktion im
+    Sinne von Matter zuordnen laesst - also genau das, wofuer die Plattformen
+    ohnehin schon eine device_class kennen. Damit ist der Filter nicht noch eine
+    zweite Namensliste, die auseinanderlaufen kann, sondern nutzt dieselbe
+    Klassifikation, die die Entity spaeter auch bekommt.
+
+    Regeln:
+      Ausgang  -> immer None. Ein auto-entdeckter Schalter liesse HA auf eine
+                  Klemme schreiben, die der Errichter bewusst nicht freigegeben
+                  hat. Discovery legt darum ausschliesslich lesende Entities an.
+                  Wer eine Klemme bedienen will, setzt das Visu-Haekchen.
+      analog   -> die Einheiten-Tabelle aus sensor.py muss greifen. Einheitenlose
+                  Analogwerte ('<v.1>' ohne Einheit) sind praktisch immer
+                  Parameter und fallen dadurch von selbst heraus.
+      digital  -> die Namens-Tabelle aus binary_sensor.py muss greifen. Zuerst am
+                  Klemmennamen, ersatzweise am Geraetenamen: "Eingang 1" allein
+                  sagt nichts, "Eingang 1" am "Wassersensor Air" ist ein
+                  Leckmelder.
+    """
+    if is_actor:
+        return None
+    if is_analog:
+        # Der Geraetename geht als "category" hinein - genau dafuer hat
+        # match_sensor_description das Feld (mehrdeutige Einheiten wie % brauchen
+        # ein Schluesselwort, sonst wird jeder Prozentwert zur Luftfeuchte).
+        from .sensor import match_sensor_description
+
+        desc = match_sensor_description(unit, name, device_name)
+        return str(desc.device_class) if desc and desc.device_class else None
+
+    from .binary_sensor import device_class_from_name
+
+    dc = device_class_from_name(name) or device_class_from_name(device_name)
+    return str(dc) if dc else None
+
+
 def enumerate_discoverable(program_xml: bytes, loxconfig: dict) -> list[tuple[str, dict]]:
     """Synthetische InfoOnly-Controls fuer physische Klemmen, die (noch) NICHT in
     der Visu/loxconfig stehen. Read-only: TreeSensor->binary_sensor,
-    TreeAsensor->sensor. Rueckgabe: Liste (uuid, control_dict) zur Injektion."""
+    TreeAsensor->sensor. Rueckgabe: Liste (uuid, control_dict) zur Injektion.
+
+    Angelegt wird nur, was classify_terminal() als Geraetefunktion erkennt."""
     try:
         root = ET.fromstring(program_xml)
     except ET.ParseError:
         return []
     existing = {u.lower() for u in loxconfig.get("controls", {})}
+    # Geraetename je Klemme - classify_terminal braucht ihn als Kontext.
+    device_names = build_device_map(program_xml)
     out: list[tuple[str, dict]] = []
     for el in root.iter("C"):
         info = _READ_TERMINALS.get(el.attrib.get("Type", ""))
@@ -229,8 +281,17 @@ def enumerate_discoverable(program_xml: bytes, loxconfig: dict) -> list[tuple[st
             continue  # unbelegte/ungueltige Klemme (z.B. '<v.i>') -> ueberspringen
         unit, precision = parsed
         lox_type, is_analog = info
+        name = el.attrib.get("Title") or el.attrib.get("IName") or u
+        device_name = device_names.get(u.lower(), ("", ""))[1] or ""
+        # lox_type "Switch" = schreibender Ausgang -> von der Discovery
+        # ausgenommen, siehe classify_terminal().
+        device_class = classify_terminal(
+            name, unit, is_analog, lox_type == "Switch", device_name
+        )
+        if device_class is None:
+            continue  # keine Geraetefunktion (Parameter, Anzeige-LED, Interna)
         ctrl = {
-            "name": el.attrib.get("Title") or el.attrib.get("IName") or u,
+            "name": name,
             "type": lox_type,
             "uuidAction": u,
             "room": iod.attrib.get("Pr", "") if iod is not None else "",
@@ -240,6 +301,10 @@ def enumerate_discoverable(program_xml: bytes, loxconfig: dict) -> list[tuple[st
             "isSecured": False,
             "restrictions": 0,
             "auto_discovered": True,
+            # Bewusst NICHT "device_class": LoxoneEntity.__init__ setattr-t jeden
+            # kwarg, und device_class ist an der Entity eine Property ohne Setter
+            # -> das gaebe je Entity eine Fehlermeldung im Log.
+            "auto_device_class": device_class,
         }
         if is_analog:
             ctrl["details"] = {"format": _lox_format(unit, precision)}

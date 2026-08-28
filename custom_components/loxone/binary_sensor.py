@@ -70,6 +70,19 @@ def device_class_from_name(name: str) -> BinarySensorDeviceClass | None:
     return None
 
 
+def _device_class_from_auto(value) -> BinarySensorDeviceClass | None:
+    """Einstufung aus topology.classify_terminal (String) zurueck in die Enum.
+
+    Tolerant: ein unbekannter Wert fuehrt zum Namens-Fallback statt zum Fehler.
+    """
+    if not value:
+        return None
+    try:
+        return BinarySensorDeviceClass(value)
+    except ValueError:
+        return None
+
+
 async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
@@ -167,7 +180,13 @@ class LoxoneDigitalSensor(LoxoneEntity, BinarySensorEntity):
         if self.type in LOXONE_DEVICE_CLASS_MAP:
             self._attr_device_class = LOXONE_DEVICE_CLASS_MAP[self.type]
         else:
-            self._attr_device_class = device_class_from_name(self.name)
+            # Auto-entdeckte Klemmen bringen ihre Einstufung aus
+            # topology.classify_terminal mit. Die kennt zusaetzlich den
+            # Geraetenamen -- "Eingang 1" am "Wassersensor Air" ist ein
+            # Leckmelder, was aus dem Klemmennamen allein nicht hervorgeht.
+            self._attr_device_class = _device_class_from_auto(
+                getattr(self, "auto_device_class", None)
+            ) or device_class_from_name(self.name)
 
         if self._parent_id:
             self.uuidAction = self._parent_id
