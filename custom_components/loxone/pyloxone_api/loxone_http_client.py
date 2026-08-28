@@ -56,7 +56,7 @@ class LoxoneAsyncHttpClient:
         self.password = password
         self._closed = False
 
-    async def get(self, endpoint):
+    async def get(self, endpoint, timeout: float | None = None):
         if self._closed:
             raise RuntimeError("HTTP client has been closed")
 
@@ -68,6 +68,7 @@ class LoxoneAsyncHttpClient:
             endpoint = f"/{endpoint}"
 
         url = f"{self.base_url}{endpoint}"
+        request_timeout = self.timeout if timeout is None else timeout
         response = None
 
         try:
@@ -75,7 +76,7 @@ class LoxoneAsyncHttpClient:
             response = await self.session.get(
                 url,
                 auth=aiohttp.BasicAuth(self.username, self.password),
-                timeout=aiohttp.ClientTimeout(total=self.timeout),
+                timeout=aiohttp.ClientTimeout(total=request_timeout),
             )
 
             if response.status != 200:
@@ -96,7 +97,7 @@ class LoxoneAsyncHttpClient:
         except asyncio.TimeoutError as err:
             _LOGGER.error(f"Timeout error for {url}")
             raise TimeoutError(
-                f"Request to {url} timed out after {self.timeout} seconds"
+                f"Request to {url} timed out after {request_timeout} seconds"
             ) from err
 
         except aiohttp.ClientSSLError as err:

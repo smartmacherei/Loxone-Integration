@@ -16,6 +16,11 @@ RECONNECT_TRIES = 100  # number of tries to reconnect before giving up
 MAX_WEBSOCKET_MESSAGE_SIZE: Final = 5 * 1024 * 1024  # 5 megabytes = 5,242,880 bytes
 DELAY_CHECK_TOKEN_REFRESH: Final = 20
 TIMEOUT: Final = 30
+# Kurzes Timeout nur fuer den Erreichbarkeits-Probe beim HA-Setup. HA retryt selbst
+# ueber ConfigEntryNotReady, darum darf der Probe schnell aufgeben - sonst kostet ein
+# fehlender Miniserver volle TIMEOUT-Sekunden HA-Startzeit. Alle weiteren Requests
+# (u. a. die Strukturdatei) nutzen weiter TIMEOUT.
+SETUP_PROBE_TIMEOUT: Final = 5
 KEEP_ALIVE_PERIOD: Final = 30
 THROTTLE_CHECK_TOKEN_STILL_VALID: Final = (
     90  # 90 * KEEP_ALIVE_PERIOD -> 43200 sek -> 6 h

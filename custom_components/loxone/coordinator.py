@@ -9,6 +9,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .miniserver import MiniServer
 from .pyloxone_api.connection import LoxoneConnection, LoxoneException
+from .pyloxone_api.const import SETUP_PROBE_TIMEOUT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,7 +61,12 @@ class LoxoneCoordinator(DataUpdateCoordinator):
             # max_tries=1: beim Setup schnell scheitern, wenn der Miniserver fehlt.
             # HA retryt dann selbst (ConfigEntryNotReady) -> HA startet auch ohne
             # Miniserver zuegig, statt an der internen 100er-Retry-Schleife zu haengen.
-            await self.api.open(session, max_tries=1)
+            # probe_timeout: der Erreichbarkeits-Probe gibt nach wenigen Sekunden
+            # auf statt TIMEOUT=30s zu warten -> fehlender Miniserver verlaengert
+            # den HA-Start kaum noch.
+            await self.api.open(
+                session, max_tries=1, probe_timeout=SETUP_PROBE_TIMEOUT
+            )
         except LoxoneException as e:
             _LOGGER.error("Could not connect to Loxone Miniserver")
             raise e

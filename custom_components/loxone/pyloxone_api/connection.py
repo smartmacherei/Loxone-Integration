@@ -787,6 +787,7 @@ class LoxoneConnection(LoxoneBaseConnection):
         self,
         session: aiohttp.ClientSession | None = None,
         max_tries: int = RECONNECT_TRIES,
+        probe_timeout: float | None = None,
     ) -> LoxoneClientConnection:
         # max_tries begrenzt die internen Verbindungsversuche. Beim HA-Setup wird
         # bewusst max_tries=1 uebergeben: Faellt der Miniserver aus, scheitert der
@@ -794,6 +795,11 @@ class LoxoneConnection(LoxoneBaseConnection):
         # blockieren (~8 min+). HA retryt dann selbst ueber ConfigEntryNotReady im
         # Hintergrund -> HA startet auch OHNE Miniserver zuegig. Die Laufzeit-
         # Reconnection (start_listening) nutzt weiter den Default.
+        #
+        # probe_timeout begrenzt zusaetzlich NUR den Erreichbarkeits-Probe
+        # (CMD_GET_API_KEY). Ohne ihn wartet ein fehlender Miniserver die vollen
+        # TIMEOUT=30s ab und verlaengert den HA-Start entsprechend. Alle weiteren
+        # Requests - vor allem die u. U. grosse Strukturdatei - behalten TIMEOUT.
 
         if self._closed:
             raise RuntimeError("Cannot open a closed connection")
@@ -810,7 +816,7 @@ class LoxoneConnection(LoxoneBaseConnection):
             api_resp = None
             for attempt in range(max_tries):
                 try:
-                    api_resp = await connector.get(CMD_GET_API_KEY)
+                    api_resp = await connector.get(CMD_GET_API_KEY, timeout=probe_timeout)
                     break  # connection successful
                 except (
                     LoxoneServiceUnAvailableError,
