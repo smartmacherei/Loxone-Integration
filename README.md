@@ -16,8 +16,9 @@ mit Erweiterungen, die den Miniserver deutlich „plug & play" in Home Assistant
   ergänzt und korrekt dem Gerät zugeordnet. Angelegt wird dabei nur, was eine echte
   Gerätefunktion ist — Bewegung, Helligkeit, Temperatur, Leckmelder, Fensterkontakt,
   Batteriestand, Störung, Erreichbarkeit —, nicht jeder Konfigparameter und jede
-  Status-LED. Ausgänge bleiben außen vor, damit nichts auf Klemmen schreibt, die
-  bewusst nicht freigegeben sind. Ganz abschaltbar über die Option
+  Status-LED. Die physischen Ein-/Ausgänge des Miniservers (`I`, `AI`, `Q`) und die
+  schaltbaren Geräteausgänge kommen dagegen immer mit — auch ohne sprechenden Namen,
+  denn genau die fasst man am Verteiler an. Ganz abschaltbar über die Option
   **„Physische Klemmen automatisch entdecken"**.
 - **Sinnvolle Symbole / `device_class`.** Ableitung aus Einheit (z. B. `Lx` → Helligkeit,
   `°` → Temperatur) und Namensschlüsselwörtern (Motion → Bewegung, Presence → Anwesenheit …).

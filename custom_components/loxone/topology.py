@@ -201,6 +201,21 @@ def _lox_format(unit: str, precision: int) -> str:
     return "%.{}f{}".format(precision, unit)
 
 
+# Klemmentypen, die IMMER angelegt werden - auch ohne erkennbare Geraetefunktion.
+# Das sind die physischen Ein-/Ausgaenge, die man am Verteiler bzw. am Geraet
+# tatsaechlich anfasst. Ihre Namen sind generisch ("Switch 3", "Q1"), eine
+# Bedeutung laesst sich daraus nicht ableiten - trotzdem gehoeren sie nach HA.
+_ALWAYS_KEEP_TYPES = frozenset(
+    {
+        "DigitalIn",  # Miniserver-Eingaenge I1..In
+        "VoltageIn",  # Miniserver-Analogeingaenge AI1..AIn
+        "Actor",  # Miniserver-Ausgaenge Q1..Qn
+        "TreeActor",  # digitale Ausgaenge an Tree-Geraeten, z.B. das Klick-Signal
+        "LoxAIRactor",  # digitale Ausgaenge an Air-Geraeten
+    }
+)
+
+
 def classify_terminal(
     name: str,
     unit: str,
@@ -219,11 +234,14 @@ def classify_terminal(
     zweite Namensliste, die auseinanderlaufen kann, sondern nutzt dieselbe
     Klassifikation, die die Entity spaeter auch bekommt.
 
+    Achtung: Diese Funktion beantwortet nur die Frage "welche Geraetefunktion?".
+    Ueber das ANLEGEN entscheidet zusaetzlich _ALWAYS_KEEP_TYPES - physische
+    Ein-/Ausgaenge kommen auch ohne erkennbare Funktion nach HA.
+
     Regeln:
-      Ausgang  -> immer None. Ein auto-entdeckter Schalter liesse HA auf eine
-                  Klemme schreiben, die der Errichter bewusst nicht freigegeben
-                  hat. Discovery legt darum ausschliesslich lesende Entities an.
-                  Wer eine Klemme bedienen will, setzt das Visu-Haekchen.
+      Ausgang  -> None. Ein schaltender Ausgang ist keine Messgroesse, er
+                  bekommt daher keine device_class. Angelegt wird er trotzdem,
+                  sofern sein Typ in _ALWAYS_KEEP_TYPES steht.
       analog   -> die Einheiten-Tabelle aus sensor.py muss greifen. Einheitenlose
                   Analogwerte ('<v.1>' ohne Einheit) sind praktisch immer
                   Parameter und fallen dadurch von selbst heraus.
@@ -288,8 +306,10 @@ def enumerate_discoverable(program_xml: bytes, loxconfig: dict) -> list[tuple[st
         device_class = classify_terminal(
             name, unit, is_analog, lox_type == "Switch", device_name
         )
-        if device_class is None:
-            continue  # keine Geraetefunktion (Parameter, Anzeige-LED, Interna)
+        if device_class is None and el.attrib.get("Type", "") not in _ALWAYS_KEEP_TYPES:
+            # Keine erkennbare Geraetefunktion UND keine physische Klemme
+            # -> Konfigparameter ("Overrun Time Presence") oder Interna.
+            continue
         ctrl = {
             "name": name,
             "type": lox_type,

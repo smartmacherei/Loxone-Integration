@@ -4,6 +4,29 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.1.1] – 2026-08-28
+
+### Behoben
+
+- **Physische Ein- und Ausgänge fehlten.** Der Relevanzfilter aus 1.1.0 hat auch die
+  Miniserver-Klemmen verworfen (`Switch 1–7`, `LED 1–8`, `Voltage 2–4`, `Wheel 1`) sowie
+  schaltbare Geräteausgänge wie das Klick-Signal einer Touch-Oberfläche. Deren Namen sind
+  generisch („Switch 3", „Q1"), eine Bedeutung lässt sich daraus nicht ableiten — trotzdem
+  gehören sie nach Home Assistant, es sind genau die Klemmen, die man am Verteiler anfasst.
+
+  Neu: `_ALWAYS_KEEP_TYPES` legt physische I/O immer an, unabhängig von der Klassifikation —
+  `DigitalIn`, `VoltageIn`, `Actor` (Miniserver-Klemmen) sowie `TreeActor` und `LoxAIRactor`
+  (schaltbare Geräteausgänge). Alles Übrige braucht weiterhin eine erkennbare
+  Gerätefunktion.
+
+  Am Demo-Koffer: **54 statt 31** Klemmen. Draußen bleiben die 11 echten Parameter
+  (`Overrun Time Presence`, `Time`, `Volume Minimum/Maximum`, `Fahrzeit`, `Stromfluss` …).
+
+- Damit ist auch die Einschränkung aus 1.1.0 zurückgenommen, dass Discovery *nur* lesende
+  Entities anlegt. Schaltbare Ausgänge werden wieder als Schalter erzeugt — sie sind der
+  Grund, warum man Discovery überhaupt einschaltet. Wem das zu weit geht, schaltet
+  Auto-Discovery per Option ab.
+
 ## [1.1.0] – 2026-08-28
 
 ### Hinzugefügt
