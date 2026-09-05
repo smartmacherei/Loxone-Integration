@@ -15,7 +15,8 @@
           "generate_scenes": "generate scenes",
           "generate_lightcontroller_subcontrols": "Enable LightControllerV2 subcontrols by default",
           "generate_scenes_delay": "Delay for the scene generation if enabled",
-          "auto_discovery": "Auto-discover physical terminals (without Visu checkbox)"
+          "auto_discovery": "Auto-discover physical terminals (without Visu checkbox)",
+          "udp_port": "UDP port for real-time values of discovered terminals (Logger address in the Miniserver: /dev/udp/<HA-IP>/<port>; 0 = off)"
         }
       }
     }
@@ -31,7 +32,8 @@
           "generate_scenes": "Generate scenes",
           "generate_lightcontroller_subcontrols": "Enable LightControllerV2 subcontrols by default",
           "generate_scenes_delay": "Delay for the scene generation if enabled",
-          "auto_discovery": "Auto-discover physical terminals (without Visu checkbox)"
+          "auto_discovery": "Auto-discover physical terminals (without Visu checkbox)",
+          "udp_port": "UDP port for real-time values of discovered terminals (Logger address in the Miniserver: /dev/udp/<HA-IP>/<port>; 0 = off)"
         },
         "description": "PyLoxone edit settings:",
         "title": "PyLoxone settings"

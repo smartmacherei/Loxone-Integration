@@ -4,6 +4,55 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.2.0] – 2026-09-05
+
+Echtzeit für auto-entdeckte Klemmen. Bisher wurden sie alle 30 s per HTTP nachgezogen, weil
+der Miniserver über den WebSocket nur Bausteine mit Visu-Häkchen pusht. Jetzt gibt es einen
+zweiten Weg, den der Miniserver selbst anbietet: ein **Logger-Objekt mit UDP-Adresse**.
+
+### Hinzugefügt
+
+- **UDP-Push-Kanal** (`udp_push.py`). Die Integration lauscht auf einem UDP-Port (Option
+  *„UDP-Port für Echtzeitwerte"*, Vorgabe `55555`, `0` = aus) und speist jedes Datagramm
+  `<Zeit>;<Logger>;<Klemmen-UUID>;<Wert>` in denselben Event-Bus, den der WebSocket-Stream
+  nutzt. Die Entities merken keinen Unterschied. Angenommen werden nur UUIDs, die als
+  Control bekannt sind; unveränderte Werte werden verworfen (analoge Eingänge melden auch
+  Rauschen unterhalb der Anzeigeauflösung — ein unbelegter 0-10-V-Eingang lieferte ~1
+  Datagramm je Sekunde).
+
+  Gemessen am Demo-Koffer (Miniserver Gen 2, FW 17.1.6.30):
+
+  | | |
+  |---|---|
+  | Latenz Schaltbefehl → Datagramm in HA | **12–20 ms** |
+  | Impulse 20 ms und länger | vollständig (Ein und Aus) |
+  | Impulse 10 ms (ein SPS-Zyklus) | teils verloren — SPS-Grenze, kein Logger-Problem |
+  | Broadcast-Ziel (`192.168.0.255`, `255.255.255.255`) | funktioniert — der Miniserver muss die HA-Adresse nicht kennen |
+  | SD-Karte | kein Schreibzugriff, `/log` bleibt unverändert |
+
+- **Einrichtung im Miniserver-Programm** übernimmt das Skript `ha_udp_logger.py` aus dem
+  [Loxone-Config-Skill](https://github.com/smartmacherei/loxone-skill): Es zieht das Programm
+  aus dem Miniserver, legt ein Logger-Objekt `/dev/udp/<HA-IP>/<Port>` und eine Seite
+  „HA UDP" mit einer Logger-Referenz je Klemme an und lädt das Programm zurück — genau so,
+  wie Loxone Config speichert (`/prog/sps_new.zip` + `dev/sps/restart`). Wichtig: Die
+  Zuweisung direkt an der Klemme (`<LoggerMailer>` im Klemmenobjekt) wertet der Miniserver
+  **nicht** aus; nur die Referenz auf einer Seite (`OutputRefLM`) sendet.
+
+- Tests für Parser und Protokoll (`tests/test_udp_push.py`, ohne Home Assistant lauffähig).
+
+### Geändert
+
+- Das 30-s-Polling bleibt als Rückfallebene bestehen: Es fängt verlorene Datagramme und
+  Klemmen ohne Logger-Referenz (unverdrahtete Ausgänge haben keine Quelle, die man
+  referenzieren könnte).
+
+### Bekannte Grenzen
+
+- Beim Programmstart schickt der Miniserver kein Gesamtabbild, nur Klemmen, deren Wert sich
+  beim Start ändert. Die Startwerte kommen weiterhin per HTTP.
+- Farbwerte (`<v.col>`) rendert der Logger als `0`; solche Ausgänge legt die Discovery ohnehin
+  nicht an.
+
 ## [1.1.2] – 2026-08-28
 
 Behebt zwei Fehler, die ein Code-Review an 1.1.0/1.1.1 gefunden hat.

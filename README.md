@@ -26,12 +26,28 @@ mit Erweiterungen, die den Miniserver deutlich „plug & play" in Home Assistant
   pusht (z. B. Konfig-Analogwerte), werden per HTTP nachgeholt, damit Entities nicht
   „unavailable" bleiben.
 
-> **Live oder Polling?** Der Miniserver pusht ausschließlich Bausteine mit Visu-Häkchen —
-> gemessen kam über den WebSocket keine einzige nicht-visualisierte Klemme an. Diese
-> Bausteine sind also live (Millisekunden). Auto-entdeckte Klemmen werden stattdessen alle
-> 30 s per HTTP nachgezogen; kurze Impulse (Tasterdrücke) liegen dabei prinzipbedingt
-> zwischen zwei Abfragen. Wer eine Klemme in Echtzeit braucht, setzt in Loxone Config ihr
-> Visu-Häkchen — dann pusht der Miniserver sie von selbst.
+- **Echtzeit für entdeckte Klemmen per UDP.** Der Miniserver pusht über den WebSocket
+  ausschließlich Bausteine mit Visu-Häkchen — gemessen kam keine einzige nicht-visualisierte
+  Klemme an. Deshalb lauscht die Integration zusätzlich auf einem UDP-Port (Option
+  **„UDP-Port für Echtzeitwerte"**, Vorgabe `55555`), auf den ein Logger-Objekt im
+  Miniserver-Programm jede Änderung sofort meldet: **12–20 ms** statt 30 s, Impulse ab 20 ms
+  vollständig. Ohne Logger im Programm bleibt es beim 30-s-Polling.
+
+> **Logger einrichten.** Das Skript `ha_udp_logger.py` aus dem
+> [Loxone-Config-Skill](https://github.com/smartmacherei/loxone-skill) zieht das Programm aus
+> dem Miniserver, legt das Logger-Objekt (`/dev/udp/<HA-IP>/<Port>`) und eine Programmseite
+> „HA UDP" mit einer Logger-Referenz je Klemme an und lädt das Programm zurück:
+>
+> ```
+> set LOX_PW=…
+> py -3 ha_udp_logger.py --from-miniserver 192.168.0.186 --target 192.168.0.223:55555 -o sps_new.zip --upload --restart
+> ```
+>
+> Statt der HA-Adresse geht auch eine Broadcast-Adresse (`255.255.255.255:55555`) — dann muss
+> der Miniserver die Adresse von Home Assistant nicht kennen. Danach das Projekt in Loxone
+> Config **aus dem Miniserver laden**, sonst überschreibt der nächste Config-Upload die Seite.
+> Die Zuweisung direkt an der Klemme („Logging/Mail/Call/Track") sendet übrigens nichts — nur
+> die Logger-Referenz auf einer Seite tut es; das Skript macht es richtig.
 
 > **Achtung bei auto-entdeckten Schaltern.** Schaltbare Ausgänge werden als HA-`switch`
 > angelegt und schreiben **direkt auf die Klemme** — am Loxone-Programm vorbei. Ist derselbe
@@ -54,6 +70,11 @@ abgefragt. Für die Geräte-Topologie und Auto-Discovery greift die Integration 
 auf das Programm des Miniservers zu (`/dev/fslist`, `/dev/fsget`) — dafür ist ein
 **nicht-Default-Passwort** am Miniserver nötig (das Werks-`admin/admin` sperrt den
 Zugriff).
+
+| Option | Vorgabe | Wirkung |
+|---|---|---|
+| Physische Klemmen automatisch entdecken | an | Klemmen ohne Visu-Häkchen als Entities anlegen |
+| UDP-Port für Echtzeitwerte | `55555` | Port für die Logger-Datagramme des Miniservers; `0` schaltet den Kanal ab. Der Port muss auf dem HA-Host frei sein (HAOS: Host-Netzwerk, kein Port-Mapping nötig) |
 
 ## Lizenz & Attribution
 

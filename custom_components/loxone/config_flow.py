@@ -20,9 +20,9 @@ from homeassistant.helpers.selector import (BooleanSelector, NumberSelector,
                                             TextSelectorType)
 
 from .const import (CONF_AUTO_DISCOVERY, CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN,
-                    CONF_SCENE_GEN, CONF_SCENE_GEN_DELAY,
+                    CONF_SCENE_GEN, CONF_SCENE_GEN_DELAY, CONF_UDP_PORT,
                     DEFAULT_AUTO_DISCOVERY, DEFAULT_DELAY_SCENE, DEFAULT_IP,
-                    DEFAULT_PORT, DOMAIN)
+                    DEFAULT_PORT, DEFAULT_UDP_PORT, DOMAIN)
 
 
 async def validate_loxone_setup(
@@ -51,6 +51,8 @@ async def validate_loxone_setup(
         user_input[CONF_PORT] = int(user_input[CONF_PORT])
     if CONF_SCENE_GEN_DELAY in user_input:
         user_input[CONF_SCENE_GEN_DELAY] = int(user_input[CONF_SCENE_GEN_DELAY])
+    if CONF_UDP_PORT in user_input:
+        user_input[CONF_UDP_PORT] = int(user_input[CONF_UDP_PORT])
 
     return user_input
 
@@ -79,6 +81,10 @@ DATA_SCHEMA_SETUP = vol.Schema(
         vol.Required(
             CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
         ): BooleanSelector(),
+        # UDP-Port fuer die Logger-Datagramme des Miniservers (0 = aus).
+        vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
+            NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
+        ),
     }
 )
 
@@ -106,6 +112,10 @@ DATA_SCHEMA_OPTIONS = vol.Schema(
         vol.Required(
             CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
         ): BooleanSelector(),
+        # UDP-Port fuer die Logger-Datagramme des Miniservers (0 = aus).
+        vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
+            NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
+        ),
     }
 )
 

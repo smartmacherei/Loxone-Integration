@@ -15,7 +15,8 @@
           "generate_scenes": "Scenen generieren",
           "generate_lightcontroller_subcontrols": "LightControllerV2-Subcontrols standardmäßig aktivieren",
           "generate_scenes_delay": "Verzögerung beim erstellen der Scenen (wenn aktiviert)",
-          "auto_discovery": "Physische Klemmen automatisch entdecken (ohne Visu-Häkchen)"
+          "auto_discovery": "Physische Klemmen automatisch entdecken (ohne Visu-Häkchen)",
+          "udp_port": "UDP-Port für Echtzeitwerte der entdeckten Klemmen (Logger-Adresse im Miniserver: /dev/udp/<HA-IP>/<Port>; 0 = aus)"
         }
       }
     }
@@ -31,7 +32,8 @@
           "generate_scenes": "Scenen generieren",
           "generate_lightcontroller_subcontrols": "LightControllerV2-Subcontrols standardmäßig aktivieren",
           "generate_scenes_delay": "Verzögerung beim erstellen der Scenen (wenn aktiviert)",
-          "auto_discovery": "Physische Klemmen automatisch entdecken (ohne Visu-Häkchen)"
+          "auto_discovery": "Physische Klemmen automatisch entdecken (ohne Visu-Häkchen)",
+          "udp_port": "UDP-Port für Echtzeitwerte der entdeckten Klemmen (Logger-Adresse im Miniserver: /dev/udp/<HA-IP>/<Port>; 0 = aus)"
         },
         "description": "PyLoxone Einstellungen editieren:",
         "title": "PyLoxone Einstellungen"

@@ -92,3 +92,11 @@ cfmt description
 """
 
 cfmt = r"(%(?:(?:[-+0 #]{0,5})(?:\d+|\*)?(?:\.(?:\d+|\*))?(?:h|l|ll|w|I|I32|I64)?[cCdiouxXeEfgGaAnpsSZ])|%%)"
+
+# UDP-Push: Port, auf dem die Integration die Logger-Datagramme des Miniservers
+# entgegennimmt (Logger-Adresse im Programm: /dev/udp/<HA-IP>/<Port>, eingerichtet
+# mit ha_udp_logger.py aus dem Loxone-Config-Skill). 0 = aus. Der Kanal ersetzt
+# fuer auto-entdeckte Klemmen das 30-s-Polling durch Echtzeit; das Polling bleibt
+# als Rueckfallebene bestehen.
+CONF_UDP_PORT = "udp_port"
+DEFAULT_UDP_PORT = 55555

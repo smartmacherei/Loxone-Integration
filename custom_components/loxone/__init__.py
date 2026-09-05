@@ -35,10 +35,11 @@ from homeassistant.setup import async_setup_component
 from .const import (ATTR_AREA_CREATE, ATTR_CODE, ATTR_COMMAND, ATTR_DEVICE,
                     ATTR_UUID, ATTR_VALUE, CONF_AUTO_DISCOVERY,
                     CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, CONF_SCENE_GEN,
-                    CONF_SCENE_GEN_DELAY, DEFAULT, DEFAULT_AUTO_DISCOVERY,
-                    DEFAULT_DELAY_SCENE, DEFAULT_PORT, DOMAIN, DOMAIN_DEVICES,
-                    ERROR_VALUE, EVENT, LOXONE_PLATFORMS, SECUREDSENDDOMAIN,
-                    SENDDOMAIN, cfmt)
+                    CONF_SCENE_GEN_DELAY, CONF_UDP_PORT, DEFAULT,
+                    DEFAULT_AUTO_DISCOVERY, DEFAULT_DELAY_SCENE, DEFAULT_PORT,
+                    DEFAULT_UDP_PORT, DOMAIN, DOMAIN_DEVICES, ERROR_VALUE,
+                    EVENT, LOXONE_PLATFORMS, SECUREDSENDDOMAIN, SENDDOMAIN,
+                    cfmt)
 from .coordinator import LoxoneCoordinator
 from .helpers import get_miniserver_type
 from .miniserver import MiniServer, get_miniserver_from_hass
@@ -425,6 +426,50 @@ async def async_setup_entry(hass, config_entry):
                             len(_poll_uuids),
                             DISCOVERY_POLL_INTERVAL.total_seconds(),
                         )
+
+                        # Echtzeit statt Polling: Ein Logger-Objekt im Miniserver
+                        # mit Adresse /dev/udp/<HA-IP>/<Port> und je Klemme eine
+                        # Logger-Referenz (OutputRefLM) schickt bei jeder Aenderung
+                        # ein Datagramm "<Zeit>;<Logger>;<uuid>;<wert>" -- 12-20 ms
+                        # nach dem Ereignis, Impulse ab 20 ms. Eingerichtet wird das
+                        # im Programm mit ha_udp_logger.py aus dem Loxone-Config-
+                        # Skill. Das Polling oben bleibt als Rueckfallebene: es
+                        # faengt verlorene Datagramme und Klemmen ohne Referenz.
+                        _udp_port = int(
+                            config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT)
+                            or 0
+                        )
+                        if _udp_port:
+                            from .udp_push import async_start_udp_push
+
+                            def _udp_values(values):
+                                hass.bus.async_fire(EVENT, values)
+
+                            try:
+                                _udp_transport, _udp_proto = await async_start_udp_push(
+                                    hass.loop,
+                                    _udp_port,
+                                    _udp_values,
+                                    known=list(_loxconfig["controls"].keys()),
+                                )
+                            except OSError as _oe:
+                                _LOGGER.warning(
+                                    "Loxone UDP-Push: Port %s nicht belegbar (%s) - "
+                                    "es bleibt beim Polling",
+                                    _udp_port,
+                                    _oe,
+                                )
+                            else:
+                                config_entry.async_on_unload(_udp_transport.close)
+                                hass.data.setdefault(DOMAIN + "_udp", {})[
+                                    config_entry.entry_id
+                                ] = _udp_proto
+                                _LOGGER.info(
+                                    "Loxone UDP-Push: lausche auf udp/%s (Logger-"
+                                    "Adresse im Programm: /dev/udp/<HA-IP>/%s)",
+                                    _udp_port,
+                                    _udp_port,
+                                )
             except Exception as _e:  # noqa: BLE001
                 _LOGGER.warning("Loxone Auto-Discovery uebersprungen: %s", _e)
     except Exception as err:  # noqa: BLE001 - Gruppierung ist optional
