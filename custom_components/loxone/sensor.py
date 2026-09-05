@@ -25,6 +25,7 @@ from homeassistant.const import (CONCENTRATION_PARTS_PER_MILLION,
                                  UnitOfTemperature, UnitOfVolume,
                                  UnitOfVolumeFlowRate)
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -219,6 +220,7 @@ async def async_setup_entry(
     entities: list[Any] = [LoxoneKeepAliveSensor(miniserver.serial)]
 
     if "softwareVersion" in loxconfig:
+        _migrate_version_sensor_unique_id(hass, config_entry, miniserver.serial)
         entities.append(LoxoneVersionSensor(miniserver.serial, loxconfig["softwareVersion"]))
 
     for sensor in get_all(loxconfig, "InfoOnlyAnalog"):
@@ -347,11 +349,48 @@ class LoxoneKeepAliveSensor(LoxoneEntity, SensorEntity):
         return {**self._attr_extra_state_attributes}
 
 
+_VERSION_UNIQUE_ID = "loxone_software_version"
+
+
+@callback
+def _migrate_version_sensor_unique_id(hass: HomeAssistant, config_entry: ConfigEntry, serial: str) -> None:
+    """Alte Versions-Sensoren auf die feste unique_id umziehen.
+
+    Bis 1.2.0 steckte die Firmware-Version in der unique_id (``<serial>-17.1.6.30``). Nach jedem
+    Miniserver-Update legte HA deshalb einen neuen Sensor an (``…_software_version_2``) und der
+    alte blieb fuer immer ``unavailable`` im Register stehen. Der erste vorhandene Eintrag wird
+    auf die neue unique_id umgeschrieben (Entity-ID und Verlauf bleiben), weitere Duplikate
+    werden entfernt.
+    """
+    registry = er.async_get(hass)
+    new_uid = f"{serial}-{_VERSION_UNIQUE_ID}"
+    pattern = re.compile(rf"^{re.escape(str(serial))}-\d+(?:\.\d+)+$")
+    stale = sorted(
+        (
+            e
+            for e in er.async_entries_for_config_entry(registry, config_entry.entry_id)
+            if e.domain == "sensor" and e.platform == DOMAIN and pattern.match(e.unique_id or "")
+        ),
+        key=lambda e: (len(e.entity_id), e.entity_id),
+    )
+    if not stale:
+        return
+    already = registry.async_get_entity_id("sensor", DOMAIN, new_uid)
+    keep = None if already else stale[0]
+    for e in stale:
+        if e is keep:
+            registry.async_update_entity(e.entity_id, new_unique_id=new_uid)
+            _LOGGER.info("Loxone: Versions-Sensor %s auf feste unique_id umgezogen", e.entity_id)
+        else:
+            registry.async_remove(e.entity_id)
+            _LOGGER.info("Loxone: verwaisten Versions-Sensor %s entfernt", e.entity_id)
+
+
 class LoxoneVersionSensor(LoxoneEntity, SensorEntity):
     _attr_should_poll = False
     _attr_name = "Loxone Software Version"
     _attr_icon = "mdi:information-outline"
-    _attr_unique_id = "loxone_software_version"
+    _attr_unique_id = _VERSION_UNIQUE_ID
 
     def __init__(self, minisersver_serial, version_list, **kwargs):
         super().__init__(**kwargs)
@@ -363,8 +402,8 @@ class LoxoneVersionSensor(LoxoneEntity, SensorEntity):
 
     @cached_property
     def unique_id(self) -> str:
-        """Return a unique ID."""
-        return f"{self._miniserver_serial}-{self._attr_native_value}"
+        """Feste unique_id je Miniserver - die Version ist der Zustand, nicht die Identitaet."""
+        return f"{self._miniserver_serial}-{self._attr_unique_id}"
 
 
 class LoxoneTextSensor(LoxoneEntity, SensorEntity):

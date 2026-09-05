@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.2.1] – 2026-09-05
+
+### Behoben
+
+- **Der Sensor „Loxone Software Version" verdoppelte sich nach jedem Miniserver-Update.** Seine
+  `unique_id` enthielt die Firmware-Version (`<Seriennummer>-17.1.6.30`). Nach einem Update legte
+  Home Assistant deshalb einen neuen Sensor `sensor.loxone_software_version_2` an, der alte blieb
+  für immer `unavailable` im Entitätsregister. Die `unique_id` ist jetzt fest
+  (`<Seriennummer>-loxone_software_version`); beim Start werden vorhandene alte Einträge auf die
+  neue ID umgezogen (Entity-ID und Verlauf bleiben) und Duplikate entfernt. Aufgefallen am
+  Demo-Koffer beim Update 17.1.6.30 → 17.2.8.28.
+
 ## [1.2.0] – 2026-09-05
 
 Echtzeit für auto-entdeckte Klemmen. Bisher wurden sie alle 30 s per HTTP nachgezogen, weil
