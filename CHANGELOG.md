@@ -4,6 +4,13 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.3.4] - 2026-09-09
+
+- Default new connections to HTTP port 80 instead of 8080. Existing explicitly
+  configured ports are preserved. A fresh demo installation timed out on the old
+  default; changing its port to 80 restored setup and healthy UDP reception.
+- Update English/German setup instructions to match the corrected default.
+
 ## [1.3.3] - 2026-09-09
 
 - Fix the live-detected ventilation entity collision: presence, humidity, air

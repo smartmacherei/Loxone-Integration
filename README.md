@@ -25,7 +25,7 @@ German and English screenshots from the demo installation.
 - **A verified project backup before changes.** Keep the complete original program
   and a project file that can be opened in Loxone Config.
 
-**Current release: 1.3.3.** Project backup, automatic upload/restart, UDP heartbeat reception and
+**Current release: 1.3.4.** Project backup, automatic upload/restart, UDP heartbeat reception and
 integration reload were verified on the demo installation. Physical device
 transitions and restoration from backup still require acceptance testing.
 
@@ -36,7 +36,7 @@ transitions and restoration from backup still require acceptance testing.
 3. Download **Loxone (smartmacherei)** and restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration → Loxone**.
 5. Enter the Miniserver address, HTTP port, username and password. The form defaults
-   to `8080`; many installations use `80`. Use your Miniserver's actual port.
+   to `80`. If your Miniserver uses another HTTP port, enter that port explicitly.
 
 HACS offers the published GitHub releases for this custom repository.
 This fork uses the same `loxone` domain as PyLoxone. Install only one of them.
