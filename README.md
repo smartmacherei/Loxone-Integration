@@ -1,84 +1,98 @@
-# Loxone-Integration (smartmacherei)
+# Loxone for Home Assistant — smartmacherei
 
-Home-Assistant-Integration für den Loxone Miniserver.
+[Deutsch](README.de.md) · [Changelog](CHANGELOG.md) · [Support](https://github.com/smartmacherei/Loxone-Integration/issues)
 
-Dies ist ein **Fork von [PyLoxone](https://github.com/JoDehli/PyLoxone)** (Apache-2.0)
-mit Erweiterungen, die den Miniserver deutlich „plug & play" in Home Assistant bringen.
+**Real-time updates in Home Assistant, without adding extra controls to your Loxone visualization.**
 
-## Was diese Version zusätzlich kann
+Bring supported Loxone devices and signals into Home Assistant, grouped by physical
+device. Eligible inputs and outputs can be discovered without enabling each one in
+the Loxone visualization. Your existing visualization stays focused on what you use.
 
-- **Echte Geräte-Gruppierung.** Statt für jeden Ein-/Ausgang ein eigenes HA-Gerät zu
-  erzeugen, wird das komplette Miniserver-Programm (`sps*.LoxCC`) geladen, dekodiert
-  und die physische Hardware-Topologie (TreeDevice) ausgewertet. Alle Kanäle eines
-  physischen Loxone-Geräts landen unter **einem** HA-Gerät mit dem echten Gerätenamen.
-- **Auto-Discovery ohne Visu-Klicken.** Physische Klemmen, die (noch) nicht in der
-  Loxone-Visualisierung sichtbar gemacht wurden, werden automatisch als Entities
-  ergänzt und korrekt dem Gerät zugeordnet. Angelegt wird dabei nur, was eine echte
-  Gerätefunktion ist — Bewegung, Helligkeit, Temperatur, Leckmelder, Fensterkontakt,
-  Batteriestand, Störung, Erreichbarkeit —, nicht jeder Konfigparameter und jede
-  Status-LED. Die physischen Ein-/Ausgänge des Miniservers (`I`, `AI`, `Q`) und die
-  schaltbaren Geräteausgänge kommen dagegen immer mit — auch ohne sprechenden Namen,
-  denn genau die fasst man am Verteiler an. Ganz abschaltbar über die Option
-  **„Physische Klemmen automatisch entdecken“**.
-- **Sinnvolle Symbole / `device_class`.** Ableitung aus Einheit (z. B. `Lx` → Helligkeit,
-  `°` → Temperatur) und Namensschlüsselwörtern (Motion → Bewegung, Presence → Anwesenheit …).
-- **HTTP-Initialwerte.** Werte, die der Miniserver nicht über den WebSocket-Stream
-  pusht (z. B. Konfig-Analogwerte), werden per HTTP nachgeholt, damit Entities nicht
-  „unavailable" bleiben.
+Based on [PyLoxone](https://github.com/JoDehli/PyLoxone), with additional device discovery
+and automatic setup by smartmacherei.
 
-- **Echtzeit für entdeckte Klemmen per UDP.** Der Miniserver pusht über den WebSocket
-  ausschließlich Bausteine mit Visu-Häkchen — gemessen kam keine einzige nicht-visualisierte
-  Klemme an. Deshalb lauscht die Integration zusätzlich auf einem UDP-Port (Option
-  **„UDP-Port für Echtzeitwerte"**, Vorgabe `55555`), auf den ein Logger-Objekt im
-  Miniserver-Programm jede Änderung sofort meldet: **12–20 ms** statt 30 s, Impulse ab 20 ms
-  vollständig. Ohne Logger im Programm bleibt es beim 30-s-Polling.
+## What you get
 
-> **Logger einrichten.** Das Skript `ha_udp_logger.py` aus dem
-> [Loxone-Config-Skill](https://github.com/smartmacherei/loxone-skill) zieht das Programm aus
-> dem Miniserver, legt das Logger-Objekt (`/dev/udp/<HA-IP>/<Port>`) und eine Programmseite
-> „HA UDP" mit einer Logger-Referenz je Klemme an und lädt das Programm zurück:
->
-> ```
-> set LOX_PW=…
-> py -3 ha_udp_logger.py --from-miniserver 192.168.0.186 --target 192.168.0.223:55555 -o sps_new.zip --upload --restart
-> ```
->
-> Statt der HA-Adresse geht auch eine Broadcast-Adresse (`255.255.255.255:55555`) — dann muss
-> der Miniserver die Adresse von Home Assistant nicht kennen. Danach das Projekt in Loxone
-> Config **aus dem Miniserver laden**, sonst überschreibt der nächste Config-Upload die Seite.
-> Die Zuweisung direkt an der Klemme („Logging/Mail/Call/Track") sendet übrigens nichts — nur
-> die Logger-Referenz auf einer Seite tut es; das Skript macht es richtig.
+- **More signals, less configuration.** Discover supported physical inputs and outputs
+  without adding visualization controls just to use them in Home Assistant.
+- **Devices that belong together.** Group physical channels under their actual device
+  where the Miniserver program provides the required topology.
+- **Real-time updates for eligible signals.** Receive changes directly, including
+  supported signals outside the visualization.
+- **A verified project backup before changes.** Keep the complete original program
+  and a project file that can be opened in Loxone Config.
 
-> **Achtung bei auto-entdeckten Schaltern.** Schaltbare Ausgänge werden als HA-`switch`
-> angelegt und schreiben **direkt auf die Klemme** — am Loxone-Programm vorbei. Ist derselbe
-> Ausgang zusätzlich über einen Baustein visualisiert, gibt es zwei Schalter für dasselbe
-> Relais, die voneinander nichts wissen. Wo das stört: Auto-Discovery abschalten oder die
-> betreffenden Entities in HA deaktivieren.
+**Version status:** 1.2.1 is the published release; this branch contains **1.3.3**,
+a test build. Project backup, automatic upload/restart, UDP heartbeat reception and
+integration reload were verified on the demo installation. Physical device
+transitions and restoration from backup still require acceptance testing.
 
-## Installation (HACS)
+## Install with HACS
 
-1. HACS → drei Punkte → **Benutzerdefinierte Repositories**
-2. Repository `https://github.com/smartmacherei/Loxone-Integration`, Kategorie **Integration**
-3. „Loxone (smartmacherei)" installieren, Home Assistant neu starten
-4. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Loxone**
-   (Benutzer, Passwort, Host-IP, Port des Miniservers)
+1. In HACS, open **Custom repositories** from the menu.
+2. Add `https://github.com/smartmacherei/Loxone-Integration` as an **Integration**.
+3. Download **Loxone (smartmacherei)** and restart Home Assistant.
+4. Open **Settings → Devices & services → Add integration → Loxone**.
+5. Enter the Miniserver address, HTTP port, username and password. The form defaults
+   to `8080`; many installations use `80`. Use your Miniserver's actual port.
 
-## Konfiguration
+HACS currently installs the published release, not the local test package.
+This fork uses the same `loxone` domain as PyLoxone. Install only one of them.
+Use a non-default Miniserver password and an account allowed to read the program.
+Home Assistant must be able to reach the Miniserver on the local network.
 
-Beim Einrichten werden Benutzername, Passwort, Host und Port des Miniservers
-abgefragt. Für die Geräte-Topologie und Auto-Discovery greift die Integration lesend
-auf das Programm des Miniservers zu (`/dev/fslist`, `/dev/fsget`) — dafür ist ein
-**nicht-Default-Passwort** am Miniserver nötig (das Werks-`admin/admin` sperrt den
-Zugriff).
+## Automatic real-time setup in 1.3.3
 
-| Option | Vorgabe | Wirkung |
-|---|---|---|
-| Physische Klemmen automatisch entdecken | an | Klemmen ohne Visu-Häkchen als Entities anlegen |
-| UDP-Port für Echtzeitwerte | `55555` | Port für die Logger-Datagramme des Miniservers; `0` schaltet den Kanal ab. Der Port muss auf dem HA-Host frei sein (HAOS: Host-Netzwerk, kein Port-Mapping nötig) |
+For new installations, the setup form offers automatic real-time configuration for
+eligible discovered terminals. Existing installations keep their current behavior
+until you explicitly enable the option.
 
-## Lizenz & Attribution
+**Automatic setup changes the Miniserver program and briefly restarts its logic.**
+It needs permission to upload and activate the program. Before any change, the
+integration saves and verifies the complete original archive and an openable
+`.Loxone` project. **If the backup fails, no upload or restart takes place.**
 
-Apache License 2.0 — siehe [`LICENSE`](LICENSE) und [`NOTICE`](NOTICE).
-Basiert auf [PyLoxone](https://github.com/JoDehli/PyLoxone) von JoDehli und
-Mitwirkenden. Änderungen von smartmacherei sind in der Git-Historie und in `NOTICE`
-dokumentiert.
+The integration also checks replacement programs and can configure real-time updates
+again when needed. This may cause another backup and brief restart. Avoid simultaneous
+saves from Loxone Config while setup is running. Load the current program
+**from the Miniserver** before editing it.
+
+See [setup requirements, technical details and recovery](docs/automatic-udp.md)
+for the full procedure and the exact settings.
+
+## Scope and limitations
+
+See [device coverage and the acceptance checklist](docs/device-coverage.md) for
+native controls, read-only states, special formats and the tested project coverage.
+
+- Real-time support applies to eligible signals, not every terminal. Unwired outputs
+  and unsupported value formats may still update at 30-second intervals.
+- Existing visualization controls continue to use their established live connection.
+  No additional visualization entries are needed for supported discovered terminals.
+- Automatic editing currently supports the tested Loxone Config 17.1/17.2 program
+  formats. Unsupported formats are left unchanged.
+- Physical output switches write directly to terminals. Review their use if the
+  Loxone program also controls those outputs; disable unwanted entities or discovery.
+- The integration does not automatically discover a changed Miniserver IP address.
+  Use a stable address or update the host option.
+
+Installing updated integration code requires restarting Home Assistant.
+
+## Backups and support
+
+On a standard HA installation, project backups are stored under
+`/config/loxone_backups/<server-id>/`. They survive removing and reinstalling the
+integration. Copy them to a separate computer for recovery if the HA server or its
+storage fails. [Restore your original project](docs/automatic-udp.md#restore-the-original-project).
+
+If setup fails, check the HA notification and integration diagnostics. The diagnostic
+status distinguishes setup progress from actual reception of live data. Quiet inputs
+may not send updates until their value changes.
+
+For support, include integration, HA and Miniserver versions and the observed error.
+**Do not attach project backups or credentials to public issues.**
+
+## License
+
+Apache License 2.0: [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Based on PyLoxone by JoDehli and contributors, with modifications by smartmacherei.

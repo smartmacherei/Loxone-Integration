@@ -16,7 +16,8 @@
           "generate_lightcontroller_subcontrols": "LightControllerV2-Subcontrols standardmäßig aktivieren",
           "generate_scenes_delay": "Verzögerung beim erstellen der Scenen (wenn aktiviert)",
           "auto_discovery": "Physische Klemmen automatisch entdecken (ohne Visu-Häkchen)",
-          "udp_port": "UDP-Port für Echtzeitwerte der entdeckten Klemmen (Logger-Adresse im Miniserver: /dev/udp/<HA-IP>/<Port>; 0 = aus)"
+          "udp_port": "UDP-Port für Echtzeitwerte der entdeckten Klemmen (Logger-Adresse im Miniserver: /dev/udp/<HA-IP>/<Port>; 0 = aus)",
+          "auto_configure_udp": "UDP-Echtzeit automatisch einrichten (sichert und ?ndert das Miniserver-Programm; startet die Logik kurz neu)"
         }
       }
     }
@@ -33,10 +34,11 @@
           "generate_lightcontroller_subcontrols": "LightControllerV2-Subcontrols standardmäßig aktivieren",
           "generate_scenes_delay": "Verzögerung beim erstellen der Scenen (wenn aktiviert)",
           "auto_discovery": "Physische Klemmen automatisch entdecken (ohne Visu-Häkchen)",
-          "udp_port": "UDP-Port für Echtzeitwerte der entdeckten Klemmen (Logger-Adresse im Miniserver: /dev/udp/<HA-IP>/<Port>; 0 = aus)"
+          "udp_port": "UDP-Port für Echtzeitwerte der entdeckten Klemmen (Logger-Adresse im Miniserver: /dev/udp/<HA-IP>/<Port>; 0 = aus)",
+          "auto_configure_udp": "UDP-Echtzeit automatisch einrichten (sichert und ?ndert das Miniserver-Programm; startet die Logik kurz neu)"
         },
-        "description": "PyLoxone Einstellungen editieren:",
-        "title": "PyLoxone Einstellungen"
+        "description": "Miniserver-Verbindung und Echtzeitaktualisierung konfigurieren.",
+        "title": "Loxone (smartmacherei)"
       }
     }
   },
@@ -96,6 +98,27 @@
     "quick_shade": {
       "name": "Beschattung ",
       "description": "Loxone Jalousie in Schattenposition bringen. Position wird von Loxone abhängig von mehreren Werten festgelegt."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "udp_status": {
+        "name": "UDP-Status",
+        "state": {
+          "checking": "Wird gepr?ft",
+          "configured": "Konfiguriert",
+          "blocked": "Aktivierung gesperrt",
+          "restarting": "Miniserver startet neu",
+          "error": "Einrichtung fehlgeschlagen",
+          "disabled": "Deaktiviert oder nicht verf?gbar",
+          "manual": "Manuelle Einrichtung",
+          "waiting_for_data": "Warte auf UDP-Daten",
+          "receiving": "Empf?ngt UDP-Daten",
+          "idle": "Keine aktuellen UDP-Daten",
+          "stopped": "Gestoppt",
+          "busy": "Eine andere Einrichtung l?uft"
+        }
+      }
     }
   }
 }

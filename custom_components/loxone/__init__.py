@@ -97,6 +97,11 @@ async def async_unload_entry(hass, config_entry):
             coordinator = co
             break
 
+    manager = hass.data.get(DOMAIN + "_udp_setup", {}).pop(config_entry.entry_id, None)
+    if manager is not None:
+        await manager.close()
+    hass.data.get(DOMAIN + "_udp", {}).pop(config_entry.entry_id, None)
+
     # Connection close
     if coordinator is not None:
         try:
@@ -187,6 +192,8 @@ async def async_set_options(hass, config_entry):
         CONF_AUTO_DISCOVERY: options_in.pop(
             CONF_AUTO_DISCOVERY, DEFAULT_AUTO_DISCOVERY
         ),
+        CONF_UDP_PORT: options_in.pop(CONF_UDP_PORT, DEFAULT_UDP_PORT),
+        "auto_configure_udp": options_in.pop("auto_configure_udp", False),
     }
     hass.config_entries.async_update_entry(
         config_entry, data=config_entry.data, options=options
@@ -313,6 +320,15 @@ async def async_setup_entry(hass, config_entry):
         config_entry.add_update_listener(async_config_entry_updated)
     )
 
+    _program = None
+    from .transport import SignalRouter
+    _router = SignalRouter(lambda values: hass.bus.async_fire(EVENT, values))
+    hass.data.setdefault(DOMAIN + "_transport", {})[config_entry.entry_id] = _router
+    def _remove_transport():
+        hass.data.get(DOMAIN + "_transport", {}).pop(config_entry.entry_id, None)
+
+    config_entry.async_on_unload(_remove_transport)
+
     # Physische Geraete-Topologie aus dem Miniserver-Programm laden, damit die
     # Entities nach echtem Loxone-Geraet (TreeDevice) gruppiert werden statt je
     # Control ein eigenes HA-Geraet zu erzeugen. Best-effort: bei Fehlern bleibt
@@ -332,6 +348,7 @@ async def async_setup_entry(hass, config_entry):
             config_entry.options.get(CONF_PASSWORD),
         )
         if _program:
+            _router.configure(_program, int(config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT)))
             _lox_helpers.device_map = build_device_map(_program)
             _LOGGER.info(
                 "Loxone-Topologie: %s Entities auf %s physische Geraete gemappt",
@@ -365,6 +382,8 @@ async def async_setup_entry(hass, config_entry):
                     _new = enumerate_discoverable(
                         _program, _loxconfig, _lox_helpers.device_map
                     )
+                    _router.configure(_program, int(config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT)),
+                                      _loxconfig, [_u for _u, _c in _new])
                     for _u, _ctrl in _new:
                         _loxconfig["controls"][_u] = _ctrl
                     _LOGGER.info(
@@ -374,6 +393,7 @@ async def async_setup_entry(hass, config_entry):
                     )
                     # Initialwerte per HTTP holen (WS pusht Konfig-Analogwerte nicht)
                     if _new:
+                        _raw_uuids = {_u for _u, _c in _new if _c.get("auto_raw")}
                         _lox_helpers.initial_values = await async_fetch_values(
                             async_get_clientsession(hass),
                             config_entry.options.get(CONF_HOST),
@@ -381,39 +401,43 @@ async def async_setup_entry(hass, config_entry):
                             config_entry.options.get(CONF_USERNAME),
                             config_entry.options.get(CONF_PASSWORD),
                             [_u for _u, _c in _new],
+                            _raw_uuids,
+                            http_scales=_router.http_scales,
                         )
                         _LOGGER.info(
                             "Loxone Auto-Discovery: %s Initialwerte via HTTP geholt",
                             len(_lox_helpers.initial_values),
                         )
+                        _router.seed(_lox_helpers.initial_values)
 
-                        # Der Miniserver pusht ueber den WS-Stream NUR Bausteine
-                        # mit Visu-Haekchen. Auto-entdeckte Klemmen sind per
-                        # Definition genau die ohne -- sie kaemen nach dem
-                        # Startwert also nie wieder und blieben fuer immer auf
-                        # dem Stand des Setups stehen. Deshalb zyklisch per HTTP
-                        # nachziehen und in denselben Event-Bus einspeisen, den
-                        # der WS-Stream nutzt; die vorhandenen event_handler
-                        # greifen dadurch unveraendert.
-                        # GRENZE: Kurze Impulse (Taster) liegen prinzipbedingt
-                        # zwischen zwei Abfragen und werden verpasst. Wer die
-                        # braucht, setzt in Loxone Config das Visu-Haekchen --
-                        # dann pusht der Miniserver die Klemme von selbst.
+                        # Initial/fallback snapshots and periodic verification share
+                        # one bounded poll task. A healthy heartbeat permits longer
+                        # intervals without interpreting a quiet value as failure.
                         _poll_uuids = [_u for _u, _c in _new]
                         _session = async_get_clientsession(hass)
                         _opts = config_entry.options
 
                         async def _poll_discovered(_now, _uuids=_poll_uuids):
-                            values = await async_fetch_values(
-                                _session,
-                                _opts.get(CONF_HOST),
-                                _opts.get(CONF_PORT),
-                                _opts.get(CONF_USERNAME),
-                                _opts.get(CONF_PASSWORD),
-                                _uuids,
-                            )
-                            if values:
-                                hass.bus.async_fire(EVENT, values)
+                            if _poll_discovered.running or _poll_discovered.closed:
+                                return
+                            _poll_discovered.running = True
+                            _connection = getattr(coordinator.api, "connection", None)
+                            _router.websocket_state(getattr(getattr(_connection, "state", None), "name", "") == "OPEN")
+                            snapshot = dict(_router.revision)
+                            try:
+                                values = await async_fetch_values(
+                                    _session, _opts.get(CONF_HOST), _opts.get(CONF_PORT),
+                                    _opts.get(CONF_USERNAME), _opts.get(CONF_PASSWORD),
+                                    _router.due(_uuids), _raw_uuids, _router.attempted, _router.http_scales,
+                                )
+                                if not _poll_discovered.closed:
+                                    _router.receive("poll", values, snapshot)
+                                    _router.expire(_uuids)
+                            finally:
+                                _poll_discovered.running = False
+                        _poll_discovered.running = False
+                        _poll_discovered.closed = False
+                        config_entry.async_on_unload(lambda: setattr(_poll_discovered, "closed", True))
 
                         config_entry.async_on_unload(
                             async_track_time_interval(
@@ -427,55 +451,31 @@ async def async_setup_entry(hass, config_entry):
                             DISCOVERY_POLL_INTERVAL.total_seconds(),
                         )
 
-                        # Echtzeit statt Polling: Ein Logger-Objekt im Miniserver
-                        # mit Adresse /dev/udp/<HA-IP>/<Port> und je Klemme eine
-                        # Logger-Referenz (OutputRefLM) schickt bei jeder Aenderung
-                        # ein Datagramm "<Zeit>;<Logger>;<uuid>;<wert>" -- 12-20 ms
-                        # nach dem Ereignis, Impulse ab 20 ms. Eingerichtet wird das
-                        # im Programm mit ha_udp_logger.py aus dem Loxone-Config-
-                        # Skill. Das Polling oben bleibt als Rueckfallebene: es
-                        # faengt verlorene Datagramme und Klemmen ohne Referenz.
-                        _udp_port = int(
-                            config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT)
-                            or 0
-                        )
-                        if _udp_port:
-                            from .udp_push import async_start_udp_push
-
-                            def _udp_values(values):
-                                hass.bus.async_fire(EVENT, values)
-
-                            try:
-                                _udp_transport, _udp_proto = await async_start_udp_push(
-                                    hass.loop,
-                                    _udp_port,
-                                    _udp_values,
-                                    known=list(_loxconfig["controls"].keys()),
-                                )
-                            except OSError as _oe:
-                                _LOGGER.warning(
-                                    "Loxone UDP-Push: Port %s nicht belegbar (%s) - "
-                                    "es bleibt beim Polling",
-                                    _udp_port,
-                                    _oe,
-                                )
-                            else:
-                                config_entry.async_on_unload(_udp_transport.close)
-                                hass.data.setdefault(DOMAIN + "_udp", {})[
-                                    config_entry.entry_id
-                                ] = _udp_proto
-                                _LOGGER.info(
-                                    "Loxone UDP-Push: lausche auf udp/%s (Logger-"
-                                    "Adresse im Programm: /dev/udp/<HA-IP>/%s)",
-                                    _udp_port,
-                                    _udp_port,
-                                )
             except Exception as _e:  # noqa: BLE001
                 _LOGGER.warning("Loxone Auto-Discovery uebersprungen: %s", _e)
     except Exception as err:  # noqa: BLE001 - Gruppierung ist optional
         _LOGGER.warning(
             "Loxone-Geraete-Topologie nicht ladbar (Fallback aktiv): %s", err
         )
+
+    # Bind UDP before allowing any program modification. Even a program with no
+    # discoverable terminals is monitored so a later Config upload is detected.
+    _udp_ready = False
+    _udp_port = int(config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT) or 0)
+    if _udp_port and config_entry.options.get(CONF_AUTO_DISCOVERY, DEFAULT_AUTO_DISCOVERY):
+        from .udp_push import async_start_udp_push
+        try:
+            _udp_transport, _udp_proto = await async_start_udp_push(
+                hass.loop, _udp_port, lambda values: _router.receive("udp", values),
+                known=list(coordinator.miniserver.lox_config.json.get("controls", {})) + list(_router.udp_signals),
+                source_host=config_entry.options.get(CONF_HOST), dedupe=False,
+            )
+        except OSError:
+            _LOGGER.warning("Loxone UDP port %s unavailable; automatic program changes disabled", _udp_port)
+        else:
+            config_entry.async_on_unload(_udp_transport.close)
+            hass.data.setdefault(DOMAIN + "_udp", {})[config_entry.entry_id] = _udp_proto
+            _udp_ready = True
 
     setup_tasks = []
     await hass.config_entries.async_forward_entry_setups(config_entry, LOXONE_PLATFORMS)
@@ -541,7 +541,7 @@ async def async_setup_entry(hass, config_entry):
     async def message_callback(message):
         """Fire message on HomeAssistant Bus."""
         _LOGGER.debug(f"{message}")
-        hass.bus.async_fire(EVENT, message)
+        _router.receive("ws", message)
 
     async def handle_websocket_command(call):
         """Handle websocket command services."""
@@ -749,6 +749,7 @@ async def async_setup_entry(hass, config_entry):
             raise e
 
     async def stop_event(_):
+        _router.websocket_state(False)
         token = coordinator.api.get_token_dict()
         hass.config_entries.async_update_entry(
             config_entry,
@@ -816,6 +817,12 @@ async def async_setup_entry(hass, config_entry):
 
     await start_event()
 
+    if _udp_ready and config_entry.options.get("auto_configure_udp", False):
+        from .udp_setup import UdpSetup
+        manager = UdpSetup(hass, config_entry, _program)
+        hass.data.setdefault(DOMAIN + "_udp_setup", {})[config_entry.entry_id] = manager
+        manager.start()
+
     return True
 
 
@@ -867,6 +874,8 @@ class LoxoneEntity(Entity):
 
     async def async_will_remove_from_hass(self):
         """Disconnect callbacks."""
+        if self.listener:
+            self.listener()
         self.listener = None
 
     async def event_handler(self, e):

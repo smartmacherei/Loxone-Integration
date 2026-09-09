@@ -1,7 +1,9 @@
 {
   "domain": "loxone",
   "name": "Loxone (smartmacherei)",
-  "codeowners": ["@smartmacherei"],
+  "codeowners": [
+    "@smartmacherei"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/smartmacherei/Loxone-Integration",
@@ -12,5 +14,5 @@
     "pycryptodome",
     "httpx"
   ],
-  "version": "1.2.1"
+  "version": "1.3.3"
 }

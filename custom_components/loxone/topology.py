@@ -27,7 +27,14 @@ LOXCC_MAGIC = 0xAABBCCEE
 # physische Geraete-Container im Loxone-Programm.
 # LoxLIVE = der Miniserver selbst; seine Onboard-Klemmen (DigitalIn/VoltageIn/
 # Actor) haengen unter Caption-Knoten direkt darunter.
-_DEVICE_TYPES = {"TreeDevice", "LoxAIRDevice", "LoxLIVE"}
+_DEVICE_TYPES = {
+    "TreeDevice", "LoxAIRDevice", "LoxLIVE", "LoxTree", "LoxAIR",
+    "Comm1wire", "LoxAinV2", "LoxAout", "LoxDali", "LoxDigin", "CommDMX",
+    "LoxDIMM", "LoxOCEAN", "LoxMORE", "Comm232", "Comm485", "LoxInternorm",
+    "LoxKnx", "MBusExtension", "LoxREL", "SchuecoExtension", "ModbusDev",
+    "DaliDevice", "LoxDMXdevice", "LoxOCEANDevice", "LoxInternormDevice",
+    "SchuecoDevice", "LoxIRrcvdevice", "LoxIRsnddevice",
+}
 # Bausteine, die zu einem Geraet gehoeren (Ein-/Ausgaenge)
 _CHILD_PREFIXES = ("Tree", "LoxAIR")
 # Geraetename aufhuebschen: der LoxLIVE-Title ist der Projektname ("Demo Case")
@@ -181,6 +188,23 @@ _READ_TERMINALS = {
     "LoxAIRAactor": ("InfoOnlyAnalog", True),
 }
 
+# Protocol-specific terminals expose the same numeric read endpoint. New output
+# types remain read-only until their command semantics have been verified.
+for _type in ("DimCurrentIn", "ModbusASensor", "LoxOCEANAsensor", "InternormAsensor",
+              "SchuecoAsensor", "SysTemp", "EIBextsensor", "OneWireSensor"):
+    _READ_TERMINALS[_type] = ("InfoOnlyAnalog", True)
+for _type in ("DaliSensor", "LoxOCEANsensor", "ModbusSensor", "InternormSensor",
+              "EIBsensor", "SchuecoSensor", "OvertempShutdown", "UndervoltShutdown"):
+    _READ_TERMINALS[_type] = ("InfoOnlyDigital", False)
+for _type in ("VoltageOut", "DaliActor", "DaliSwitch", "DaliGroup", "LoxDMXactor",
+              "Dimmer", "LoxOCEANAactor", "LoxOCEANactor", "ModbusAActor",
+              "EIBactor", "EIBextactor", "SchuecoActor", "SchuecoAactor",
+              "Lox232actor", "Lox485actor", "ApiActor"):
+    _READ_TERMINALS[_type] = ("InfoOnlyAnalog", True)
+_TEXT_TERMINALS = {"TreeTextActor", "AirTextActor", "EIBtextsensor", "EIBtextactor"}
+for _type in _TEXT_TERMINALS:
+    _READ_TERMINALS[_type] = ("RawTerminal", False)
+
 
 def _parse_display_unit(display_unit: str):
     """'<v.1>°' -> ('°', 1);  '<v>%' -> ('%', 0);  '<v>' -> ('', 0).
@@ -201,28 +225,6 @@ def _lox_format(unit: str, precision: int) -> str:
     return "%.{}f{}".format(precision, unit)
 
 
-# Klemmentypen, die IMMER angelegt werden - auch ohne erkennbare Geraetefunktion.
-# Das sind die physischen Ein-/Ausgaenge, die man am Verteiler bzw. am Geraet
-# tatsaechlich anfasst. Ihre Namen sind generisch ("Switch 3", "Q1"), eine
-# Bedeutung laesst sich daraus nicht ableiten - trotzdem gehoeren sie nach HA.
-_ALWAYS_KEEP_TYPES = frozenset(
-    {
-        "DigitalIn",  # Miniserver-Eingaenge I1..In
-        "VoltageIn",  # Miniserver-Analogeingaenge AI1..AIn
-        "Actor",  # Miniserver-Ausgaenge Q1..Qn
-        "TreeActor",  # digitale Ausgaenge an Tree-Geraeten, z.B. das Klick-Signal
-        "LoxAIRactor",  # digitale Ausgaenge an Air-Geraeten
-    }
-)
-# Bewusst NICHT enthalten: die EINGAENGE von Tree-/Air-Geraeten (TreeSensor,
-# TreeAsensor, LoxAIRsensor, LoxAIRAsensor). Die Liste sieht dadurch asymmetrisch
-# aus, ist es aber mit Absicht: Geraete-Eingaenge sind ueberwiegend Interna
-# ("Stromfluss", "Channel Free", "Computing power throttling"), waehrend die
-# Miniserver-Klemmen und die schaltbaren Ausgaenge das sind, was man am Verteiler
-# bzw. am Geraet tatsaechlich benutzt. Geraete-Eingaenge mit echter Funktion
-# ("Bewegung", "Batterie schwach") kommen ueber classify_terminal ohnehin durch.
-
-
 def classify_terminal(
     name: str,
     unit: str,
@@ -230,32 +232,10 @@ def classify_terminal(
     is_actor: bool,
     device_name: str = "",
 ) -> str | None:
-    """device_class einer Klemme, oder None wenn sie keine Geraetefunktion ist.
+    """Classify known measurements; an unknown meaning never prevents discovery.
 
-    Die Auto-Discovery FINDET alle physischen Klemmen. Die wenigsten davon sind
-    eine Geraetefunktion: der Grossteil sind Konfigparameter ("Overrun Time
-    Presence", "Volume Maximum"), Anzeige-LEDs oder Interna ("Computing power
-    throttling"). Angelegt wird deshalb nur, was sich einer Geraetefunktion im
-    Sinne von Matter zuordnen laesst - also genau das, wofuer die Plattformen
-    ohnehin schon eine device_class kennen. Damit ist der Filter nicht noch eine
-    zweite Namensliste, die auseinanderlaufen kann, sondern nutzt dieselbe
-    Klassifikation, die die Entity spaeter auch bekommt.
-
-    Achtung: Diese Funktion beantwortet nur die Frage "welche Geraetefunktion?".
-    Ueber das ANLEGEN entscheidet zusaetzlich _ALWAYS_KEEP_TYPES - physische
-    Ein-/Ausgaenge kommen auch ohne erkennbare Funktion nach HA.
-
-    Regeln:
-      Ausgang  -> None. Ein schaltender Ausgang ist keine Messgroesse, er
-                  bekommt daher keine device_class. Angelegt wird er trotzdem,
-                  sofern sein Typ in _ALWAYS_KEEP_TYPES steht.
-      analog   -> die Einheiten-Tabelle aus sensor.py muss greifen. Einheitenlose
-                  Analogwerte ('<v.1>' ohne Einheit) sind praktisch immer
-                  Parameter und fallen dadurch von selbst heraus.
-      digital  -> die Namens-Tabelle aus binary_sensor.py muss greifen. Zuerst am
-                  Klemmennamen, ersatzweise am Geraetenamen: "Eingang 1" allein
-                  sagt nichts, "Eingang 1" am "Wassersensor Air" ist ein
-                  Leckmelder.
+    Device context is used for ambiguous analog units. Digital device-name
+    fallback is restricted to generic inputs on water detectors.
     """
     if is_actor:
         return None
@@ -270,7 +250,12 @@ def classify_terminal(
 
     from .binary_sensor import device_class_from_name
 
-    dc = device_class_from_name(name) or device_class_from_name(device_name)
+    dc = device_class_from_name(name)
+    # Only generic input names on a water detector justify device-name context.
+    # A fire alarm/test button on a presence detector is not occupancy.
+    if dc is None and re.fullmatch(r"(?:eingang|input)\s*\d+", name.lower()):
+        if any(word in device_name.lower() for word in ("wassersensor", "water sensor")):
+            dc = device_class_from_name("water leak")
     return str(dc) if dc else None
 
 
@@ -281,7 +266,7 @@ def enumerate_discoverable(
     der Visu/loxconfig stehen. Read-only: TreeSensor->binary_sensor,
     TreeAsensor->sensor. Rueckgabe: Liste (uuid, control_dict) zur Injektion.
 
-    Angelegt wird nur, was classify_terminal() als Geraetefunktion erkennt."""
+    Bekannte Klemmentypen bleiben auch ohne device_class erhalten."""
     try:
         root = ET.fromstring(program_xml)
     except ET.ParseError:
@@ -304,12 +289,13 @@ def enumerate_discoverable(
         if iod is not None and iod.attrib.get("Visu") == "true":
             continue  # schon in der Visu -> nicht doppeln
         disp = el.find("Display")
+        default_unit = "<v>" if el.get("Type") == "ModbusSensor" else ""
         parsed = _parse_display_unit(
-            disp.attrib.get("Unit", "") if disp is not None else ""
+            disp.attrib.get("Unit", default_unit) if disp is not None else default_unit
         )
-        if parsed is None:
-            continue  # unbelegte/ungueltige Klemme (z.B. '<v.i>') -> ueberspringen
-        unit, precision = parsed
+        raw_format = disp.get("Unit", default_unit) if disp is not None else default_unit
+        raw_terminal = parsed is None
+        unit, precision = parsed or ("", 0)
         lox_type, is_analog = info
         name = el.attrib.get("Title") or el.attrib.get("IName") or u
         device_name = device_names.get(u.lower(), ("", ""))[1] or ""
@@ -318,10 +304,9 @@ def enumerate_discoverable(
         device_class = classify_terminal(
             name, unit, is_analog, lox_type == "Switch", device_name
         )
-        if device_class is None and el.attrib.get("Type", "") not in _ALWAYS_KEEP_TYPES:
-            # Keine erkennbare Geraetefunktion UND keine physische Klemme
-            # -> Konfigparameter ("Overrun Time Presence") oder Interna.
-            continue
+        if raw_terminal:
+            lox_type = "RawTerminal"
+            device_class = None
         ctrl = {
             "name": name,
             "type": lox_type,
@@ -343,8 +328,11 @@ def enumerate_discoverable(
             # (z.B. "%"-Klemme an einem Feuchtesensor: hier durchgelassen, dort
             # ohne device_class). Beide muessen dieselben Eingaben sehen.
             "auto_category": device_name,
+            "auto_raw": raw_terminal,
+            "auto_terminal_type": el.get("Type"),
+            "auto_format": raw_format,
         }
-        if is_analog:
+        if is_analog and not raw_terminal:
             ctrl["details"] = {"format": _lox_format(unit, precision)}
             ctrl["states"] = {"value": u}
         else:
@@ -365,7 +353,7 @@ def _numeric_value(raw):
     """
     if isinstance(raw, (int, float)):
         return raw
-    m = re.match(r"\s*([-+]?\d+(?:[.,]\d+)?)", str(raw))
+    m = re.match(r"\s*([-+]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:[eE][-+]?\d+)?)", str(raw))
     if not m:
         return None
     try:
@@ -374,7 +362,7 @@ def _numeric_value(raw):
         return None
 
 
-async def async_fetch_values(session, host, port, username, password, uuids) -> dict:
+async def async_fetch_values(session, host, port, username, password, uuids, raw_uuids=(), on_attempt=None, http_scales=None) -> dict:
     """Aktuelle Werte einzelner UUIDs per HTTP holen (/jdev/sps/io/<uuid>).
 
     Fallback fuer auto-entdeckte Klemmen, deren Wert der Miniserver nicht ueber
@@ -385,20 +373,38 @@ async def async_fetch_values(session, host, port, username, password, uuids) -> 
     base = "http://{}:{}".format(host, port)
     auth = aiohttp.BasicAuth(str(username), str(password))
     timeout = aiohttp.ClientTimeout(total=8)
+    import asyncio
+    import math
+    raw_uuids = set(raw_uuids)
     out: dict = {}
-    for u in uuids:
+    semaphore = asyncio.Semaphore(8)
+    async def fetch(u):
         try:
-            async with session.get(base + "/jdev/sps/io/" + u, auth=auth, timeout=timeout) as resp:
-                if resp.status != 200:
-                    continue
-                data = await resp.json(content_type=None)
-                val = data.get("LL", {}).get("value")
-                if val is not None and str(val).strip() not in ("", "<v.i>"):
+            async with semaphore:
+                if on_attempt:
+                    on_attempt(u)
+                async with session.get(base + "/jdev/sps/io/" + u, auth=auth, timeout=timeout) as resp:
+                    if resp.status != 200:
+                        return
+                    data = await resp.json(content_type=None)
+                ll = data.get("LL", {})
+                if str(ll.get("Code", "200")) != "200":
+                    return
+                val = ll.get("value")
+                if val is not None and str(val).strip() and not re.fullmatch(r"<v(?:\.[^>]*)?>", str(val).strip()):
+                    if u in raw_uuids:
+                        out[u] = str(val)
+                        return
                     num = _numeric_value(val)
-                    if num is not None:
-                        out[u] = num
+                    if num is not None and math.isfinite(num):
+                        out[u] = num * (http_scales or {}).get(u, 1)
         except Exception:  # noqa: BLE001 - best effort
-            continue
+            return
+    try:
+        async with asyncio.timeout(30):
+            await asyncio.gather(*(fetch(u) for u in uuids))
+    except TimeoutError:
+        _LOGGER.debug("Terminal snapshot timed out; partial results retained")
     return out
 
 

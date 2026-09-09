@@ -19,7 +19,7 @@ from homeassistant.helpers.selector import (BooleanSelector, NumberSelector,
                                             TextSelectorConfig,
                                             TextSelectorType)
 
-from .const import (CONF_AUTO_DISCOVERY, CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN,
+from .const import (CONF_AUTO_CONFIGURE_UDP, CONF_AUTO_DISCOVERY, CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN,
                     CONF_SCENE_GEN, CONF_SCENE_GEN_DELAY, CONF_UDP_PORT,
                     DEFAULT_AUTO_DISCOVERY, DEFAULT_DELAY_SCENE, DEFAULT_IP,
                     DEFAULT_PORT, DEFAULT_UDP_PORT, DOMAIN)
@@ -81,6 +81,7 @@ DATA_SCHEMA_SETUP = vol.Schema(
         vol.Required(
             CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
         ): BooleanSelector(),
+        vol.Required(CONF_AUTO_CONFIGURE_UDP, default=True): BooleanSelector(),
         # UDP-Port fuer die Logger-Datagramme des Miniservers (0 = aus).
         vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
             NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
@@ -112,6 +113,7 @@ DATA_SCHEMA_OPTIONS = vol.Schema(
         vol.Required(
             CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
         ): BooleanSelector(),
+        vol.Required(CONF_AUTO_CONFIGURE_UDP, default=False): BooleanSelector(),
         # UDP-Port fuer die Logger-Datagramme des Miniservers (0 = aus).
         vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
             NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)

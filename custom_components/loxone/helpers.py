@@ -122,6 +122,9 @@ def get_cat_name_from_cat_uuid(lox_config: dict, cat_uuid: str):
 
 
 def add_room_and_cat_to_value_values(loxconfig: dict, sensor: dict):
+    # Platforms customize type/name locally. Mutating LoxAPP3 made discovery and
+    # supplementary state enumeration depend on platform setup order.
+    sensor = dict(sensor)
     sensor.update(
         {
             "room": get_room_name_from_room_uuid(loxconfig, sensor.get("room", "")),

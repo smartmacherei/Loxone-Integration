@@ -12,3 +12,10 @@ __pycache__/
 docs/intern/
 *.LoxCC
 *.Loxone
+
+# Generated installation packages and sensitive project backups
+dist/
+loxone_backups/
+
+# Local access credentials; never commit
+/ZUGAENGE.local.md

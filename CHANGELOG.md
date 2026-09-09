@@ -4,6 +4,70 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.3.3] - 2026-09-09 (local test build)
+
+- Fix the live-detected ventilation entity collision: presence, humidity, air
+  quality and outdoor temperature now use their proper HA sensor platforms.
+  Presence retains its own state UUID while grouping under the ventilation device.
+- Remove stale ventilation measurements previously registered as fans.
+- Fix cleanup returning a router object during options reload, which HA attempted
+  to await and rejected. Cleanup now returns nothing.
+- Validated with regression tests and the installed HA 2026.7.2 runtime.
+- Installed on demo HA; verified automatic program backup/activation, live UDP
+  heartbeat and integration reload without duplicate entities. Physical device
+  transition tests and backup restoration remain outstanding.
+
+## [1.3.2] - 2026-09-09 (local test build)
+
+- Resolve equivalent terminal/WebSocket states through explicit project wiring,
+  including the supported Tree/Air Wallbox target-power API channel. Never add
+  visualization flags or infer signal equivalence from names.
+- Correct the verified Wallbox HTTP watts/kW mismatch; reject unresolved display
+  placeholders and failed server responses instead of publishing false values.
+- Keep quiet WebSocket signals healthy while connected, recover their cached state
+  after UDP loss, and expire stale direct-terminal values after all paths fail.
+- Reject ambiguous, inverted or scaled source aliases. Preserve verified project
+  backups before automatic program changes.
+- Live read checks: 1,129 of 1,213 terminal endpoints returned usable values;
+  all 24 mapped WebSocket terminals received states, including both Wallboxes.
+  Isolated HA runtime validation covers 1,213 terminals and 332 additional states.
+  Physical transitions, activation/restart and restoration remain pending.
+
+## [1.3.1] - 2026-09-09 (local test build)
+
+- Extend direct discovery and grouping to Link/protocol terminals; retain generic
+  signals, with corrected fire-alarm, motion and unlocked-state classification.
+- Add current, voltage, pressure and battery classification, read-only special
+  terminal values and supplementary WebSocket states for non-native controls.
+- Add a system-second heartbeat, per-signal source selection, periodic verification,
+  bounded polling, sender filtering and protection against late HTTP replies.
+- Fix boolean U attributes being mistaken for duplicate UUIDs; preserve requested
+  analog precision. Keep mandatory verified backups and activation safeguards.
+- Fix shared structure mutation during platform setup and event listener cleanup.
+- Isolated HA 2026.7.2 construction/event checks: 1,213 terminal entities and 332
+  supplementary state sensors; offline patch is idempotent. Physical acceptance,
+  program activation and restoration remain pending. No release has been published.
+
+## [1.3.0] - 2026-09-09
+
+### Added
+
+- Optional automatic UDP logger setup during installation and after program changes.
+  Existing installations opt in; the new-installation form enables the option by default
+  and explains the program modification and brief Miniserver logic restart.
+- Mandatory, verified full original ZIP and `.Loxone` project backups before every
+  program modification, with SHA-256 metadata and English/German recovery instructions.
+- Verified temporary FTP upload, source recheck, pending-upload detection and a
+  persistent activation guard to prevent automatic restart loops.
+- UDP status sensor and setup/receiver diagnostics.
+- English and German customer documentation, including limitations and restoration.
+
+### Validation
+
+- Offline integrity and transaction tests; import and setup checks on HA 2026.7.2.
+- Dry run against the demo Miniserver 17.2.8.28 program; no live program write performed.
+- Live upload/restart/recovery acceptance testing remains outstanding.
+
 ## [1.2.1] – 2026-09-05
 
 ### Behoben

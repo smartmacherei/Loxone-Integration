@@ -28,6 +28,11 @@ UUID_B = "18f7cc6d-0257-8e27-ffff4488d265440f"
 
 
 class TestParseValue:
+    def test_scientific_values_and_nonfinite_rejection(self):
+        assert udp_push.parse_value("1.25e-3A") == 0.00125
+        assert udp_push.parse_value(".5") == 0.5
+        assert udp_push.parse_value("1e999") is None
+        assert udp_push.parse_value("NaN") is None
     def test_plain_numbers(self):
         assert udp_push.parse_value("1") == 1.0
         assert udp_push.parse_value("0") == 0.0
@@ -174,3 +179,13 @@ def test_port_in_use_raises_oserror():
             t1.close()
 
     asyncio.run(run())
+
+
+def test_only_known_valid_values_count_as_live_reception():
+    protocol = udp_push.LoxoneUdpPushProtocol(lambda values: None, known=[UUID_A])
+    protocol.datagram_received(f"{UUID_B};1".encode(), ("192.168.0.186", 55555))
+    assert protocol.last_valid_received is None
+    protocol.datagram_received(f"{UUID_A};invalid".encode(), ("192.168.0.186", 55555))
+    assert protocol.last_valid_received is None
+    protocol.datagram_received(f"{UUID_A};1".encode(), ("192.168.0.186", 55555))
+    assert protocol.last_valid_received is not None

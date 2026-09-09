@@ -1,4 +1,4 @@
-"""Interfaces with Alarm.com alarm control panels."""
+"""Loxone ventilation controls; measurements use the sensor platforms."""
 
 from __future__ import annotations
 
@@ -13,12 +13,10 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from voluptuous import Any, Optional
 
 from . import LoxoneEntity
-from .binary_sensor import LoxoneDigitalSensor
 from .const import SENDDOMAIN
 from .helpers import (add_room_and_cat_to_value_values, get_all,
                       get_or_create_device)
 from .miniserver import get_miniserver_from_hass
-from .sensor import LoxoneSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,6 +53,16 @@ async def async_setup_entry(
     loxconfig = miniserver.lox_config.json
     entities = []
 
+    # Older releases registered these read-only measurements under fan.*.
+    # Remove only those exact stale registrations; preserve the real fan IDs.
+    from homeassistant.helpers import entity_registry as er
+    from .ventilation_states import ventilation_states
+    measurement_ids = {s["uuidAction"] for s in ventilation_states(loxconfig)}
+    registry = er.async_get(hass)
+    for entry in er.async_entries_for_config_entry(registry, config_entry.entry_id):
+        if entry.domain == "fan" and entry.platform == "loxone" and entry.unique_id in measurement_ids:
+            registry.async_remove(entry.entity_id)
+
     for fan in get_all(loxconfig, "Ventilation"):
         fan = add_room_and_cat_to_value_values(loxconfig, fan)
         fan.update(
@@ -64,76 +72,6 @@ async def async_setup_entry(
                 "config_entry": config_entry,
             }
         )
-
-        if fan["details"]["hasPresence"] and "presence" in fan["states"]:
-            presence = {
-                "parent_id": fan["uuidAction"],
-                "uuidAction": fan["states"]["presence"],
-                "type": "presence",
-                "room": fan.get("room", ""),
-                "cat": fan.get("cat", ""),
-                "name": fan["name"] + " - Presence",
-                "device_class": "presence",
-                "async_add_devices": async_add_entities,
-                "config_entry": config_entry,
-            }
-            entities.append(LoxoneDigitalSensor(**presence))
-        if fan["details"]["hasIndoorHumidity"] and "humidityIndoor" in fan["states"]:
-            humidity = {
-                "parent_id": fan["uuidAction"],
-                "uuidAction": fan["states"]["humidityIndoor"],
-                "type": "analog",
-                "room": fan.get("room", ""),
-                "cat": fan.get("cat", ""),
-                "name": fan["name"] + " - Humidity",
-                "details": {"format": "%.1f%"},
-                "device_class": "humidity",
-                "async_add_devices": async_add_entities,
-                "config_entry": config_entry,
-            }
-            entities.append(LoxoneSensor(**humidity))
-        if fan["details"]["hasAirQuality"] and "airQualityIndoor" in fan["states"]:
-            air_quality = {
-                "parent_id": fan["uuidAction"],
-                "uuidAction": fan["states"]["airQualityIndoor"],
-                "type": "analog",
-                "room": fan.get("room", ""),
-                "cat": fan.get("cat", ""),
-                "name": fan["name"] + " - Air Quality",
-                "details": {"format": "%.1fppm"},
-                "device_class": "carbon_dioxide",
-                "async_add_devices": async_add_entities,
-                "config_entry": config_entry,
-            }
-            entities.append(LoxoneSensor(**air_quality))
-        # if "temperatureIndoor" in fan["states"]:
-        #     temperature = {
-        #         "parent_id": fan["uuidAction"],
-        #         "uuidAction": fan["states"]["temperatureIndoor"],
-        #         "type": "analog",
-        #         "room": fan.get("room", ""),
-        #         "cat": fan.get("cat", ""),
-        #         "name": fan["name"] + " - Temperature",
-        #         "details": {
-        #             "format": "%.1f°C"
-        #         },
-        #         "async_add_devices": async_add_entities
-        #     }
-        #     entities.append(LoxoneSensor(**temperature))
-        if "temperatureOutdoor" in fan["states"]:
-            temperature = {
-                "parent_id": fan["uuidAction"],
-                "uuidAction": fan["states"]["temperatureOutdoor"],
-                "type": "analog",
-                "room": fan.get("room", ""),
-                "cat": fan.get("cat", ""),
-                "name": fan["name"] + " - Temperature",
-                "details": {"format": "%.1f°C"},
-                "device_class": "temperature",
-                "async_add_devices": async_add_entities,
-                "config_entry": config_entry,
-            }
-            entities.append(LoxoneSensor(**temperature))
 
         entities.append(LoxoneVentilation(**fan))
 

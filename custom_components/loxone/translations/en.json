@@ -16,7 +16,8 @@
           "generate_lightcontroller_subcontrols": "Enable LightControllerV2 subcontrols by default",
           "generate_scenes_delay": "Delay for the scene generation if enabled",
           "auto_discovery": "Auto-discover physical terminals (without Visu checkbox)",
-          "udp_port": "UDP port for real-time values of discovered terminals (Logger address in the Miniserver: /dev/udp/<HA-IP>/<port>; 0 = off)"
+          "udp_port": "UDP port for real-time values of discovered terminals (Logger address in the Miniserver: /dev/udp/<HA-IP>/<port>; 0 = off)",
+          "auto_configure_udp": "Automatically set up real-time UDP (backs up and changes the Miniserver program; briefly restarts its logic)"
         }
       }
     }
@@ -33,17 +34,18 @@
           "generate_lightcontroller_subcontrols": "Enable LightControllerV2 subcontrols by default",
           "generate_scenes_delay": "Delay for the scene generation if enabled",
           "auto_discovery": "Auto-discover physical terminals (without Visu checkbox)",
-          "udp_port": "UDP port for real-time values of discovered terminals (Logger address in the Miniserver: /dev/udp/<HA-IP>/<port>; 0 = off)"
+          "udp_port": "UDP port for real-time values of discovered terminals (Logger address in the Miniserver: /dev/udp/<HA-IP>/<port>; 0 = off)",
+          "auto_configure_udp": "Automatically set up real-time UDP (backs up and changes the Miniserver program; briefly restarts its logic)"
         },
-        "description": "PyLoxone edit settings:",
-        "title": "PyLoxone settings"
+        "description": "Configure your Miniserver connection and real-time updates.",
+        "title": "Loxone (smartmacherei)"
       }
     }
   },
   "services": {
     "reload": {
-       "name": "Pyloxone Reload",
-            "description": "Reloads the Loxone integration by reconnecting to the Miniserver and refreshing all entities. This is useful after making configuration changes in Loxone Config or when connection issues occur. All current entity states will be re\\-synchronized from the Miniserver."
+      "name": "Pyloxone Reload",
+      "description": "Reloads the Loxone integration by reconnecting to the Miniserver and refreshing all entities. This is useful after making configuration changes in Loxone Config or when connection issues occur. All current entity states will be re\\-synchronized from the Miniserver."
     },
     "event_websocket_command": {
       "name": "Send Websocket command",
@@ -106,6 +108,27 @@
     "quick_shade": {
       "name": "Quick shade",
       "description": "Move Loxone Jalousie to shade position. Position is set by Loxone depends on multiple values."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "udp_status": {
+        "name": "UDP status",
+        "state": {
+          "checking": "Checking",
+          "configured": "Configured",
+          "blocked": "Activation blocked",
+          "restarting": "Miniserver restarting",
+          "error": "Setup failed",
+          "disabled": "Disabled or unavailable",
+          "manual": "Manual setup",
+          "waiting_for_data": "Waiting for UDP data",
+          "receiving": "Receiving UDP data",
+          "idle": "No recent UDP data",
+          "stopped": "Stopped",
+          "busy": "Another setup is running"
+        }
+      }
     }
   }
 }

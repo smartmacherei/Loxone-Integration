@@ -245,6 +245,11 @@ class LoxoneSwitch(LoxoneEntity, SwitchEntity):
 
     async def event_handler(self, event):
         if self.uuidAction in event.data or self.states["active"] in event.data:
+            if event.data.get(self.states["active"], event.data.get(self.uuidAction)) is None:
+                self._attr_is_on = None
+                self._attr_available = False
+                self.async_schedule_update_ha_state()
+                return
             if not self._attr_available:
                 self.async_schedule_update_ha_state()
             if self.states["active"] in event.data:

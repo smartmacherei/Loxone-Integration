@@ -38,6 +38,8 @@ LOXONE_DEVICE_CLASS_MAP: dict[str, BinarySensorDeviceClass] = {
 # wenn der Loxone-Typ allein keine device_class hergibt (z.B. generische
 # InfoOnlyDigital-Bausteine wie "Motion" oder "Presence").
 NAME_DEVICE_CLASS_MAP: tuple[tuple[tuple[str, ...], BinarySensorDeviceClass], ...] = (
+    (("feueralarm", "fire alarm", "rauchalarm", "smoke alarm"), BinarySensorDeviceClass.SMOKE),
+    (("sabotage", "tamper", "hardware defect", "overheating", "overload", "filterwarn", "keine kommunikation", "produktlebensende", "ger\u00e4t entfernt"), BinarySensorDeviceClass.PROBLEM),
     # ACHTUNG Reihenfolge: Der erste Treffer gewinnt. Statusmeldungen tragen den
     # Geraetenamen mit ("Onlinestatus Wassersensor Air", "Onlinestatus
     # Bewegungsmelder Air") und wuerden sonst als Feuchte- bzw. Bewegungsmelder
@@ -64,6 +66,12 @@ NAME_DEVICE_CLASS_MAP: tuple[tuple[tuple[str, ...], BinarySensorDeviceClass], ..
 def device_class_from_name(name: str) -> BinarySensorDeviceClass | None:
     """Erste passende device_class anhand von Schluesselwoertern im Namen."""
     name_l = (name or "").lower()
+    if any(word in name_l for word in ("motorbewegung", "in bewegung", "motor movement")):
+        return None
+    # Loxone's "unlocked" signals have opposite polarity to HA's lock class.
+    # Keep them generic instead of labelling an unlocked door as locked/open.
+    if any(word in name_l for word in ("entriegelt", "unlocked", "testtaste", "test button")):
+        return None
     for keywords, dc in NAME_DEVICE_CLASS_MAP:
         if any(kw in name_l for kw in keywords):
             return dc
@@ -112,6 +120,10 @@ async def async_setup_entry(
     miniserver = get_miniserver_from_hass(hass, config_entry)
     loxconfig = miniserver.lox_config.json
     entities = []
+
+    from .ventilation_states import ventilation_states
+    for sensor in ventilation_states(loxconfig, binary=True):
+        entities.append(LoxoneDigitalSensor(**add_room_and_cat_to_value_values(loxconfig, sensor)))
 
     for sensor in get_all(loxconfig, "InfoOnlyDigital"):
         sensor = add_room_and_cat_to_value_values(loxconfig, sensor)
@@ -188,16 +200,13 @@ class LoxoneDigitalSensor(LoxoneEntity, BinarySensorEntity):
                 getattr(self, "auto_device_class", None)
             ) or device_class_from_name(self.name)
 
-        if self._parent_id:
-            self.uuidAction = self._parent_id
-
         if self._from_loxone_config:
             self._attr_device_info = get_or_create_device(
-                self.unique_id, self.name, self.type, self.room
+                self._parent_id or self.unique_id, self.name, self.type, self.room
             )
         else:
             self._attr_device_info = get_or_create_device(
-                self.unique_id, self.name, self.type, ""
+                self._parent_id or self.unique_id, self.name, self.type, ""
             )
 
         if self._from_loxone_config:
@@ -214,10 +223,18 @@ class LoxoneDigitalSensor(LoxoneEntity, BinarySensorEntity):
                 }
             )
 
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        from .helpers import initial_values
+        if self._state_uuid in initial_values:
+            self._state = self._on_state if initial_values[self._state_uuid] == 1 else self._off_state
+
     async def event_handler(self, e):
         if self._state_uuid in e.data:
             self._state = e.data[self._state_uuid]
-            if self._state == 1.0:
+            if self._state is None:
+                self._state = STATE_UNKNOWN
+            elif self._state == 1.0:
                 self._state = self._on_state
             else:
                 self._state = self._off_state
@@ -236,6 +253,8 @@ class LoxoneDigitalSensor(LoxoneEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if sensor is on."""
+        if self._state == STATE_UNKNOWN:
+            return None
         return self._state == self._on_state
 
 

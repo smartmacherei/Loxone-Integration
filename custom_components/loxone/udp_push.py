@@ -3,8 +3,9 @@
 Der Miniserver pusht ueber den WebSocket ausschliesslich Bausteine mit Visu-Haekchen. Fuer
 alle anderen Klemmen gibt es genau einen Echtzeitweg: ein Logger-Objekt mit UDP-Adresse
 (``/dev/udp/<HA-IP>/<Port>``) und je Klemme eine Logger-Referenz (``OutputRefLM``) im
-Miniserver-Programm. Eingerichtet wird das mit dem Skript ``ha_udp_logger.py`` aus dem
-Loxone-Config-Skill; die Zuweisung direkt an der Klemme wertet der Miniserver nicht aus.
+Miniserver-Programm. Die optionale automatische Einrichtung in ``udp_setup.py``
+uebernimmt Sicherung und Programmanpassung. Manuelle Logger bleiben ebenfalls
+unterstuetzt; eine Logger-Zuweisung direkt an der Klemme sendet keine Werte.
 
 Der Miniserver schickt dann bei jeder Aenderung ein Datagramm (ein Textzeile, CRLF)::
 
@@ -24,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import re
 import time
 from typing import Callable, Iterable
@@ -32,7 +34,7 @@ _LOGGER = logging.getLogger(__name__)
 
 # Loxone-UUIDs haben 35 Zeichen (8-4-4-16), nicht 36 wie RFC-UUIDs.
 _UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{16}$")
-_NUMBER_RE = re.compile(r"^\s*([-+]?\d+(?:[.,]\d+)?)")
+_NUMBER_RE = re.compile(r"^\s*([-+]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:[eE][-+]?\d+)?)")
 
 ValuesCallback = Callable[[dict[str, float]], None]
 
@@ -47,7 +49,8 @@ def parse_value(raw: str) -> float | None:
     if not m:
         return None
     try:
-        return float(m.group(1).replace(",", "."))
+        value = float(m.group(1).replace(",", "."))
+        return value if math.isfinite(value) else None
     except ValueError:
         return None
 
@@ -80,10 +83,11 @@ class LoxoneUdpPushProtocol(asyncio.DatagramProtocol):
     """
 
     def __init__(self, callback: ValuesCallback, known: Iterable[str] | None = None,
-                 dedupe: bool = True) -> None:
+                 dedupe: bool = True, allowed_hosts=None) -> None:
         self._callback = callback
         self._known = {u.lower() for u in known} if known is not None else None
         self._dedupe = dedupe
+        self._allowed_hosts = set(allowed_hosts) if allowed_hosts is not None else None
         self._last: dict[str, float] = {}
         self.transport: asyncio.DatagramTransport | None = None
         # Zaehler fuer Diagnose/Systemzustand
@@ -92,11 +96,14 @@ class LoxoneUdpPushProtocol(asyncio.DatagramProtocol):
         self.dropped_unknown = 0
         self.dropped_duplicate = 0
         self.last_received: float | None = None
+        self.last_valid_received: float | None = None
 
     def connection_made(self, transport) -> None:  # type: ignore[override]
         self.transport = transport
 
     def datagram_received(self, data: bytes, addr) -> None:
+        if self._allowed_hosts is not None and addr[0] not in self._allowed_hosts:
+            return
         self.packets += 1
         self.last_received = time.time()
         fresh: dict[str, float] = {}
@@ -104,6 +111,7 @@ class LoxoneUdpPushProtocol(asyncio.DatagramProtocol):
             if self._known is not None and uuid.lower() not in self._known:
                 self.dropped_unknown += 1
                 continue
+            self.last_valid_received = time.monotonic()
             if self._dedupe and self._last.get(uuid) == value:
                 self.dropped_duplicate += 1
                 continue
@@ -125,13 +133,18 @@ class LoxoneUdpPushProtocol(asyncio.DatagramProtocol):
 
 
 async def async_start_udp_push(loop: asyncio.AbstractEventLoop, port: int, callback: ValuesCallback,
-                               known: Iterable[str] | None = None, host: str = "0.0.0.0"):
+                               known: Iterable[str] | None = None, host: str = "0.0.0.0",
+                               source_host=None, dedupe=True):
     """UDP-Empfaenger oeffnen. Liefert (transport, protocol); ``transport.close()`` beendet ihn.
 
     Bindet an alle Adressen, damit auch Broadcast-Ziele im Logger (``192.168.0.255`` oder
     ``255.255.255.255``) ankommen - der Miniserver muss die HA-Adresse dann nicht kennen.
     """
+    allowed = None
+    if source_host:
+        import socket
+        allowed = {item[4][0] for item in await loop.getaddrinfo(source_host, port, family=socket.AF_INET)}
     transport, protocol = await loop.create_datagram_endpoint(
-        lambda: LoxoneUdpPushProtocol(callback, known), local_addr=(host, port)
+        lambda: LoxoneUdpPushProtocol(callback, known, dedupe, allowed), local_addr=(host, port)
     )
     return transport, protocol

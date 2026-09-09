@@ -71,6 +71,15 @@ class LoxoneEntityDescription(SensorEntityDescription, frozen_or_thawed=True):
 
 
 SENSOR_TYPES: tuple[LoxoneEntityDescription, ...] = (
+    LoxoneEntityDescription(key="current", loxone_format_strings=("A", "mA"),
+                            device_class=SensorDeviceClass.CURRENT,
+                            state_class=SensorStateClass.MEASUREMENT),
+    LoxoneEntityDescription(key="voltage", loxone_format_strings=("V", "mV"),
+                            device_class=SensorDeviceClass.VOLTAGE,
+                            state_class=SensorStateClass.MEASUREMENT),
+    LoxoneEntityDescription(key="pressure", loxone_format_strings=("bar", "mbar", "Pa", "hPa"),
+                            device_class=SensorDeviceClass.PRESSURE,
+                            state_class=SensorStateClass.MEASUREMENT),
     LoxoneEntityDescription(
         key="temperature",
         loxone_format_strings=(UnitOfTemperature.CELSIUS, UnitOfTemperature.FAHRENHEIT),
@@ -148,7 +157,7 @@ SENSOR_TYPES: tuple[LoxoneEntityDescription, ...] = (
     LoxoneEntityDescription(
         key="battery",
         loxone_format_strings=(PERCENTAGE,),
-        name_keywords=("batt", "akku", "battery"),
+        name_keywords=("batt", "akku", "battery", "ladestand", "ladezustand", "state of charge", "soc"),
         state_class=SensorStateClass.MEASUREMENT,
         device_class=SensorDeviceClass.BATTERY,
     ),
@@ -217,7 +226,19 @@ async def async_setup_entry(
     miniserver = get_miniserver_from_hass(hass, config_entry)
 
     loxconfig = miniserver.lox_config.json
-    entities: list[Any] = [LoxoneKeepAliveSensor(miniserver.serial)]
+    from .udp_status import UdpStatusSensor
+    entities: list[Any] = [LoxoneKeepAliveSensor(miniserver.serial),
+                           UdpStatusSensor(config_entry.entry_id, miniserver.serial)]
+    from .control_states import state_inventory
+    from .raw_sensor import RawValueSensor
+    for state in state_inventory(loxconfig):
+        entities.append(RawValueSensor(**add_room_and_cat_to_value_values(loxconfig, state)))
+    for terminal in get_all(loxconfig, "RawTerminal"):
+        entities.append(RawValueSensor(**add_room_and_cat_to_value_values(loxconfig, terminal)))
+
+    from .ventilation_states import ventilation_states
+    for sensor in ventilation_states(loxconfig):
+        entities.append(LoxoneSensor(**add_room_and_cat_to_value_values(loxconfig, sensor)))
 
     if "softwareVersion" in loxconfig:
         _migrate_version_sensor_unique_id(hass, config_entry, miniserver.serial)
