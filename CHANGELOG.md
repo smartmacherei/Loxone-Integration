@@ -4,7 +4,7 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [1.3.3] - 2026-09-09 (local test build)
+## [1.3.3] - 2026-09-09
 
 - Fix the live-detected ventilation entity collision: presence, humidity, air
   quality and outdoor temperature now use their proper HA sensor platforms.

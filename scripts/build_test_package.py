@@ -20,7 +20,7 @@ def build():
     with ZipFile(path, "w", ZIP_DEFLATED) as archive:
         for file in sorted(files):
             archive.write(file, file.relative_to(ROOT).as_posix())
-        archive.writestr("INSTALL.txt", """LOCAL TEST BUILD / LOKALE TESTVERSION
+        archive.writestr("INSTALL.txt", """LOXONE FOR HOME ASSISTANT / INSTALLATION
 
 EN: Back up Home Assistant first. Copy the included custom_components/loxone
 folder to /config/custom_components/loxone, replacing the integration files.
@@ -28,14 +28,16 @@ Restart HA. This is the same domain as PyLoxone; install only one implementation
 Review the automatic setup option: enabling it can back up, modify and restart
 the Miniserver program. Follow docs/device-coverage.md for physical acceptance.
 Existing project backups must be retained. Do not copy dist or baseline files
-into the integration folder. This version is not a published HACS release.
+into the integration folder. Published releases are also available through HACS
+when this repository is added as a custom integration repository.
 
 DE: Zuerst Home Assistant sichern. Den enthaltenen Ordner custom_components/loxone
 nach /config/custom_components/loxone kopieren und Integrationsdateien ersetzen.
 HA neu starten. Gleiche Domain wie PyLoxone: nur eine Implementierung installieren.
 Die automatische Einrichtung kann nach gepruefter Sicherung das Miniserver-
 Programm aendern und neu starten. Abnahme: docs/device-coverage.de.md.
-Projektsicherungen behalten. Dies ist noch keine veroeffentlichte HACS-Version.
+Projektsicherungen behalten. Veroeffentlichte Versionen sind auch ueber HACS
+mit diesem Repository als benutzerdefinierter Integration verfuegbar.
 """)
     with ZipFile(path) as archive:
         assert archive.testzip() is None

@@ -2,7 +2,7 @@
 
 [English](device-coverage.md)
 
-Version 1.3.3 ist eine lokale Testversion. Geräteerkennung, lesbare Zustände und
+Prüfumfang für Version 1.3.3: Geräteerkennung, lesbare Zustände und
 vollständige Bedienbarkeit sind unterschiedliche Fähigkeiten.
 
 ## Darstellung

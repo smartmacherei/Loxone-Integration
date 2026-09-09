@@ -12,6 +12,9 @@ bleibt auf die Funktionen konzentriert, die du dort tatsächlich brauchst.
 Die Integration basiert auf [PyLoxone](https://github.com/JoDehli/PyLoxone), erweitert
 um Geräteerkennung und automatische Einrichtung von smartmacherei.
 
+[20 Ger?te in Home Assistant ansehen](docs/screenshots/1.3.3/README.md) ? echte
+Ger?teansichten auf Deutsch und Englisch aus der Demo-Installation.
+
 ## Was du bekommst
 
 - **Mehr Signale mit weniger Einrichtung.** Unterstützte physische Ein- und Ausgänge
@@ -23,8 +26,7 @@ um Geräteerkennung und automatische Einrichtung von smartmacherei.
 - **Geprüfte Projektsicherung vor Änderungen.** Vollständiges Originalprogramm und
   eine Projektdatei zum Öffnen in Loxone Config aufbewahren.
 
-**Versionsstand:** 1.2.1 ist veröffentlicht; dieser Branch enthält die
-**Testversion 1.3.3**. Projektsicherung, automatischer Upload/Neustart, UDP-
+**Aktuelle Veröffentlichung: 1.3.3.** Projektsicherung, automatischer Upload/Neustart, UDP-
 Lebenszeichen und erneutes Laden wurden am Demokoffer geprüft. Physische
 Zustandswechsel und Wiederherstellung aus der Sicherung müssen noch abgenommen werden.
 
@@ -37,7 +39,7 @@ Zustandswechsel und Wiederherstellung aus der Sicherung müssen noch abgenommen 
 5. Adresse, HTTP-Port und Zugangsdaten des Miniservers eingeben. Die Vorgabe ist
    `8080`; viele Installationen nutzen `80`. Den tatsächlichen Port verwenden.
 
-HACS installiert aktuell die veröffentlichte Version, nicht das lokale Testpaket.
+HACS bietet die GitHub-Veröffentlichungen dieses benutzerdefinierten Repositorys an.
 PyLoxone und dieser Fork verwenden dieselbe Domain `loxone`; nur eine Variante
 installieren. Ein vom Werkszustand abweichendes Passwort und Leseberechtigungen für
 das Programm sind erforderlich. HA muss den Miniserver im lokalen Netz erreichen können.

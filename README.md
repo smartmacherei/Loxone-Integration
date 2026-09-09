@@ -11,6 +11,9 @@ the Loxone visualization. Your existing visualization stays focused on what you 
 Based on [PyLoxone](https://github.com/JoDehli/PyLoxone), with additional device discovery
 and automatic setup by smartmacherei.
 
+[See 20 devices in Home Assistant](docs/screenshots/1.3.3/README.md) — original
+German and English screenshots from the demo installation.
+
 ## What you get
 
 - **More signals, less configuration.** Discover supported physical inputs and outputs
@@ -22,8 +25,7 @@ and automatic setup by smartmacherei.
 - **A verified project backup before changes.** Keep the complete original program
   and a project file that can be opened in Loxone Config.
 
-**Version status:** 1.2.1 is the published release; this branch contains **1.3.3**,
-a test build. Project backup, automatic upload/restart, UDP heartbeat reception and
+**Current release: 1.3.3.** Project backup, automatic upload/restart, UDP heartbeat reception and
 integration reload were verified on the demo installation. Physical device
 transitions and restoration from backup still require acceptance testing.
 
@@ -36,7 +38,7 @@ transitions and restoration from backup still require acceptance testing.
 5. Enter the Miniserver address, HTTP port, username and password. The form defaults
    to `8080`; many installations use `80`. Use your Miniserver's actual port.
 
-HACS currently installs the published release, not the local test package.
+HACS offers the published GitHub releases for this custom repository.
 This fork uses the same `loxone` domain as PyLoxone. Install only one of them.
 Use a non-default Miniserver password and an account allowed to read the program.
 Home Assistant must be able to reach the Miniserver on the local network.

@@ -2,7 +2,7 @@
 
 [Deutsch](device-coverage.de.md)
 
-Version 1.3.3 is a local test build. Device presence, readable states and full native
+Validation scope for version 1.3.3: device presence, readable states and full native
 control are separate capabilities. A device listed in Config is not proof of live
 hardware or of support for every command.
 
