@@ -533,8 +533,8 @@ async def async_setup_entry(hass, config_entry):
             )
             # Loxone-Integration neu laden
             hass.async_create_task(_reload_after_delay(1.0))
-        except asyncio.exceptions.CancelledError as e:
-            _LOGGER.error(e)
+        except asyncio.exceptions.CancelledError:
+            _LOGGER.debug("Loxone WebSocket listener cancelled during cleanup")
         except Exception as e:
             raise e
 
@@ -807,8 +807,9 @@ async def async_setup_entry(hass, config_entry):
     hass.services.async_register(DOMAIN, "sync_areas", handle_sync_areas_with_loxone)
     hass.services.async_register(DOMAIN, "reload", handle_reload)
 
-    config_entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stop_event))
-    config_entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, loxone_discovered))
+    from .lifecycle import listen_once
+    listen_once(hass, config_entry, EVENT_HOMEASSISTANT_STOP, stop_event)
+    listen_once(hass, config_entry, EVENT_HOMEASSISTANT_STARTED, loxone_discovered)
 
     # Store listeners for cleanup
     coordinator.listeners = [

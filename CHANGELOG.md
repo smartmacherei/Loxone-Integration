@@ -4,6 +4,12 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.3.6] - 2026-09-09
+
+- Fix double removal of startup/shutdown event listeners during integration
+  reload. Ignore queued events after unload and report normal WebSocket task
+  cancellation at debug level instead of as an error.
+
 ## [1.3.5] - 2026-09-09
 
 - Reconcile deleted project UUIDs on integration setup/reload. Back up affected
