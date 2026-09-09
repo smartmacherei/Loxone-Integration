@@ -25,7 +25,7 @@ German and English screenshots from the demo installation.
 - **A verified project backup before changes.** Keep the complete original program
   and a project file that can be opened in Loxone Config.
 
-**Current release: 1.3.4.** Project backup, automatic upload/restart, UDP heartbeat reception and
+**Current release: 1.3.5.** Project backup, automatic upload/restart, UDP heartbeat reception and
 integration reload were verified on the demo installation. Physical device
 transitions and restoration from backup still require acceptance testing.
 
@@ -79,6 +79,15 @@ native controls, read-only states, special formats and the tested project covera
   Use a stable address or update the host option.
 
 Installing updated integration code requires restarting Home Assistant.
+
+After deleting devices in Loxone Config, save the program to the Miniserver and
+reload the Loxone integration in HA. Deleted UUIDs are reconciled against the
+verified full project; offline devices remain. Automatic setup checks program
+changes every 60 seconds when enabled and reloads after successful configuration.
+If automatic setup is disabled or blocked, reload manually. Registry records are
+backed up under `/config/loxone_registry_backups/<entry-id>/` before removal.
+Cleanup is skipped if the project cannot be verified. Custom entity identifiers
+that cannot be matched safely may still need manual review.
 
 ## Backups and support
 

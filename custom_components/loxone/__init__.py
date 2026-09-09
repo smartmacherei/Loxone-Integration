@@ -743,6 +743,7 @@ async def async_setup_entry(hass, config_entry):
             listening_task = asyncio.create_task(
                 coordinator.api.start_listening(callback=message_callback)
             )
+            coordinator._listening_task = listening_task
             listening_task.add_done_callback(handle_task_result)
 
         except Exception as e:
@@ -806,8 +807,8 @@ async def async_setup_entry(hass, config_entry):
     hass.services.async_register(DOMAIN, "sync_areas", handle_sync_areas_with_loxone)
     hass.services.async_register(DOMAIN, "reload", handle_reload)
 
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stop_event)
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, loxone_discovered)
+    config_entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stop_event))
+    config_entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, loxone_discovered))
 
     # Store listeners for cleanup
     coordinator.listeners = [
@@ -816,6 +817,9 @@ async def async_setup_entry(hass, config_entry):
     ]
 
     await start_event()
+
+    from .registry_cleanup import async_cleanup_registry
+    await async_cleanup_registry(hass, config_entry, _program, coordinator.miniserver.lox_config.json)
 
     if _udp_ready and config_entry.options.get("auto_configure_udp", False):
         from .udp_setup import UdpSetup

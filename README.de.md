@@ -26,7 +26,7 @@ Ger?teansichten auf Deutsch und Englisch aus der Demo-Installation.
 - **Geprüfte Projektsicherung vor Änderungen.** Vollständiges Originalprogramm und
   eine Projektdatei zum Öffnen in Loxone Config aufbewahren.
 
-**Aktuelle Veröffentlichung: 1.3.4.** Projektsicherung, automatischer Upload/Neustart, UDP-
+**Aktuelle Veröffentlichung: 1.3.5.** Projektsicherung, automatischer Upload/Neustart, UDP-
 Lebenszeichen und erneutes Laden wurden am Demokoffer geprüft. Physische
 Zustandswechsel und Wiederherstellung aus der Sicherung müssen noch abgenommen werden.
 
@@ -80,6 +80,16 @@ Bedienfunktionen, lesende Zustände und Sonderformate mit dem aktuellen Prüfsta
   oder die Host-Einstellung anpassen.
 
 Nach Installation einer neuen Integrationsversion Home Assistant neu starten.
+
+Nach dem Löschen von Geräten in Loxone Config das Programm auf dem Miniserver
+speichern und die Loxone-Integration in HA neu laden. Gelöschte UUIDs werden mit
+dem geprüften vollständigen Projekt abgeglichen; Offline-Geräte bleiben erhalten.
+Die aktivierte automatische Einrichtung prüft Programmänderungen alle 60 Sekunden
+und lädt nach erfolgreicher Konfiguration neu. Ist sie abgeschaltet oder blockiert,
+manuell neu laden. Vor dem Entfernen werden die Registereinträge unter
+`/config/loxone_registry_backups/<entry-id>/` gesichert. Ohne prüfbares Projekt
+wird nichts bereinigt. Nicht eindeutig zuordenbare Entity-Kennungen können eine
+manuelle Prüfung erfordern.
 
 ## Sicherungen und Hilfe
 

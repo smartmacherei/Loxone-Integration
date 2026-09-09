@@ -143,6 +143,39 @@ def test_owned_page_with_user_logic_is_not_deleted():
         program.prepare(archive(xml), TARGET, {U})
 
 
+def disconnected_reference(delete_source=True):
+    xml, _ = program.patch_xml(XML, TARGET, {U})
+    root = ET.fromstring(xml)
+    for parent in root.iter():
+        for child in list(parent):
+            if child.tag == "In" or (delete_source and child.get("U") == U):
+                parent.remove(child)
+    return root
+
+
+def test_config_deleted_source_removes_owned_disconnected_logger():
+    root = disconnected_reference()
+    changed, report = program.prepare(archive(ET.tostring(root)), TARGET, set())
+    _, xml = program.unpack(changed)
+    assert not list(ET.fromstring(xml).iter("LoggerMailer"))
+    assert report["managed"] == 0
+    assert program.prepare(changed, TARGET, set())[0] == changed
+
+
+@pytest.mark.parametrize("change", ["keep_source", "foreign_id", "foreign_logger", "user_content"])
+def test_disconnected_but_unproven_reference_is_protected(change):
+    root = disconnected_reference(delete_source=change != "keep_source")
+    ref = next(e for e in root.iter("C") if e.get("Type") == "OutputRefLM")
+    if change == "foreign_id":
+        ref.set("U", SOURCE)
+    elif change == "foreign_logger":
+        ref.find("LoggerMailer").set("RefLogger", SOURCE)
+    elif change == "user_content":
+        ET.SubElement(ref, "C", Type="Switch")
+    with pytest.raises(ValueError, match="Unmanaged content"):
+        program.prepare(archive(ET.tostring(root)), TARGET, set())
+
+
 @pytest.mark.parametrize("size", [1, 14, 15, 16, 270, 4096])
 def test_loxcc_codec(size):
     data = b"x" * size

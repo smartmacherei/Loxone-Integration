@@ -4,6 +4,18 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.3.5] - 2026-09-09
+
+- Reconcile deleted project UUIDs on integration setup/reload. Back up affected
+  registry records before removing stale entities and empty devices. Preserve
+  offline, disabled, shared and still-loaded devices; skip cleanup when the full
+  project cannot be verified or changes during the operation.
+- Handle logger inputs disconnected by Loxone Config after deleting their source
+  device. Remove only provably integration-generated references to absent signals;
+  retain protection against overwriting user content and existing project backups.
+- Release startup/shutdown listeners on unload and retain the WebSocket task for
+  cleanup, avoiding callbacks to a removed config entry after repeated reloads.
+
 ## [1.3.4] - 2026-09-09
 
 - Default new connections to HTTP port 80 instead of 8080. Existing explicitly
