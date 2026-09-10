@@ -4,6 +4,15 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.2] - 2026-09-10
+
+- Raumzuordnung als gemeinsame Liste: Alle Loxone-Räume erscheinen in einem
+  Dialog mit jeweils einer HA-Bereichsauswahl. Bestehende Zuordnungen sind
+  vorausgewählt. Änderungen werden gemeinsam gespeichert; das X entfernt eine
+  Zuordnung. Der bisherige Ablauf mit wiederholter Raumauswahl entfällt.
+- Gleichnamige Räume bleiben durch ihre IDs unterscheidbar. Manuelle
+  Bereichszuordnungen und das Verhalten der UDP-Einrichtung bleiben unverändert.
+
 ## [1.4.1] - 2026-09-10
 
 - Verständliche deutsche und englische Beschriftungen im Einrichtungsdialog:

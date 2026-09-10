@@ -35,14 +35,8 @@
         }
       },
       "room_mapping": {
-        "title": "Map rooms",
-        "description": "Current mappings: {mappings}\n\nSelect a Loxone room and an existing Home Assistant area. Enable ?Map another room? to add more. Leave the fields empty to skip this step. Manual area assignments are preserved. Removing a mapping retains the last placement.",
-        "data": {
-          "room": "Loxone room",
-          "area": "Home Assistant area",
-          "remove_mapping": "Remove selected room mapping",
-          "map_another": "Map another room"
-        }
+        "title": "Assign Loxone rooms to HA areas",
+        "description": "Choose a Home Assistant area for each Loxone room. Existing mappings are preselected. Leave a selection empty for no mapping. Use X to remove a saved mapping; devices retain their previous placement. Confirm once to save the whole list. Manual area assignments still take precedence."
       }
     },
     "error": {
@@ -84,14 +78,8 @@
         }
       },
       "room_mapping": {
-        "title": "Map rooms",
-        "description": "Current mappings: {mappings}\n\nSelect a Loxone room and an existing Home Assistant area. Enable ?Map another room? to add more. Leave the fields empty to skip this step. Manual area assignments are preserved. Removing a mapping retains the last placement.",
-        "data": {
-          "room": "Loxone room",
-          "area": "Home Assistant area",
-          "remove_mapping": "Remove selected room mapping",
-          "map_another": "Map another room"
-        }
+        "title": "Assign Loxone rooms to HA areas",
+        "description": "Choose a Home Assistant area for each Loxone room. Existing mappings are preselected. Leave a selection empty for no mapping. Use X to remove a saved mapping; devices retain their previous placement. Confirm once to save the whole list. Manual area assignments still take precedence."
       }
     },
     "error": {

@@ -69,9 +69,9 @@ class AreaMappingHATest(unittest.IsolatedAsyncioTestCase):
         with patch.object(flow, "async_load_rooms", AsyncMock(return_value=self.rooms)):
             result = await handler.async_step_user({**self.options, "edit_room_mapping": True})
         self.assertEqual(result["step_id"], "room_mapping")
-        result = await handler.async_step_room_mapping({"room": "room-1", "area": self.office.id})
+        result = await handler.async_step_room_mapping({"Loxone: Loxone office": self.office.id, "Loxone: Loxone kitchen": self.kitchen.id})
         self.assertEqual(result["type"], "create_entry")
-        self.assertEqual(result["options"]["room_area_mapping"], {"room-1": self.office.id})
+        self.assertEqual(result["options"]["room_area_mapping"], {"room-1": self.office.id, "room-2": self.kitchen.id})
         self.assertNotIn("room", result["options"])
         self.assertNotIn("edit_room_mapping", result["options"])
 
@@ -88,17 +88,52 @@ class AreaMappingHATest(unittest.IsolatedAsyncioTestCase):
         handler.hass = self.hass
         with patch.object(flow, "async_load_rooms", AsyncMock(return_value=self.rooms)):
             await handler.async_step_init({**self.options, "edit_room_mapping": True})
-        result = await handler.async_step_room_mapping({"room": "room-1", "area": self.kitchen.id, "map_another": True})
-        self.assertEqual(result["step_id"], "room_mapping")
-        result = await handler.async_step_room_mapping({"room": "room-1", "remove_mapping": True})
-        self.assertEqual(result["data"]["room_area_mapping"], {})
+        result = await handler.async_step_room_mapping({"Loxone: Loxone kitchen": self.kitchen.id})
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["data"]["room_area_mapping"], {"room-2": self.kitchen.id})
         self.assertEqual(result["data"]["password"], "FAKE_SECRET")
+
+    async def test_list_contains_named_area_pickers_and_existing_selections(self):
+        from types import SimpleNamespace as NS
+        handler = NS(parent_handler=NS(hass=self.hass),
+                     flow_state={"rooms": {"r1": "Office", "r2": "Office", "r3": "Kitchen"}},
+                     options={"room_area_mapping": {"r1": self.office.id, "r3": "deleted-area"}})
+        schema = await flow.mapping_form(handler)
+        fields = {str(marker): (marker, selector) for marker, selector in schema.schema.items()}
+        self.assertEqual(len(fields), 3)
+        self.assertEqual(await flow.mapping_suggestions(handler), {"Loxone: Office (r1)": self.office.id})
+        self.assertTrue(all("area" in selector.serialize()["selector"] for _, selector in fields.values()))
+        self.assertEqual(schema({}), {})  # Clearing must not reinsert saved defaults.
+        result = await flow.validate_mapping(handler, {"Loxone: Office (r1)": None, "Loxone: Office (r2)": ""})
+        self.assertEqual(result, {"room_area_mapping": {}})
+
+    async def test_empty_list_clears_all_saved_mappings(self):
+        self.hass.config_entries.async_update_entry(self.entry, options={**self.options, "room_area_mapping": {"room-1": self.office.id}})
+        handler = flow.LoxoneFlowHandler.async_get_options_flow(self.entry)
+        handler.hass = self.hass
+        with patch.object(flow, "async_load_rooms", AsyncMock(return_value=self.rooms)):
+            await handler.async_step_init({**self.options, "edit_room_mapping": True})
+        result = await handler.async_step_room_mapping({})
+        self.assertEqual(result["data"]["room_area_mapping"], {})
+
+    async def test_validation_retry_does_not_restore_cleared_room(self):
+        self.hass.config_entries.async_update_entry(self.entry, options={**self.options, "room_area_mapping": {"room-1": self.office.id}})
+        handler = flow.LoxoneFlowHandler.async_get_options_flow(self.entry)
+        handler.hass = self.hass
+        with patch.object(flow, "async_load_rooms", AsyncMock(return_value=self.rooms)):
+            first = await handler.async_step_init({**self.options, "edit_room_mapping": True})
+        initial = next(k for k in first["data_schema"].schema if str(k) == "Loxone: Loxone office")
+        self.assertEqual(initial.description["suggested_value"], self.office.id)
+        result = await handler.async_step_room_mapping({"Loxone: Loxone kitchen": "deleted-area"})
+        self.assertEqual(result["type"], "form")
+        cleared = next(k for k in result["data_schema"].schema if str(k) == "Loxone: Loxone office")
+        self.assertNotIn("suggested_value", cleared.description or {})
 
     async def test_invalid_area_or_missing_room_stays_in_form(self):
         handler = self.new_flow()
         with patch.object(flow, "async_load_rooms", AsyncMock(return_value=self.rooms)):
             await handler.async_step_user({**self.options, "edit_room_mapping": True})
-        for data in ({"room": "room-1", "area": "deleted"}, {"room": "unknown", "area": self.office.id}):
+        for data in ({"Loxone: Loxone office": "deleted"}, {"unknown": self.office.id}):
             result = await handler.async_step_room_mapping(data)
             self.assertEqual(result["type"], "form")
             self.assertTrue(result["errors"])

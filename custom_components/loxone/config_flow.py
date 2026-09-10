@@ -16,8 +16,8 @@ from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_PORT,
 from homeassistant.helpers.schema_config_entry_flow import (
     SchemaCommonFlowHandler, SchemaConfigFlowHandler, SchemaFlowError,
     SchemaFlowFormStep)
-from homeassistant.helpers.selector import (AreaSelector, BooleanSelector, SelectSelector, SelectSelectorConfig,
-                                            SelectSelectorMode, NumberSelector,
+from homeassistant.helpers.selector import (AreaSelector, BooleanSelector,
+                                            NumberSelector,
                                             NumberSelectorConfig,
                                             NumberSelectorMode, TextSelector,
                                             TextSelectorConfig,
@@ -55,54 +55,51 @@ async def mapping_next_step(options):
     return "room_mapping" if options.pop("edit_room_mapping", False) else None
 
 
-async def mapping_form(handler):
+def mapping_fields(handler):
+    """Keep readable form labels separate from the UUIDs saved in options."""
     rooms = handler.flow_state.get("rooms", {})
-    return vol.Schema({
-        vol.Optional("room"): SelectSelector(SelectSelectorConfig(
-            options=[{"value": uuid, "label": name} for uuid, name in sorted(rooms.items(), key=lambda pair: (pair[1], pair[0]))],
-            mode=SelectSelectorMode.DROPDOWN,
-        )),
-        vol.Optional("area"): AreaSelector(),
-        vol.Optional("remove_mapping", default=False): BooleanSelector(),
-        vol.Optional("map_another", default=False): BooleanSelector(),
-    })
+    fields = {}
+    for uuid, name in sorted(rooms.items(), key=lambda pair: (pair[1].casefold(), pair[0])):
+        label = f"{name} ({uuid})" if list(rooms.values()).count(name) > 1 else name
+        # Prefix avoids collisions with connection option names such as password.
+        key = f"Loxone: {label}"
+        while key in fields:
+            key += f" ({uuid})"
+        fields[key] = uuid
+    return fields
 
 
-async def mapping_description(handler):
+async def mapping_form(handler):
+    """Show every room directly, without a nested object editor dialog."""
+    return vol.Schema({vol.Optional(label): AreaSelector() for label in mapping_fields(handler)})
+
+
+async def mapping_suggestions(handler):
+    """Let HA preserve submitted selections, including clears, on validation retry."""
     from homeassistant.helpers import area_registry as ar
 
     registry = ar.async_get(handler.parent_handler.hass)
-    rooms = handler.flow_state.get("rooms", {})
-    lines = []
-    for room, area_id in handler.options.get(CONF_ROOM_MAPPING, {}).items():
-        area = registry.async_get_area(area_id)
-        lines.append(f"{rooms.get(room, room)} → {area.name if area else area_id}")
-    return {"mappings": "; ".join(lines) or "—"}
+    saved = handler.options.get(CONF_ROOM_MAPPING, {})
+    return {label: saved[uuid] for label, uuid in mapping_fields(handler).items()
+            if uuid in saved and registry.async_get_area(saved[uuid]) is not None}
 
 
 async def validate_mapping(handler, user_input):
+    """Save the complete list atomically; cleared fields remove mappings."""
     from homeassistant.helpers import area_registry as ar
 
-    mapping = dict(handler.options.get(CONF_ROOM_MAPPING, {}))
-    room, area_id = user_input.get("room"), user_input.get("area")
-    remove = user_input.get("remove_mapping", False)
-    if room:
-        # Permit removal of saved mappings for rooms no longer in the project.
-        if room not in handler.flow_state.get("rooms", {}) and not (remove and room in mapping):
+    fields = mapping_fields(handler)
+    registry = ar.async_get(handler.parent_handler.hass)
+    mapping = {}
+    for label, area_id in user_input.items():
+        if label not in fields:
             raise SchemaFlowError("invalid_room")
-        if remove:
-            mapping.pop(room, None)
-        elif not area_id or ar.async_get(handler.parent_handler.hass).async_get_area(area_id) is None:
+        if area_id is None or area_id == "":
+            continue
+        if not isinstance(area_id, str) or registry.async_get_area(area_id) is None:
             raise SchemaFlowError("invalid_area")
-        else:
-            mapping[room] = area_id
-    elif area_id or remove:
-        raise SchemaFlowError("invalid_room")
-    return {CONF_ROOM_MAPPING: mapping, "_map_another": user_input.get("map_another", False)}
-
-
-async def mapping_after_step(options):
-    return "room_mapping" if options.pop("_map_another", False) else None
+        mapping[fields[label]] = area_id
+    return {CONF_ROOM_MAPPING: mapping}
 
 
 async def validate_loxone_setup(
@@ -222,7 +219,7 @@ CONFIG_FLOW = {
         next_step=mapping_next_step,
     ),
     "room_mapping": SchemaFlowFormStep(schema=mapping_form, validate_user_input=validate_mapping,
-                                       next_step=mapping_after_step, description_placeholders=mapping_description),
+                                       suggested_values=mapping_suggestions),
 }
 
 OPTIONS_FLOW = {

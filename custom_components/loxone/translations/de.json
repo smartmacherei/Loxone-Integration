@@ -35,14 +35,8 @@
         }
       },
       "room_mapping": {
-        "title": "Räume zuordnen",
-        "description": "Aktuelle Zuordnungen: {mappings}\n\nWähle einen Loxone-Raum und einen bestehenden Home-Assistant-Bereich. Für mehrere Räume „Weiteren Raum zuordnen“ aktivieren. Leere Felder überspringen diesen Schritt. Manuelle Bereichszuordnungen bleiben erhalten. Beim Entfernen einer Zuordnung bleibt die letzte Platzierung bestehen.",
-        "data": {
-          "room": "Loxone-Raum",
-          "area": "Home-Assistant-Bereich",
-          "remove_mapping": "Gewählte Raumzuordnung entfernen",
-          "map_another": "Weiteren Raum zuordnen"
-        }
+        "title": "Loxone-Räume HA-Bereichen zuordnen",
+        "description": "Wähle für jeden Loxone-Raum den passenden Bereich in Home Assistant. Vorhandene Zuordnungen sind vorausgewählt. Leere Auswahlen bedeuten keine Zuordnung. Mit dem X entfernst du eine gespeicherte Zuordnung; die bisherige Platzierung der Geräte bleibt dabei erhalten. Bestätige einmal, um die gesamte Liste zu speichern. Manuelle Bereichszuordnungen haben weiterhin Vorrang."
       }
     },
     "error": {
@@ -84,14 +78,8 @@
         }
       },
       "room_mapping": {
-        "title": "Räume zuordnen",
-        "description": "Aktuelle Zuordnungen: {mappings}\n\nWähle einen Loxone-Raum und einen bestehenden Home-Assistant-Bereich. Für mehrere Räume „Weiteren Raum zuordnen“ aktivieren. Leere Felder überspringen diesen Schritt. Manuelle Bereichszuordnungen bleiben erhalten. Beim Entfernen einer Zuordnung bleibt die letzte Platzierung bestehen.",
-        "data": {
-          "room": "Loxone-Raum",
-          "area": "Home-Assistant-Bereich",
-          "remove_mapping": "Gewählte Raumzuordnung entfernen",
-          "map_another": "Weiteren Raum zuordnen"
-        }
+        "title": "Loxone-Räume HA-Bereichen zuordnen",
+        "description": "Wähle für jeden Loxone-Raum den passenden Bereich in Home Assistant. Vorhandene Zuordnungen sind vorausgewählt. Leere Auswahlen bedeuten keine Zuordnung. Mit dem X entfernst du eine gespeicherte Zuordnung; die bisherige Platzierung der Geräte bleibt dabei erhalten. Bestätige einmal, um die gesamte Liste zu speichern. Manuelle Bereichszuordnungen haben weiterhin Vorrang."
       }
     },
     "error": {
