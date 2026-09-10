@@ -16,6 +16,8 @@ SECRET = "password=TOPSECRET Authorization: Bearer PRIVATE_TOKEN <project>PRIVAT
 
 @pytest.fixture
 def reporting(monkeypatch):
+    async def empty_diagnostics(*args):
+        return {}
     messages, dismissed = [], []
     notification = NS(async_create=lambda hass, message, **kw: messages.append(message),
                       async_dismiss=lambda *args: dismissed.append(args))
@@ -29,7 +31,9 @@ def reporting(monkeypatch):
         "homeassistant.config_entries": NS(ConfigEntry=object),
         "homeassistant.core": NS(HomeAssistant=object),
         PACKAGE + ".const": NS(DOMAIN="loxone"),
-        PACKAGE + ".topology": NS(enumerate_discoverable=lambda *args: []),
+            PACKAGE + ".topology": NS(enumerate_discoverable=lambda *args: []),
+            PACKAGE + ".connection_diagnostics": NS(KEY="loxone_connection_diagnostics", live_status=lambda *args: {}, diagnostics=empty_diagnostics),
+            PACKAGE + ".startup_trace": NS(diagnostics=empty_diagnostics),
     }.items():
         monkeypatch.setitem(sys.modules, name, value)
     return NS(setup=module("udp_setup"), status=module("udp_status"), diagnostics=module("diagnostics"), messages=messages, dismissed=dismissed)
@@ -94,7 +98,7 @@ def test_error_clears_only_after_verified_recovery(reporting, tmp_path):
 def test_setup_state_not_hidden_by_receiver(reporting, state):
     for receiver in (None, NS(last_valid_received=None)):
         sensor = reporting.status.UdpStatusSensor("demo", "serial")
-        sensor.hass = NS(data={"loxone_udp_setup": {"demo": NS(status={"state": state, "error_code": "FTP_LOGIN_FAILED"})}, "loxone_udp": {"demo": receiver}})
+        sensor.hass = NS(data={"loxone_udp_setup": {"demo": NS(status={"state": state, "error_code": "FTP_LOGIN_FAILED"})}, "loxone_udp": {"demo": receiver}}, config_entries=NS(async_get_entry=lambda _: None))
         asyncio.run(sensor.async_update())
         assert sensor._attr_native_value == state
         assert sensor._attr_extra_state_attributes["setup_state"] == state
@@ -279,7 +283,7 @@ def test_progress_replaces_configured_state_while_worker_runs(reporting, tmp_pat
             assert setup.status["state"] == "checking"
             assert setup.status["step"] == "udp_destination"
             sensor = reporting.status.UdpStatusSensor("demo", "serial")
-            sensor.hass = NS(data={"loxone_udp_setup": {"demo": setup}, "loxone_udp": {"demo": NS(last_valid_received=None)}})
+            sensor.hass = NS(data={"loxone_udp_setup": {"demo": setup}, "loxone_udp": {"demo": NS(last_valid_received=None)}}, config_entries=NS(async_get_entry=lambda _: None))
             await sensor.async_update()
             assert sensor._attr_native_value == "checking"
         finally:

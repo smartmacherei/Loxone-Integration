@@ -64,12 +64,19 @@ class UdpSetup:
         previous_error = self.status.get("error")
         previous_attempt = self.status.get("error_attempt")
         self.status.update(state="checking", step="program_download", backup_verified=False)
+        self.status["step_history"] = []
         self.status.pop("backup", None)
         loop = asyncio.get_running_loop()
         active = True
 
         def update_progress(data):
             if active:
+                step = data.get("step")
+                if step and (not self.status["step_history"] or self.status["step_history"][-1]["step"] != step):
+                    from .udp_errors import utc_now
+                    self.status["step_history"].append({"step": step, "timestamp": utc_now()})
+                    self.status["step_history"] = self.status["step_history"][-50:]
+                    _LOGGER.debug("Loxone UDP setup step: %s", step)
                 self.status.update(data)
 
         def progress(data):

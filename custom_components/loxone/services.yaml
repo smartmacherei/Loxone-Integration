@@ -1,5 +1,16 @@
 # Describes the format for available Loxone services
 
+check_connection:
+  name: Check Miniserver connection
+  description: Read-only check of the configured web port, login, FTP/TLS and UDP receiver. No uploads or restarts. Results appear as a notification and in diagnostics.
+  fields:
+    entry_id:
+      name: Loxone integration
+      required: true
+      selector:
+        config_entry:
+          integration: loxone
+
 event_websocket_command:
   fields:
     uuid:

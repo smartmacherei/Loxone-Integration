@@ -144,6 +144,15 @@
     "quick_shade": {
       "name": "Beschattung ",
       "description": "Loxone Jalousie in Schattenposition bringen. Position wird von Loxone abhängig von mehreren Werten festgelegt."
+    },
+    "check_connection": {
+      "name": "Miniserver-Verbindung prüfen",
+      "description": "Prüft Webport, Anmeldung, FTP/TLS und den UDP-Empfang. Ergebnisse erscheinen als Benachrichtigung und in den Diagnosedaten. Keine Uploads oder Neustarts.",
+      "fields": {
+        "entry_id": {
+          "name": "Loxone-Integration"
+        }
+      }
     }
   },
   "entity": {
@@ -164,6 +173,11 @@
           "stopped": "Gestoppt",
           "busy": "Eine andere Einrichtung läuft"
         }
+      }
+    },
+    "button": {
+      "check_connection": {
+        "name": "Verbindung prüfen"
       }
     }
   }

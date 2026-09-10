@@ -8,6 +8,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
+from .connection_diagnostics import diagnostics as connection_diagnostics
+from .startup_trace import diagnostics as startup_diagnostics
 
 
 async def async_get_config_entry_diagnostics(
@@ -23,6 +25,8 @@ async def async_get_config_entry_diagnostics(
         # Project/visualization data can include credentials and private content.
         # Setup diagnostics require status, not the unfiltered project document.
         "coordinator_available": coordinator is not None,
+        "integration_startup": await startup_diagnostics(hass, config_entry),
+        "connection": await connection_diagnostics(hass, config_entry),
         "area_mapping": {
             "configured_rooms": len(area_mapping.mapping),
             "managed_devices": len(area_mapping.owned.get("devices", {})),

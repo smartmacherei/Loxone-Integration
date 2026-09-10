@@ -112,3 +112,5 @@ Based on PyLoxone by JoDehli and contributors, with modifications by smartmacher
 
 [Optional room mapping during setup and in integration options / Optionale Raumzuordnung](docs/room-mapping.md).
 [UDP setup diagnostics / UDP-Einrichtungsdiagnose](docs/udp-setup-diagnostics.md).
+
+[Connection checks and diagnostic downloads / Verbindungspruefung und Diagnosedaten](docs/connection-diagnostics.md).

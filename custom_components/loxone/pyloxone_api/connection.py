@@ -198,6 +198,11 @@ class LoxoneBaseConnection:
         self._secured_queue: asyncio.Queue = asyncio.Queue(maxsize=1)
         self.message_header = None
 
+    def _diagnostic_step(self, step):
+        callback = getattr(self, "diagnostic_callback", None)
+        if callback:
+            callback(step)
+
     @property
     def is_connected(self) -> bool:
         """Check if the websocket connection is open."""
@@ -804,6 +809,8 @@ class LoxoneConnection(LoxoneBaseConnection):
         if self._closed:
             raise RuntimeError("Cannot open a closed connection")
 
+        self._diagnostic_step("http_identity")
+        self.authentication_state = "not_confirmed"
         connector = None
         try:
             connector = LoxoneAsyncHttpClient(
@@ -902,6 +909,7 @@ class LoxoneConnection(LoxoneBaseConnection):
                     _LOGGER.warning(f"Failed to update URL for remote access: {e}")
 
             # Get the structure file
+            self._diagnostic_step("http_structure")
             try:
                 lox_app_data = await connector.get(LOXAPPPATH)
             except Exception as e:
@@ -929,6 +937,7 @@ class LoxoneConnection(LoxoneBaseConnection):
                 raise RuntimeError(f"Failed to read structure file: {e}") from e
 
             # Get the public key
+            self._diagnostic_step("public_key")
             try:
                 pk_data = await connector.get(CMD_GET_PUBLIC_KEY)
             except Exception as e:
@@ -1015,6 +1024,7 @@ class LoxoneConnection(LoxoneBaseConnection):
             raise
 
         # Establish websocket connection
+        self._diagnostic_step("websocket_connect")
         try:
             params = {"url": self.url}
             if self.scheme == "https":
@@ -1354,6 +1364,10 @@ class LoxoneConnection(LoxoneBaseConnection):
                     if not self._token.token:
                         raise ValueError("Received empty token")
 
+                    if mess_obj.code == 200:
+                        self.authentication_state = "accepted"
+                        _LOGGER.info("Loxone WebSocket authentication accepted")
+
                     await self._message_queue.put(
                         MessageForQueue(f"{CMD_ENABLE_UPDATES}", True)
                     )
@@ -1370,10 +1384,14 @@ class LoxoneConnection(LoxoneBaseConnection):
                 "authwithtoken" in mess_obj.message
             ):
                 if mess_obj.code == 401:
+                    self.authentication_state = "rejected"
                     _LOGGER.error("Token authentication failed (401)")
                     self.reset_token()
                     self._reconnect_event.set()
                 else:
+                    if mess_obj.code == 200:
+                        self.authentication_state = "accepted"
+                        _LOGGER.info("Loxone WebSocket authentication accepted")
                     _LOGGER.debug("Got message authwithtoken")
                     try:
                         await self._message_queue.put(

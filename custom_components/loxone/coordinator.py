@@ -57,6 +57,8 @@ class LoxoneCoordinator(DataUpdateCoordinator):
                 password=self._password,
             )
         try:
+            from .startup_trace import advance
+            self.api.diagnostic_callback = lambda step: advance(self.hass, self.config_entry, step)
             session = async_get_clientsession(self.hass)
             # max_tries=1: beim Setup schnell scheitern, wenn der Miniserver fehlt.
             # HA retryt dann selbst (ConfigEntryNotReady) -> HA startet auch ohne
@@ -73,6 +75,8 @@ class LoxoneCoordinator(DataUpdateCoordinator):
         except Exception as e:
             _LOGGER.error("Could not connect to Loxone Miniserver")
             raise e
+        finally:
+            self.api.diagnostic_callback = None
 
         self.miniserver = MiniServer(
             self.hass, self.api.structure_file, self.config_entry

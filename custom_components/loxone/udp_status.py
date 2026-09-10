@@ -42,6 +42,13 @@ class UdpStatusSensor(SensorEntity):
             state = "disabled"
         self._attr_native_value = state
         self._attr_extra_state_attributes = status
+        from .connection_diagnostics import KEY, live_status
+        entry = self.hass.config_entries.async_get_entry(self.entry_id)
+        if entry:
+            self._attr_extra_state_attributes.update(live_status(self.hass, entry))
+        check = self.hass.data.get(KEY, {}).get(self.entry_id)
+        if check:
+            self._attr_extra_state_attributes["last_connection_check"] = check
         router = self.hass.data.get(DOMAIN + "_transport", {}).get(self.entry_id)
         if router:
             self._attr_extra_state_attributes.update(router.diagnostics())

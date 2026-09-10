@@ -4,6 +4,25 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.4] - 2026-09-10
+
+- Startfehler aus Kundenlogs behoben: Die Raumzuordnung verwendet ausdrücklich
+  Geräte- und Bereichs-IDs. HA-Versionen, deren Register beim Durchlaufen
+  Geräteobjekte liefern, führen dadurch nicht mehr zum TypeError beim Start.
+- Neuer Diagnoseknopf „Verbindung prüfen“ und Aktion `loxone.check_connection`:
+  Prüft die konfigurierte Miniserver-Adresse, den Webport, Webzugriff, FTP-Port 21,
+  TLS, FTP-Anmeldung und den lesenden FTP-Datenkanal. Kein Upload, Neustart oder
+  automatisches Entsperren. Schreibrechte werden nicht getestet.
+- Diagnose-Download enthält den Startverlauf mit letztem erfolgreichen Schritt,
+  Fehlercode, sicherem Exception-Typ und Zeitpunkt. Letzte explizite
+  Verbindungsprüfung und Startfehler bleiben nach HA-Neustart nachvollziehbar.
+- WebSocket-Verbindung und bestätigte Anmeldung werden getrennt erfasst.
+  UDP-Port, Listener, Paketzähler und Alter gültiger Daten helfen, Empfangsfehler
+  von Einrichtungsfehlern zu unterscheiden. UDP-Setup-Schritte werden zusätzlich
+  als begrenzter Verlauf und bei aktiviertem Debug-Logging protokolliert.
+- Neue Diagnosemeldungen enthalten keine Passwörter, Tokens, Projektinhalte oder
+  rohen Serverantworten. Timeouts werden nicht pauschal als Firewallfehler erklärt.
+
 ## [1.4.3] - 2026-09-10
 
 - Die Raumzuordnung ist bei Einrichtung und Konfiguration standardmäßig

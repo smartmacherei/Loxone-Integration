@@ -110,6 +110,7 @@ class AreaMapping:
     """Apply mappings after registration, including delayed scene entities."""
 
     def __init__(self, hass, entry, config):
+        from .registry_compat import registry_ids
         from homeassistant.helpers import device_registry as dr
         from homeassistant.helpers.storage import Store
 
@@ -118,7 +119,7 @@ class AreaMapping:
         self.rooms = room_index(config)
         self.store = Store(hass, 1, f"loxone.area_mapping.{entry.entry_id}")
         self.owned = {}
-        self.initial_devices = set(dr.async_get(hass).devices)
+        self.initial_devices = registry_ids(dr.async_get(hass).devices)
         self.lock = asyncio.Lock()
         self.closed = False
         self.scheduled = None
@@ -158,6 +159,7 @@ class AreaMapping:
             self.hass.async_create_task(self.apply())
 
     async def apply(self):
+        from .registry_compat import registry_entries, registry_ids
         from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 
         async with self.lock:
@@ -165,14 +167,14 @@ class AreaMapping:
                 return
             devices, entities = dr.async_get(self.hass), er.async_get(self.hass)
             device_rows = [{"id": d.id, "area_id": d.area_id, "config_entries": d.config_entries}
-                           for d in devices.devices.values()]
+                           for d in registry_entries(devices.devices)]
             entity_rows = [{"id": e.id, "entity_id": e.entity_id, "config_entry_id": e.config_entry_id,
                             "platform": e.platform, "unique_id": e.unique_id,
                             "device_id": e.device_id, "area_id": e.area_id}
-                           for e in entities.entities.values()]
+                           for e in registry_entries(entities.entities)]
             de, ee, owned = plan_mapping(self.entry.entry_id, entity_rows, device_rows,
-                                        self.rooms, self.mapping, set(ar.async_get(self.hass).areas),
-                                        self.owned, set(devices.devices) - self.initial_devices)
+                                        self.rooms, self.mapping, registry_ids(ar.async_get(self.hass).areas),
+                                        self.owned, registry_ids(devices.devices) - self.initial_devices)
             changed = owned != self.owned
             self.owned = owned
             for device_id, area_id in de.items():

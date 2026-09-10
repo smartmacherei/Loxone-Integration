@@ -152,6 +152,17 @@ async def async_unload_entry(hass, config_entry):
 
 async def async_setup(hass, config):
     """setup loxone"""
+    from .connection_diagnostics import run_check
+    from homeassistant.exceptions import HomeAssistantError
+
+    async def check_connection(call):
+        entry = hass.config_entries.async_get_entry(call.data["entry_id"])
+        if entry is None or entry.domain != DOMAIN:
+            raise HomeAssistantError("Select an existing Loxone integration entry")
+        await run_check(hass, entry)
+
+    hass.services.async_register(DOMAIN, "check_connection", check_connection,
+        schema=vol.Schema({vol.Required("entry_id"): cv.string}))
     if DOMAIN in config:
         hass.async_create_task(
             hass.config_entries.flow.async_init(
@@ -247,6 +258,12 @@ async def create_group_for_loxone_entities(hass, entities, name, object_id):
 
 
 async def async_setup_entry(hass, config_entry):
+    from .startup_trace import tracked_setup
+    return await tracked_setup(hass, config_entry, _async_setup_entry)
+
+
+async def _async_setup_entry(hass, config_entry):
+    from .startup_trace import advance
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
 
@@ -320,6 +337,7 @@ async def async_setup_entry(hass, config_entry):
         config_entry.add_update_listener(async_config_entry_updated)
     )
 
+    advance(hass, config_entry, "topology_discovery")
     _program = None
     from .transport import SignalRouter
     _router = SignalRouter(lambda values: hass.bus.async_fire(EVENT, values))
@@ -478,6 +496,7 @@ async def async_setup_entry(hass, config_entry):
             _udp_ready = True
 
     setup_tasks = []
+    advance(hass, config_entry, "area_mapping")
     from .area_mapping import AreaMapping
     _area_mapping = AreaMapping(hass, config_entry, coordinator.miniserver.lox_config.json)
     await _area_mapping.start()
@@ -488,6 +507,7 @@ async def async_setup_entry(hass, config_entry):
         hass.data.get(DOMAIN + "_area_mapping", {}).pop(config_entry.entry_id, None)
 
     config_entry.async_on_unload(_remove_area_mapping)
+    advance(hass, config_entry, "entity_platforms")
     await hass.config_entries.async_forward_entry_setups(config_entry, LOXONE_PLATFORMS)
     for platform in LOXONE_PLATFORMS:
         setup_tasks.append(

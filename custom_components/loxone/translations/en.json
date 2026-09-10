@@ -154,6 +154,15 @@
     "quick_shade": {
       "name": "Quick shade",
       "description": "Move Loxone Jalousie to shade position. Position is set by Loxone depends on multiple values."
+    },
+    "check_connection": {
+      "name": "Check Miniserver connection",
+      "description": "Checks the web port, login, FTP/TLS and UDP reception. Results appear in a notification and diagnostics. No uploads or restarts.",
+      "fields": {
+        "entry_id": {
+          "name": "Loxone integration"
+        }
+      }
     }
   },
   "entity": {
@@ -174,6 +183,11 @@
           "stopped": "Stopped",
           "busy": "Another setup is running"
         }
+      }
+    },
+    "button": {
+      "check_connection": {
+        "name": "Check connection"
       }
     }
   }

@@ -52,6 +52,51 @@ class AreaMappingHATest(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(schema(self.options)["edit_room_mapping"])
             self.assertFalse(schema({**self.options, "edit_room_mapping": False})["edit_room_mapping"])
 
+    async def test_customer_registry_iterator_does_not_crash_constructor(self):
+        from types import SimpleNamespace as NS
+        class EntryIterator(dict):
+            def __iter__(self): return iter(self.values())
+        registry = NS(devices=EntryIterator({"device": NS(id="device", config_entries=set())}))
+        with patch.object(dr, "async_get", return_value=registry):
+            manager = AreaMapping(self.hass, self.entry, {"controls": {}})
+        self.assertEqual(manager.initial_devices, {"device"})
+
+    async def test_startup_failure_is_safe_persistent_and_cleared_on_recovery(self):
+        from custom_components.loxone import startup_trace as trace
+        async def broken(hass, entry):
+            trace.advance(hass, entry, "area_mapping")
+            raise TypeError("PASSWORD_AND_PRIVATE_PROJECT")
+        with self.assertRaises(TypeError):
+            await trace.tracked_setup(self.hass, self.entry, broken)
+        self.hass.data.pop(trace.KEY)
+        stored = await trace.diagnostics(self.hass, self.entry)
+        self.assertEqual(stored["error_code"], "AREA_MAPPING_FAILED")
+        self.assertTrue(stored["historical"])
+        self.assertNotIn("PASSWORD_AND_PRIVATE_PROJECT", str(stored))
+        await trace.tracked_setup(self.hass, self.entry, AsyncMock(return_value=True))
+        recovered = await trace.diagnostics(self.hass, self.entry)
+        self.assertEqual(recovered["state"], "completed")
+        self.assertNotIn("error_code", recovered)
+
+    async def test_connection_check_persists_without_provisioning(self):
+        from custom_components.loxone import connection_diagnostics as diag
+        result = {"state": "completed", "checks": {}, "completed_at": "2026-09-10T00:00:00Z"}
+        with patch.object(diag, "probe", return_value=result), patch.object(diag.persistent_notification, "async_create") as notification:
+            await diag.run_check(self.hass, self.entry)
+        self.assertTrue(notification.called)
+        self.hass.data.pop(diag.KEY)
+        stored = await diag.diagnostics(self.hass, self.entry)
+        self.assertEqual(stored["last_explicit_check"]["state"], "completed")
+        self.assertEqual(stored["current"]["udp_receive_state"], "listener_missing")
+
+    async def test_connection_action_is_available_without_loaded_miniserver(self):
+        from custom_components.loxone import async_setup
+        from custom_components.loxone import connection_diagnostics as diag
+        with patch.object(diag, "run_check", AsyncMock()) as check:
+            await async_setup(self.hass, {})
+            await self.hass.services.async_call("loxone", "check_connection", {"entry_id": self.entry.entry_id}, blocking=True)
+        check.assert_awaited_once_with(self.hass, self.entry)
+
     async def test_room_fetch_accepts_https_and_url_hosts(self):
         from unittest.mock import MagicMock
         response = MagicMock()

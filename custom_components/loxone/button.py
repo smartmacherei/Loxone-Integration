@@ -11,6 +11,7 @@ from typing import final
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -43,13 +44,29 @@ async def async_setup_entry(
     """Set up entry."""
     miniserver = get_miniserver_from_hass(hass, config_entry)
     loxconfig = miniserver.lox_config.json
-    entities = []
+    entities = [ConnectionCheckButton(config_entry, miniserver.serial)]
 
     for button_entity in get_all(loxconfig, ["Pushbutton"]):
         button_entity = add_room_and_cat_to_value_values(loxconfig, button_entity)
         entities.append(LoxoneButton(**button_entity))
 
     async_add_entities(entities)
+
+
+class ConnectionCheckButton(ButtonEntity):
+    _attr_has_entity_name = True
+    _attr_translation_key = "check_connection"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:lan-check"
+
+    def __init__(self, entry, serial):
+        self.entry = entry
+        self._attr_unique_id = f"{serial}-check_connection"
+        self._attr_device_info = {"identifiers": {(DOMAIN, serial)}}
+
+    async def async_press(self):
+        from .connection_diagnostics import run_check
+        await run_check(self.hass, self.entry)
 
 
 class LoxoneButton(LoxoneEntity, ButtonEntity):
