@@ -478,6 +478,16 @@ async def async_setup_entry(hass, config_entry):
             _udp_ready = True
 
     setup_tasks = []
+    from .area_mapping import AreaMapping
+    _area_mapping = AreaMapping(hass, config_entry, coordinator.miniserver.lox_config.json)
+    await _area_mapping.start()
+    hass.data.setdefault(DOMAIN + "_area_mapping", {})[config_entry.entry_id] = _area_mapping
+
+    def _remove_area_mapping():
+        _area_mapping.close()
+        hass.data.get(DOMAIN + "_area_mapping", {}).pop(config_entry.entry_id, None)
+
+    config_entry.async_on_unload(_remove_area_mapping)
     await hass.config_entries.async_forward_entry_setups(config_entry, LOXONE_PLATFORMS)
     for platform in LOXONE_PLATFORMS:
         setup_tasks.append(
@@ -488,6 +498,7 @@ async def async_setup_entry(hass, config_entry):
 
     if setup_tasks:
         await asyncio.wait(setup_tasks)
+    await _area_mapping.apply()
 
     async def _reload_after_delay(delay: float = 1.0) -> None:
         await coordinator.api.close()
@@ -577,6 +588,9 @@ async def async_setup_entry(hass, config_entry):
         ar_registry = ar.async_get(hass)
         for id, entry in er_registry.entities.items():
             if entry.platform == DOMAIN:
+                mapper = hass.data.get(DOMAIN + "_area_mapping", {}).get(entry.config_entry_id)
+                if mapper and mapper.is_mapped(entry.unique_id):
+                    continue  # Explicit UUID mapping takes precedence over legacy name sync.
                 state = hass.states.get(entry.entity_id)
                 if hasattr(state, "attributes") and "room" in state.attributes:
                     area = ar_registry.async_get_area_by_name(state.attributes["room"])
@@ -842,6 +856,19 @@ class LoxoneEntity(Entity):
     """
     @DynamicAttrs
     """
+
+    @property
+    def device_info(self):
+        return self._mapped_device_info(getattr(self, "_attr_device_info", None))
+
+    def _mapped_device_info(self, info):
+        platform = getattr(self, "platform", None)
+        entry = getattr(platform, "config_entry", None)
+        if info and entry:
+            mapper = self.hass.data.get(DOMAIN + "_area_mapping", {}).get(entry.entry_id)
+            if mapper:
+                return mapper.device_info(self.unique_id, info)
+        return info
 
     def __init__(self, **kwargs):
         for key in kwargs:

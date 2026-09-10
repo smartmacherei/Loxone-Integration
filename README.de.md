@@ -110,3 +110,8 @@ Für Support Versionsnummern und Fehlerbild angeben.
 
 Apache License 2.0 — [LICENSE](LICENSE), [NOTICE](NOTICE).
 Basierend auf PyLoxone von JoDehli und Mitwirkenden, erweitert von smartmacherei.
+
+## Room mapping / Raumzuordnung
+
+[Optional room mapping during setup and in integration options / Optionale Raumzuordnung](docs/room-mapping.md).
+[UDP setup diagnostics / UDP-Einrichtungsdiagnose](docs/udp-setup-diagnostics.md).

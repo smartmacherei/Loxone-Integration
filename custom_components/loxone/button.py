@@ -121,10 +121,10 @@ class LoxoneButton(LoxoneEntity, ButtonEntity):
     @property
     def device_info(self):
         """Return device information."""
-        return DeviceInfo(
+        return self._mapped_device_info(DeviceInfo(
             identifiers={(DOMAIN, self.unique_id)},
             name=self.name,
             manufacturer="Loxone",
             model=self.type,
             suggested_area=self.room,
-        )
+        ))

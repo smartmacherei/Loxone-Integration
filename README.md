@@ -107,3 +107,8 @@ For support, include integration, HA and Miniserver versions and the observed er
 
 Apache License 2.0: [LICENSE](LICENSE) and [NOTICE](NOTICE).
 Based on PyLoxone by JoDehli and contributors, with modifications by smartmacherei.
+
+## Room mapping / Raumzuordnung
+
+[Optional room mapping during setup and in integration options / Optionale Raumzuordnung](docs/room-mapping.md).
+[UDP setup diagnostics / UDP-Einrichtungsdiagnose](docs/udp-setup-diagnostics.md).

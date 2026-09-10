@@ -14,7 +14,8 @@ def build():
              and "tests" not in p.parts and "__pycache__" not in p.parts]
     files += [ROOT / name for name in ("README.md", "README.de.md", "CHANGELOG.md", "LICENSE", "NOTICE")]
     files += [ROOT / "docs" / name for name in (
-        "automatic-udp.md", "automatic-udp.de.md", "device-coverage.md", "device-coverage.de.md")]
+        "automatic-udp.md", "automatic-udp.de.md", "device-coverage.md", "device-coverage.de.md",
+        "room-mapping.md", "udp-setup-diagnostics.md")]
     path = ROOT / "dist" / f"loxone-{version}.zip"
     path.parent.mkdir(exist_ok=True)
     with ZipFile(path, "w", ZIP_DEFLATED) as archive:

@@ -15,7 +15,8 @@ from homeassistant.helpers.event import async_track_time_interval
 
 from .const import DOMAIN
 from .topology import enumerate_discoverable
-from .udp_install import ActivationUncertainError, ProgramClient, install
+from .udp_install import ProgramClient, install
+from .udp_errors import details, failure, notification, restore_failure
 from .udp_program import digest
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,7 +35,8 @@ class UdpSetup:
         self.stop = threading.Event()
         self.task = None
         self.initial_sha = digest(program) if program else None
-        self.status = {"state": "checking"}
+        self.status = {"state": "checking", "step": "program_download",
+                       "backup_verified": False, "backup_location": self.directory}
         self.cancel_interval = None
 
     @staticmethod
@@ -58,18 +60,41 @@ class UdpSetup:
             self.task = self.hass.async_create_task(self.check())
 
     async def check(self):
+        previous = self.status.get("state")
+        previous_error = self.status.get("error")
+        previous_attempt = self.status.get("error_attempt")
+        self.status.update(state="checking", step="program_download", backup_verified=False)
+        self.status.pop("backup", None)
+        loop = asyncio.get_running_loop()
+        active = True
+
+        def update_progress(data):
+            if active:
+                self.status.update(data)
+
+        def progress(data):
+            loop.call_soon_threadsafe(update_progress, data)
+
         try:
             result = await self.hass.async_add_executor_job(
-                install, self.client, self.directory, self.port, self.select, self.stop
+                install, self.client, self.directory, self.port, self.select, self.stop, progress
             )
-            previous = self.status.get("state")
+            active = False
             self.status.update(result)
             if result["state"] == "blocked":
-                self.notify("Automatic UDP setup is blocked after an earlier activation attempt. "
-                            "Polling remains available. Check the logs and the original project backup "
-                            "before retrying. / Ein vorheriger Aktivierungsversuch blockiert die "
-                            "automatische Einrichtung. Bitte Protokoll und Projektsicherung prüfen.")
+                data = result["error"]
+                if (data["code"] == "PREVIOUS_ATTEMPT_BLOCKED" and previous_error
+                        and previous_attempt == result.get("error_attempt")):
+                    data = previous_error
+                self.set_error(data)
+                self.notify(notification(self.status["error"], self.language, blocked=True))
             elif result["state"] == "configured":
+                for key in ("cleanup_warning", "activation_error"):
+                    self.archive_detail(key)
+                if self.status.get("error"):
+                    self.status["last_error"] = dict(self.status["error"], historical=True)
+                for key in ("error", "error_code", "error_step", "error_timestamp", "error_persisted", "error_attempt", "step"):
+                    self.status.pop(key, None)
                 persistent_notification.async_dismiss(self.hass, "loxone_udp_" + self.entry.entry_id)
                 if self.initial_sha is not None and result["xml_sha256"] != self.initial_sha:
                     if not self.stop.is_set():
@@ -78,26 +103,66 @@ class UdpSetup:
             if previous != result["state"]:
                 _LOGGER.info("Loxone automatic UDP setup: %s", result["state"])
         except Exception as err:
+            active = False
             self.status["state"] = "error"
-            # Exception messages from network libraries may include server content.
-            _LOGGER.warning("Loxone automatic UDP setup failed (%s); polling fallback remains active", type(err).__name__)
-            if isinstance(err, ActivationUncertainError):
-                self.notify("Activation could not be confirmed and cleanup could not be verified. "
-                            "A /prog/sps_new.zip file may remain on the Miniserver and load on its next "
-                            "restart. Check this with your installer before restarting. The original "
-                            "backup is retained. / Aktivierung und Bereinigung unbestätigt: Auf dem "
-                            "Miniserver kann /prog/sps_new.zip liegen und beim nächsten Neustart "
-                            "geladen werden. Vor einem Neustart durch den Errichter prüfen lassen.")
-            else:
-                self.notify("Automatic UDP setup failed. Check FTP access, program format and backup "
-                            "storage. Failed activation attempts are blocked from automatic repetition. "
-                            "/ Automatische UDP-Einrichtung fehlgeschlagen. Bitte FTP-Zugang, "
-                            "Programmformat und Speicherplatz für die Sicherung prüfen. "
-                            "Fehlgeschlagene Aktivierungsversuche werden nicht automatisch wiederholt.")
+            data = restore_failure(getattr(err, "udp_failure", None)) or failure(self.status.get("step"), err)
+            self.set_error(data)
+            backup = getattr(err, "udp_backup", None)
+            if backup:
+                self.status.update(backup=backup, backup_verified=True)
+            self.status["error_persisted"] = getattr(err, "udp_error_persisted", None)
+            self.status["error_attempt"] = getattr(err, "udp_attempt", None)
+            if previous_attempt != self.status["error_attempt"]:
+                for key in ("cleanup_warning", "activation_error"):
+                    self.archive_detail(key)
+            warning = restore_failure(getattr(err, "udp_cleanup_warning", None))
+            if warning:
+                self.status["cleanup_warning"] = warning
+            activation_error = restore_failure(getattr(err, "udp_activation_error", None))
+            if activation_error:
+                self.status["activation_error"] = activation_error
+                _LOGGER.warning("Loxone UDP original activation failure: code=%s step=%s exception=%s",
+                                activation_error["code"], activation_error["step"], activation_error["exception_type"])
+            _LOGGER.warning("Loxone automatic UDP setup failed: code=%s step=%s exception=%s; %s Next check: %s",
+                            data["code"], data["step"], data["exception_type"], data["description"], data["next_check"])
+            message = notification(data, self.language)
+            if self.status["error_persisted"] is False:
+                _LOGGER.warning("Loxone UDP error details could not be persisted; the existing activation guard remains unchanged")
+                message += ("\n\nFehlerdetails konnten nicht dauerhaft gespeichert werden; die vorhandene Aktivierungssperre bleibt bestehen."
+                            if self.language.startswith("de") else "\n\nError details could not be persisted; the existing activation guard remains in place.")
+            self.notify(message)
+        finally:
+            active = False
+
+    @property
+    def language(self):
+        return getattr(self.hass.config, "language", "en") or "en"
+
+    def set_error(self, data):
+        self.status.update(error=data, error_code=data["code"], error_step=data["step"],
+                           error_timestamp=data["timestamp"], step=data["step"])
+
+    def archive_detail(self, key):
+        data = self.status.pop(key, None)
+        if data:
+            self.status["last_" + key] = dict(data, historical=True)
 
     def notify(self, message):
+        if self.status.get("activation_error"):
+            data = self.status["activation_error"]
+            label = "Ursprünglicher Aktivierungsfehler" if self.language.startswith("de") else "Original activation error"
+            description, check = details(data, "de" if self.language.startswith("de") else "en")
+            message += f"\n\n{label}: {data['code']} ({data['exception_type']})\n\n{description}\n\n{check}"
+        if self.status.get("cleanup_warning"):
+            message += "\n\n" + details(self.status["cleanup_warning"], "de" if self.language.startswith("de") else "en")[0]
+        if self.status.get("backup_verified"):
+            label = "Verifizierte Sicherung" if self.language.startswith("de") else "Verified backup"
+            location = self.status["backup"]
+        else:
+            label = "Vorgesehener Sicherungsort (noch nicht verifiziert)" if self.language.startswith("de") else "Intended backup location (not yet verified)"
+            location = self.directory
         persistent_notification.async_create(
-            self.hass, message + "\n\nBackup folder / Sicherungsordner: `" + self.directory + "`",
+            self.hass, message + f"\n\n{label}: `{location}`",
             title="Loxone UDP setup / Einrichtung", notification_id="loxone_udp_" + self.entry.entry_id,
         )
 

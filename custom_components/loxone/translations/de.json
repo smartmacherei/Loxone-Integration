@@ -17,9 +17,25 @@
           "generate_scenes_delay": "Verzögerung beim erstellen der Scenen (wenn aktiviert)",
           "auto_discovery": "Physische Klemmen automatisch entdecken (ohne Visu-Häkchen)",
           "udp_port": "UDP-Port für Echtzeitwerte der entdeckten Klemmen (Logger-Adresse im Miniserver: /dev/udp/<HA-IP>/<Port>; 0 = aus)",
-          "auto_configure_udp": "UDP-Echtzeit automatisch einrichten (sichert und ?ndert das Miniserver-Programm; startet die Logik kurz neu)"
+          "auto_configure_udp": "UDP-Echtzeit automatisch einrichten (sichert und ändert das Miniserver-Programm; startet die Logik kurz neu)",
+          "edit_room_mapping": "Loxone-Räume bestehenden HA-Bereichen zuordnen (optional)"
+        }
+      },
+      "room_mapping": {
+        "title": "Räume zuordnen",
+        "description": "Aktuelle Zuordnungen: {mappings}\n\nWähle einen Loxone-Raum und einen bestehenden Home-Assistant-Bereich. Für mehrere Räume „Weiteren Raum zuordnen“ aktivieren. Leere Felder überspringen diesen Schritt. Manuelle Bereichszuordnungen bleiben erhalten. Beim Entfernen einer Zuordnung bleibt die letzte Platzierung bestehen.",
+        "data": {
+          "room": "Loxone-Raum",
+          "area": "Home-Assistant-Bereich",
+          "remove_mapping": "Gewählte Raumzuordnung entfernen",
+          "map_another": "Weiteren Raum zuordnen"
         }
       }
+    },
+    "error": {
+      "room_fetch_failed": "Räume konnten nicht geladen werden. Verbindung und Loxone-Zugriff prüfen oder die optionale Raumzuordnung überspringen.",
+      "invalid_room": "Bitte einen verfügbaren Loxone-Raum auswählen.",
+      "invalid_area": "Bitte einen vorhandenen Home-Assistant-Bereich auswählen."
     }
   },
   "options": {
@@ -35,11 +51,27 @@
           "generate_scenes_delay": "Verzögerung beim erstellen der Scenen (wenn aktiviert)",
           "auto_discovery": "Physische Klemmen automatisch entdecken (ohne Visu-Häkchen)",
           "udp_port": "UDP-Port für Echtzeitwerte der entdeckten Klemmen (Logger-Adresse im Miniserver: /dev/udp/<HA-IP>/<Port>; 0 = aus)",
-          "auto_configure_udp": "UDP-Echtzeit automatisch einrichten (sichert und ?ndert das Miniserver-Programm; startet die Logik kurz neu)"
+          "auto_configure_udp": "UDP-Echtzeit automatisch einrichten (sichert und ändert das Miniserver-Programm; startet die Logik kurz neu)",
+          "edit_room_mapping": "Loxone-Räume bestehenden HA-Bereichen zuordnen (optional)"
         },
         "description": "Miniserver-Verbindung und Echtzeitaktualisierung konfigurieren.",
         "title": "Loxone (smartmacherei)"
+      },
+      "room_mapping": {
+        "title": "Räume zuordnen",
+        "description": "Aktuelle Zuordnungen: {mappings}\n\nWähle einen Loxone-Raum und einen bestehenden Home-Assistant-Bereich. Für mehrere Räume „Weiteren Raum zuordnen“ aktivieren. Leere Felder überspringen diesen Schritt. Manuelle Bereichszuordnungen bleiben erhalten. Beim Entfernen einer Zuordnung bleibt die letzte Platzierung bestehen.",
+        "data": {
+          "room": "Loxone-Raum",
+          "area": "Home-Assistant-Bereich",
+          "remove_mapping": "Gewählte Raumzuordnung entfernen",
+          "map_another": "Weiteren Raum zuordnen"
+        }
       }
+    },
+    "error": {
+      "room_fetch_failed": "Räume konnten nicht geladen werden. Verbindung und Loxone-Zugriff prüfen oder die optionale Raumzuordnung überspringen.",
+      "invalid_room": "Bitte einen verfügbaren Loxone-Raum auswählen.",
+      "invalid_area": "Bitte einen vorhandenen Home-Assistant-Bereich auswählen."
     }
   },
   "services": {
@@ -105,18 +137,18 @@
       "udp_status": {
         "name": "UDP-Status",
         "state": {
-          "checking": "Wird gepr?ft",
+          "checking": "Wird geprüft",
           "configured": "Konfiguriert",
           "blocked": "Aktivierung gesperrt",
           "restarting": "Miniserver startet neu",
           "error": "Einrichtung fehlgeschlagen",
-          "disabled": "Deaktiviert oder nicht verf?gbar",
+          "disabled": "Deaktiviert oder nicht verfügbar",
           "manual": "Manuelle Einrichtung",
           "waiting_for_data": "Warte auf UDP-Daten",
-          "receiving": "Empf?ngt UDP-Daten",
+          "receiving": "Empfängt UDP-Daten",
           "idle": "Keine aktuellen UDP-Daten",
           "stopped": "Gestoppt",
-          "busy": "Eine andere Einrichtung l?uft"
+          "busy": "Eine andere Einrichtung läuft"
         }
       }
     }

@@ -18,6 +18,8 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
+from .udp_errors import coded_error, mark
+
 TITLE = "HA UDP (smartmacherei)"
 MAX_SIZE = 64 * 1024 * 1024
 
@@ -88,6 +90,7 @@ def encode(xml: bytes) -> bytes:
 
 def unpack(raw: bytes) -> tuple[str, bytes]:
     """Require a complete, intact program ZIP, never assemble from older files."""
+    mark("archive_check")
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         names = archive.namelist()
         members = [n for n in names if re.fullmatch(r"sps\d*\.LoxCC", n, re.I)]
@@ -99,7 +102,9 @@ def unpack(raw: bytes) -> tuple[str, bytes]:
             raise ValueError("Program ZIP exceeds size limit")
         if archive.testzip():
             raise ValueError("Program ZIP checksum mismatch")
-        xml = decode(archive.read(members[0]))
+        data = archive.read(members[0])
+        mark("program_format")
+        xml = decode(data)
         ET.fromstring(xml)
         return members[0], xml
 
@@ -139,6 +144,7 @@ def _append(text: str, object_id: str, fragment: str) -> str:
 
 def patch_xml(xml: bytes, target: str, selected: set[str]) -> tuple[bytes, dict]:
     """Add missing references; only replace deterministic, integration-owned objects."""
+    mark("program_prepare")
     try:
         from .signal_bindings import SignalBindings
     except ImportError:  # Standalone offline tools load this module without HA.
@@ -148,6 +154,7 @@ def patch_xml(xml: bytes, target: str, selected: set[str]) -> tuple[bytes, dict]
         spec.loader.exec_module(module)
         SignalBindings = module.SignalBindings
     bindings = SignalBindings(xml)
+    mark("program_format")
     root = ET.fromstring(xml)
     documents = [el for el in root.iter("C") if el.get("Type") == "Document"]
     if len(documents) != 1:
@@ -159,7 +166,9 @@ def patch_xml(xml: bytes, target: str, selected: set[str]) -> tuple[bytes, dict]
     programs = [el for el in root.iter("C") if el.get("Type") == "Program"]
     version = programs[0].get("V") if len(programs) == 1 else None
     if version not in {"175", "178"}:
-        raise ValueError("Program format has not been validated for automatic editing")
+        raise coded_error("PROGRAM_FORMAT_UNSUPPORTED", "Program format has not been validated for automatic editing", ValueError)
+
+    mark("program_prepare")
 
     def uid(label):
         value = uuid.uuid5(uuid.NAMESPACE_URL, doc_id + "/smartmacherei/udp/" + label).hex
@@ -334,6 +343,7 @@ def prepare(raw: bytes, target: str, selected: set[str]) -> tuple[bytes, dict]:
             output.writestr(info, content)
     result = buf.getvalue()
     unpack(result)
+    mark("program_prepare")
     return result, report
 
 
@@ -344,6 +354,7 @@ def backup(directory: str, source: str, raw: bytes) -> str:
     contain credentials and are deliberately outside the web-accessible www path.
     """
     _, xml = unpack(raw)
+    mark("backup_write")
     folder = Path(directory)
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)
     checksum = digest(raw)
@@ -354,19 +365,23 @@ def backup(directory: str, source: str, raw: bytes) -> str:
             handle.write(raw)
             handle.flush()
             os.fsync(handle.fileno())
+    mark("backup_verify")
     if digest(path.read_bytes()) != checksum:
-        raise OSError("Backup read-back checksum mismatch; upload blocked")
+        raise coded_error("BACKUP_CHECKSUM_MISMATCH", "Backup read-back checksum mismatch; upload blocked")
     # A customer can open this directly in Loxone Config even if HA no longer runs.
     project = path.with_suffix(".Loxone")
     project_data = b"\xef\xbb\xbf" + xml.removeprefix(b"\xef\xbb\xbf")
+    mark("backup_write")
     if not project.exists():
         with project.open("xb") as handle:
             os.chmod(project, 0o600)
             handle.write(project_data)
             handle.flush()
             os.fsync(handle.fileno())
+    mark("backup_verify")
     if project.read_bytes() != project_data:
-        raise OSError("Loxone Config project backup verification failed; upload blocked")
+        raise coded_error("BACKUP_CHECKSUM_MISMATCH", "Loxone Config project backup verification failed; upload blocked")
+    mark("backup_write")
     instructions = folder / "RESTORE.txt"
     if not instructions.exists():
         with instructions.open("x", encoding="utf-8") as handle:
@@ -402,9 +417,10 @@ def backup(directory: str, source: str, raw: bytes) -> str:
                        "created_utc": dt.datetime.now(dt.timezone.utc).isoformat()}, handle, indent=2)
             handle.flush()
             os.fsync(handle.fileno())
+    mark("backup_verify")
     saved = json.loads(metadata.read_text(encoding="utf-8"))
     if saved.get("sha256") != checksum or saved.get("bytes") != len(raw):
-        raise OSError("Backup metadata verification failed; upload blocked")
+        raise coded_error("BACKUP_CHECKSUM_MISMATCH", "Backup metadata verification failed; upload blocked")
     if os.name != "nt":
         descriptor = os.open(folder, os.O_RDONLY)
         try:

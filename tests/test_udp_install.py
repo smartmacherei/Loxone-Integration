@@ -358,3 +358,46 @@ def test_unverified_cleanup_is_reported(tmp_path):
         run(client)
     assert "sps_new.zip" in client.files
     assert run(client)["state"] == "blocked"
+
+
+@pytest.mark.parametrize("failure,step,code", [
+    ("download", "program_download", "PROGRAM_DOWNLOAD_TIMEOUT"),
+    ("archive", "archive_check", "ARCHIVE_CHECK_FAILED"),
+    ("format", "program_format", "PROGRAM_FORMAT_UNSUPPORTED"),
+    ("destination", "udp_destination", "UDP_DESTINATION_FAILED"),
+    ("corrupt", "upload_verify", "UPLOAD_SIZE_MISMATCH"),
+    ("changed", "activation_verify", "SOURCE_PROGRAM_CHANGED"),
+    ("restart_fails", "program_activate", "PROGRAM_ACTIVATE_FAILED"),
+])
+def test_failure_identifies_step_without_exposing_exception(tmp_path, failure, step, code):
+    client = FakeClient(tmp_path)
+    secret = "password=SECRET Authorization: Bearer TOKEN <project>PRIVATE</project>"
+    def fail_download(): raise TimeoutError(secret)
+    def fail_destination(port): raise RuntimeError(secret)
+    if failure == "download": client.current = fail_download
+    elif failure == "archive": client.raw = b"not a zip"
+    elif failure == "format": client.raw = archive(XML.replace(b'V="178"', b'V="999"'))
+    elif failure == "destination": client.destination = fail_destination
+    else: setattr(client, failure, True)
+    with pytest.raises(Exception) as caught:
+        run(client)
+    data = getattr(caught.value, "udp_failure", {})
+    assert data.get("step") == step
+    assert data.get("code") == code
+    assert data.get("exception_type")
+    assert data.get("timestamp")
+    assert data.get("description") and data.get("next_check")
+    assert "SECRET" not in json.dumps(data) and "TOKEN" not in json.dumps(data)
+
+
+def test_blocked_retry_restores_original_error_from_disk(tmp_path):
+    client = FakeClient(tmp_path)
+    client.corrupt = True
+    with pytest.raises(OSError) as caught: run(client)
+    original_error = getattr(caught.value, "udp_failure", {})
+    assert original_error.get("code") == "UPLOAD_SIZE_MISMATCH"
+    restarted = FakeClient(tmp_path)
+    result = run(restarted)
+    assert result["error"] == original_error
+    assert result["backup_verified"] is True
+    assert restarted.events == []

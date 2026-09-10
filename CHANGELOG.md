@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.0] - 2026-09-10
+
+- Add optional Loxone room-to-Home Assistant area mapping during setup and in
+  integration options. Store stable IDs, preserve manual assignments, and map
+  shared multiroom hardware through entity areas. Removing a mapping retains
+  the last placement. Room mapping does not modify the Miniserver program.
+- Report automatic UDP setup failures by stage with stable error codes, safe
+  German/English explanations and targeted checks. Expose current and historical
+  errors in status attributes and diagnostics; retain original errors across
+  blocked retries and clear current errors after verified recovery.
+- Distinguish setup progress from UDP reception and planned from verified backups.
+  Preserve all upload, activation and retry safeguards. Exclude raw project data
+  and unsafe exception/server text from diagnostics.
+
 ## [1.3.6] - 2026-09-09
 
 - Fix double removal of startup/shutdown event listeners during integration

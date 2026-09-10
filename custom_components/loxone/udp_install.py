@@ -12,6 +12,7 @@ import threading
 import uuid
 
 from .udp_program import MAX_SIZE, backup, digest, newest_archive, prepare, unpack
+from .udp_errors import TRACE, SetupTrace, coded_error, failure, mark, restore_failure
 
 _LOCKS: dict[str, threading.Lock] = {}
 _LOCKS_GUARD = threading.Lock()
@@ -19,6 +20,7 @@ _LOCKS_GUARD = threading.Lock()
 
 class ActivationUncertainError(OSError):
     """A staged program may still be waiting for a future Miniserver restart."""
+    udp_code = "ACTIVATION_CLEANUP_UNCONFIRMED"
 
 
 class ProgramClient:
@@ -60,20 +62,26 @@ class ProgramClient:
     def ftp(self):
         # Prefer FTPS as supported by Miniserver Gen 2. Fall back only when AUTH
         # TLS is explicitly unsupported, not after a failed login or TLS session.
+        mark("ftp_connect")
         ftp = ftplib.FTP_TLS(timeout=30, source_address=self.source_address)
         try:
             ftp.connect(self.host, 21)
+            mark("ftp_tls")
             try:
                 ftp.auth()
             except ftplib.error_perm as err:
                 if not str(err).startswith(("500", "502", "504")):
                     raise
                 ftp.close()
+                mark("ftp_connect")
                 ftp = ftplib.FTP(timeout=30, source_address=self.source_address)
                 ftp.connect(self.host, 21)
+            mark("ftp_login")
             ftp.login(self.username, self.password)
             if isinstance(ftp, ftplib.FTP_TLS):
+                mark("ftp_tls")
                 ftp.prot_p()
+            mark("upload")
             ftp.cwd("/prog")
             return ftp
         except BaseException:
@@ -97,14 +105,38 @@ def _write_journal(path: Path, value: dict):
             os.close(descriptor)
 
 
-def install(client, directory, udp_port, select, stop: threading.Event):
+def install(client, directory, udp_port, select, stop: threading.Event, progress=None):
     with _LOCKS_GUARD:
         lock = _LOCKS.setdefault(directory, threading.Lock())
     if not lock.acquire(blocking=False):
         return {"state": "busy"}
+    trace = SetupTrace(progress)
+    token = TRACE.set(trace)
     try:
         return _install(client, directory, udp_port, select, stop)
+    except Exception as error:
+        data = failure(trace.step, error)
+        error.udp_failure = data
+        error.udp_backup = trace.backup
+        error.udp_attempt = trace.attempt
+        error.udp_cleanup_warning = trace.cleanup_warning
+        error.udp_activation_error = trace.activation_error if isinstance(error, ActivationUncertainError) else None
+        # Only enrich an existing guard. Never create/unlock/retry an attempt here.
+        if trace.journal_path is not None and trace.journal is not None:
+            trace.journal["error"] = data
+            if trace.cleanup_warning:
+                trace.journal["cleanup_warning"] = trace.cleanup_warning
+            if error.udp_activation_error:
+                trace.journal["activation_error"] = error.udp_activation_error
+            try:
+                _write_journal(trace.journal_path, trace.journal)
+            except Exception:
+                error.udp_error_persisted = False
+            else:
+                error.udp_error_persisted = True
+        raise
     finally:
+        TRACE.reset(token)
         lock.release()
 
 
@@ -114,76 +146,108 @@ def _install(client, directory, udp_port, select, stop: threading.Event):
     A failed/uncertain activation stays blocked across HA restarts. A new program
     has a new hash and is evaluated again. No automatic rollback/restart loop.
     """
+    mark("program_download")
     name, original = client.current()
     _, xml = unpack(original)
+    mark("udp_destination")
     target = client.destination(udp_port)
+    mark("program_prepare")
     candidate, report = prepare(original, target, select(original, xml))
     report.update(source_sha256=digest(original), xml_sha256=digest(xml))
     if candidate == original:
         return dict(report, state="configured")
+    mark("backup_write")
     backup_path = backup(directory, name, original)
+    trace = TRACE.get()
+    trace.backup = backup_path
+    mark("activation_verify")
     # Store next to the backup so integration removal/reinstallation preserves it.
     journal_path = Path(directory) / "activation.json"
     journal = json.loads(journal_path.read_text()) if journal_path.exists() else {}
     attempt = digest(original + target.encode())
+    trace.attempt = attempt
     if journal.get("attempt") == attempt:
-        return dict(report, state="blocked", backup=backup_path)
+        data = restore_failure(journal.get("error"))
+        if data is None:
+            code = "ACTIVATION_UNCONFIRMED" if journal.get("state") == "activation_requested" else "PREVIOUS_ATTEMPT_BLOCKED"
+            data = failure("activation_verify", code=code)
+            # No historical timestamp is invented for legacy journals.
+            data["timestamp"] = None
+        return dict(report, state="blocked", backup=backup_path, backup_verified=True, error=data,
+                    error_attempt=attempt, cleanup_warning=restore_failure(journal.get("cleanup_warning")),
+                    activation_error=restore_failure(journal.get("activation_error")))
     if stop.is_set():
-        return dict(report, state="stopped", backup=backup_path)
+        return dict(report, state="stopped", backup=backup_path, backup_verified=True)
     _, expected_xml = unpack(candidate)
     journal = {"attempt": attempt, "backup": backup_path,
                "expected_xml_sha256": digest(expected_xml), "state": "pending"}
+    mark("backup_write")
     _write_journal(journal_path, journal)
+    trace.journal_path, trace.journal = journal_path, journal
     temporary = "ha_udp_" + uuid.uuid4().hex + ".tmp"
     staged = False
+    renamed = False
+    mark("ftp_connect")
     with client.ftp() as ftp:
         try:
+            mark("upload")
             if any(Path(item).name.lower().startswith("sps_new.") for item in ftp.nlst()):
-                raise OSError("Another program upload is pending; automatic setup blocked")
+                raise coded_error("PROGRAM_UPLOAD_PENDING", "Another program upload is pending; automatic setup blocked")
             ftp.storbinary("STOR " + temporary, io.BytesIO(candidate))
+            mark("upload_verify")
             received = bytearray()
 
             def receive(chunk):
                 received.extend(chunk)
                 if len(received) > len(candidate):
-                    raise OSError("Uploaded archive exceeds expected size")
+                    raise coded_error("UPLOAD_SIZE_MISMATCH", "Uploaded archive exceeds expected size")
 
             ftp.retrbinary("RETR " + temporary, receive)
             if digest(bytes(received)) != digest(candidate):
-                raise OSError("FTP read-back checksum mismatch")
+                raise coded_error("UPLOAD_CHECKSUM_MISMATCH", "FTP read-back checksum mismatch")
             # Recheck the full source archive, not just its filename.
+            mark("activation_verify")
             current_name, current_raw = client.current()
             if current_name != name or current_raw != original:
-                raise OSError("Program changed during setup; upload not activated")
+                raise coded_error("SOURCE_PROGRAM_CHANGED", "Program changed during setup; upload not activated")
             if stop.is_set():
-                raise OSError("Integration unloading; upload not activated")
+                raise coded_error("SETUP_STOPPED", "Integration unloading; upload not activated")
             if any(Path(item).name.lower().startswith("sps_new.") for item in ftp.nlst()):
-                raise OSError("Another program upload is pending")
+                raise coded_error("PROGRAM_UPLOAD_PENDING", "Another program upload is pending")
+            mark("program_activate")
             ftp.rename(temporary, "sps_new.zip")
+            renamed = True
             staged = True
             answer = json.loads(client.get("/jdev/sps/restart"))
             if str(answer.get("LL", {}).get("Code")) != "200":
-                raise OSError("Miniserver did not confirm program restart")
+                raise coded_error("ACTIVATION_REJECTED", "Miniserver did not confirm program restart")
             staged = False  # Activation acknowledged; never delete somebody else's next upload.
             journal["state"] = "activation_requested"
+            mark("activation_verify")
             _write_journal(journal_path, journal)
         except BaseException as original_error:
             if staged:
+                trace.activation_error = failure(trace.step, original_error)
                 # An unactivated sps_new.zip would otherwise load on a later reboot.
                 try:
                     pending = bytearray()
                     ftp.retrbinary("RETR sps_new.zip", pending.extend)
                     if bytes(pending) == candidate:
                         ftp.delete("sps_new.zip")
-                except ftplib.error_perm as err:
-                    if not str(err).startswith("550"):
-                        raise ActivationUncertainError("Pending upload cleanup could not be verified") from original_error
+                    else:
+                        raise ActivationUncertainError("Pending upload cleanup could not be verified")
                 except Exception:
+                    # Even FTP 550 may mean denied access, not an absent file.
+                    # Keep the same cleanup operations, but report uncertainty.
                     raise ActivationUncertainError("Pending upload cleanup could not be verified") from original_error
             raise
         finally:
             try:
                 ftp.delete(temporary)
-            except Exception:
-                pass
-    return dict(report, state="restarting", backup=backup_path)
+            except Exception as cleanup_error:
+                # Rename already removed our temporary pathname on success.
+                # Otherwise report uncertainty without another remote operation.
+                if not renamed:
+                    trace.cleanup_warning = failure("upload_verify", cleanup_error,
+                                                    code="TEMPORARY_CLEANUP_UNCONFIRMED")
+    return dict(report, state="restarting", step="activation_verify", backup=backup_path, backup_verified=True)
