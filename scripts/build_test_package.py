@@ -13,6 +13,7 @@ def build():
              if p.is_file() and p.suffix in {".py", ".json", ".yaml", ".yml"}
              and "tests" not in p.parts and "__pycache__" not in p.parts]
     files += [ROOT / name for name in ("README.md", "README.de.md", "CHANGELOG.md", "LICENSE", "NOTICE")]
+    files += [ROOT / "scripts" / "extract_program_archive.py"]
     files += [ROOT / "docs" / name for name in (
         "automatic-udp.md", "automatic-udp.de.md", "device-coverage.md", "device-coverage.de.md",
         "room-mapping.md", "udp-setup-diagnostics.md", "connection-diagnostics.md")]

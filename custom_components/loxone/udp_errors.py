@@ -146,6 +146,7 @@ class SetupTrace:
         self.attempt = None
         self.cleanup_warning = None
         self.activation_error = None
+        self.source_program = None
 
     def mark(self, step):
         self.step = step

@@ -76,6 +76,29 @@ Die Sprache richtet sich nach der HA-Konfigurationssprache (Deutsch, sonst Engli
 
 ## Lokale Prüfung
 
+### Programmarchiv im Support-Download (ab 1.4.6)
+
+Bei aktiver automatischer UDP-Einrichtung enthält `program_archive` das
+unveränderte Archiv als `data_base64`, Größe, SHA-256 und Prüfergebnis. Bei einem
+Fehler werden dessen Bytes im Arbeitsspeicher gehalten. `matches_failed_attempt`
+zeigt, ob es genau diese Aufnahme ist. Ohne Fehleraufnahme (etwa direkt nach
+einem HA-Neustart) wird ausschließlich lesend neu heruntergeladen und dies als
+`read_only_download` gekennzeichnet. Der Download aktiviert kein Programm.
+
+Die vorhandene Abrufgrenze beträgt 64 MiB; Base64 benötigt etwa ein Drittel mehr
+Platz. Auch ungültige ZIP-Dateien werden unverändert beigefügt. Wenn kein Archiv
+abrufbar ist, bleibt die übrige Diagnose verfügbar und nennt den Abruffehler.
+Der Inhalt ist **nicht anonymisiert** und kann vertrauliche Projektinformationen
+enthalten. Er wird nicht in Logs oder Entitätsattribute übernommen.
+
+Der Support stellt die Datei lokal wieder her:
+
+```console
+python scripts/extract_program_archive.py diagnose.json kundenarchiv.zip
+```
+
+Das Werkzeug prüft Größe und SHA-256 und überschreibt keine bestehenden Dateien.
+
 Ab Version 1.4.5 unterscheidet die Archivprüfung folgende Fehler:
 
 | Fehlercode | Bestätigte Feststellung |

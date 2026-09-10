@@ -38,6 +38,8 @@ class UdpSetup:
         self.status = {"state": "checking", "step": "program_download",
                        "backup_verified": False, "backup_location": self.directory}
         self.cancel_interval = None
+        # Private support evidence: excluded from status, notifications and logs.
+        self.failed_program = None
 
     @staticmethod
     def select(raw, xml):
@@ -96,6 +98,7 @@ class UdpSetup:
                 self.set_error(data)
                 self.notify(notification(self.status["error"], self.language, blocked=True))
             elif result["state"] == "configured":
+                self.failed_program = None
                 for key in ("cleanup_warning", "activation_error"):
                     self.archive_detail(key)
                 if self.status.get("error"):
@@ -114,6 +117,8 @@ class UdpSetup:
             self.status["state"] = "error"
             data = restore_failure(getattr(err, "udp_failure", None)) or failure(self.status.get("step"), err)
             self.set_error(data)
+            source = getattr(err, "udp_source_program", None)
+            self.failed_program = (source, data["timestamp"]) if source is not None else None
             backup = getattr(err, "udp_backup", None)
             if backup:
                 self.status.update(backup=backup, backup_verified=True)
@@ -133,6 +138,9 @@ class UdpSetup:
             _LOGGER.warning("Loxone automatic UDP setup failed: code=%s step=%s exception=%s; %s Next check: %s",
                             data["code"], data["step"], data["exception_type"], data["description"], data["next_check"])
             message = notification(data, self.language)
+            message += ("\n\nFür Support: Diagnosedaten herunterladen. Der Download enthält das vollständige Programmarchiv, sofern abrufbar; bitte vertraulich weitergeben."
+                        if self.language.startswith("de") else
+                        "\n\nFor support: download diagnostics. The download includes the complete program archive when available; share privately.")
             if self.status["error_persisted"] is False:
                 _LOGGER.warning("Loxone UDP error details could not be persisted; the existing activation guard remains unchanged")
                 message += ("\n\nFehlerdetails konnten nicht dauerhaft gespeichert werden; die vorhandene Aktivierungssperre bleibt bestehen."

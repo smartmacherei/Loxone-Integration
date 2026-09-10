@@ -75,15 +75,20 @@ data:
 Nach der Aufzeichnung die drei Werte wieder auf `info` setzen. Damit werden
 gezielt die sicheren Diagnosemeldungen erfasst, ohne vollständige
 Protokollnachrichten der älteren API-Bibliothek einzuschalten.
-Der Diagnose-Download ist für die erste Analyse vorzuziehen: Er enthält keine
-vollständigen Projektdateien, Passwörter, Tokens oder rohen Serverantworten.
+Ab 1.4.6 enthält der Diagnose-Download bei aktiver automatischer UDP-Einrichtung
+das vollständige, nicht anonymisierte Programmarchiv. Darin können private
+Projekt- und Berechtigungsdaten stehen. Nur vertraulich an den Support
+weitergeben. Die separaten Statusfelder und Diagnose-Logger bleiben bereinigt.
 
 ## English
 
 Use the Miniserver device's **Check connection** diagnostic button or the
 `loxone.check_connection` action with an existing Loxone config entry. Results
 appear in a notification and the integration diagnostics download. The download
-itself does not run tests. Checks are read-only: configured HTTP(S) port, web
+does not run the connection test. Since 1.4.6 it includes the complete unredacted
+program archive when automatic UDP setup is active, using cached failed-attempt
+bytes or a new read-only download. Share this file privately with support.
+Connection checks are read-only: configured HTTP(S) port, web
 access, Loxone structure, FTP 21, TLS, login and directory listing/data channel.
 No write-permission test, uploads, restarts or retry unlocks are performed.
 UDP status is observed from the existing receiver. Missing packets do not prove

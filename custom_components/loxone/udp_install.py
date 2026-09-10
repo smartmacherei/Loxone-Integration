@@ -117,6 +117,7 @@ def install(client, directory, udp_port, select, stop: threading.Event, progress
     except Exception as error:
         data = failure(trace.step, error)
         error.udp_failure = data
+        error.udp_source_program = trace.source_program
         error.udp_backup = trace.backup
         error.udp_attempt = trace.attempt
         error.udp_cleanup_warning = trace.cleanup_warning
@@ -148,6 +149,7 @@ def _install(client, directory, udp_port, select, stop: threading.Event):
     """
     mark("program_download")
     name, original = client.current()
+    TRACE.get().source_program = original
     _, xml = unpack(original)
     mark("udp_destination")
     target = client.destination(udp_port)

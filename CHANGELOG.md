@@ -4,6 +4,24 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.6] - 2026-09-10
+
+- „Diagnosedaten herunterladen“ enthält bei aktiver automatischer UDP-Einrichtung
+  jetzt das vollständige Programmarchiv. Nach einem Fehler werden die originalen
+  Bytes des fehlgeschlagenen Versuchs beigefügt, selbst bei ungültigem ZIP. So
+  kann der Support die Archivprüfung lokal nachvollziehen.
+- Ohne gespeicherten Fehlerstand wird das aktuelle Archiv ausschließlich lesend
+  heruntergeladen und als neue Aufnahme gekennzeichnet. Größe, Zeitpunkt,
+  SHA-256-Prüfsumme und Prüfergebnis stehen neben den Base64-kodierten Daten.
+  Das bestehende Limit von 64 MiB bleibt erhalten; Abruffehler werden sicher
+  gemeldet und verhindern den übrigen Diagnose-Download nicht.
+- Dieser Support-Download enthält bewusst nicht anonymisierte Projektdaten und
+  darf nur vertraulich weitergegeben werden. Logs und Statusattribute enthalten
+  weiterhin keine Archivdaten. Keine zusätzlichen Uploads, Aktivierungen oder
+  Entsperrungen. Nach erfolgreicher Einrichtung wird der Fehlerstand verworfen.
+- Support-Werkzeug `scripts/extract_program_archive.py` stellt das Originalarchiv
+  aus der Diagnose-JSON wieder her und prüft Größe sowie Prüfsumme.
+
 ## [1.4.5] - 2026-09-10
 
 - Startfehler bei Loxone-Zählern behoben: Die gemeinsamen Geräteinformationen

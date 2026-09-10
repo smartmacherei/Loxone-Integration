@@ -126,6 +126,34 @@ def test_diagnostics_include_safe_setup_error_not_project(reporting, tmp_path):
     assert "TOPSECRET" not in json.dumps(result)
 
 
+def test_support_download_contains_exact_failed_bytes_and_no_second_read(reporting, tmp_path, caplog):
+    import base64
+    setup = manager(reporting, tmp_path)
+    raw = b"PRIVATE_CUSTOMER_ARCHIVE rejected ZIP"
+    setup.client.raw = raw
+    with caplog.at_level(logging.WARNING):
+        asyncio.run(setup.check())
+    setup.hass.data = {"loxone_udp_setup": {"demo": setup}}
+    def unexpected(): raise AssertionError("No re-download of rejected evidence")
+    setup.client.current = unexpected
+    result = asyncio.run(reporting.diagnostics.async_get_config_entry_diagnostics(setup.hass, setup.entry))
+    assert base64.b64decode(result["program_archive"]["data_base64"]) == raw
+    assert result["program_archive"]["matches_failed_attempt"] is True
+    assert "PRIVATE_CUSTOMER_ARCHIVE" not in caplog.text + str(reporting.messages) + json.dumps(setup.status)
+    assert setup.client.events == []
+
+
+def test_recovery_clears_cached_program_evidence(reporting, tmp_path):
+    setup = manager(reporting, tmp_path)
+    setup.client.raw = b"bad zip"
+    asyncio.run(setup.check())
+    assert setup.failed_program is not None
+    setup.client.raw = program.prepare(archive(), "/dev/udp/192.168.0.223/55555", {"18f7cbc0-017a-4c94-ffffa13734b4be2f"})[0]
+    asyncio.run(setup.check())
+    assert setup.status["state"] == "configured"
+    assert setup.failed_program is None
+
+
 @pytest.mark.parametrize("where,step,code", [("connect", "ftp_connect", "FTP_CONNECT_FAILED"), ("auth", "ftp_tls", "FTP_TLS_FAILED"), ("login", "ftp_login", "FTP_LOGIN_FAILED"), ("prot_p", "ftp_tls", "FTP_TLS_FAILED")])
 def test_real_ftp_client_reports_each_phase_without_retry(tmp_path, monkeypatch, where, step, code):
     events = []

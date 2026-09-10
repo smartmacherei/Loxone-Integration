@@ -47,6 +47,20 @@ class AreaMappingHATest(unittest.IsolatedAsyncioTestCase):
         handler.hass = self.hass
         return handler
 
+    async def test_diagnostic_download_includes_rejected_program_with_real_ha(self):
+        import base64
+        import json
+        from types import SimpleNamespace as NS
+        from custom_components.loxone import diagnostics as diag
+        raw = b"invalid ZIP support reproduction"
+        self.hass.data["loxone_udp_setup"] = {self.entry.entry_id: NS(
+            status={"state": "error"}, failed_program=(raw, "2026-09-10T14:00:00+00:00"))}
+        with patch.object(diag, "connection_diagnostics", AsyncMock(return_value={})), patch.object(diag, "startup_diagnostics", AsyncMock(return_value={})):
+            result = await diag.async_get_config_entry_diagnostics(self.hass, self.entry)
+        result = json.loads(json.dumps(result))
+        self.assertEqual(base64.b64decode(result["program_archive"]["data_base64"]), raw)
+        self.assertEqual(result["program_archive"]["validation"]["code"], "ARCHIVE_INVALID_ZIP")
+
     async def test_meter_shared_device_info_does_not_set_read_only_property(self):
         from custom_components.loxone.sensor import LoxoneMeterSensor
         info = {"identifiers": {("loxone", "parent-meter")}, "name": "Meter"}

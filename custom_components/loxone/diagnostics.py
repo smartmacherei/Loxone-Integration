@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 from .connection_diagnostics import diagnostics as connection_diagnostics
 from .startup_trace import diagnostics as startup_diagnostics
+from .program_evidence import collect as collect_program_evidence
 
 
 async def async_get_config_entry_diagnostics(
@@ -22,8 +23,9 @@ async def async_get_config_entry_diagnostics(
     router = hass.data.get(DOMAIN + "_transport", {}).get(config_entry.entry_id)
     area_mapping = hass.data.get(DOMAIN + "_area_mapping", {}).get(config_entry.entry_id)
     return {
-        # Project/visualization data can include credentials and private content.
-        # Setup diagnostics require status, not the unfiltered project document.
+        # The explicit support download includes unredacted archive evidence.
+        # Keep it separate from safe status fields and never log this payload.
+        "program_archive": await hass.async_add_executor_job(collect_program_evidence, manager) if manager else {"state": "unavailable", "reason": "udp_setup_disabled"},
         "coordinator_available": coordinator is not None,
         "integration_startup": await startup_diagnostics(hass, config_entry),
         "connection": await connection_diagnostics(hass, config_entry),
