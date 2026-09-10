@@ -1,5 +1,6 @@
 """Bounded safe timeline for integration setup, including unexpected failures."""
 import logging
+from functools import wraps
 from .connection_probe import now
 from .udp_errors import SAFE_TYPES
 
@@ -39,6 +40,7 @@ async def tracked_setup(hass, entry, setup):
         result = await setup(hass, entry)
         if result:
             trace.update(state="completed", last_successful_step=trace["step"])
+            summarize_platforms(trace)
         else:
             trace.update(state="failed", error_code=trace["step"].upper() + "_FAILED")
         return result
@@ -61,6 +63,51 @@ async def tracked_setup(hass, entry, setup):
             await Store(hass, 1, KEY + "." + entry.entry_id).async_save(trace)
         except Exception:
             _LOGGER.warning("Loxone startup diagnostic history could not be saved")
+
+
+def summarize_platforms(trace):
+    failed = sorted(name for name, value in trace.get("platforms", {}).items() if value.get("state") == "failed")
+    if failed:
+        trace.update(state="partial", failed_platforms=failed, error_code="ENTITY_PLATFORMS_FAILED")
+        if trace.get("last_successful_step") == "entity_platforms":
+            trace["last_successful_step"] = "area_mapping"
+    elif trace.get("error_code") == "ENTITY_PLATFORMS_FAILED":
+        trace.pop("error_code", None)
+        trace.pop("failed_platforms", None)
+        trace.update(state="completed", last_successful_step="entity_platforms")
+
+
+def tracked_platform(function):
+    """Observe platform setup exceptions even when HA catches them internally."""
+    platform = function.__module__.rsplit(".", 1)[-1]
+
+    @wraps(function)
+    async def wrapped(hass, entry, *args, **kwargs):
+        from homeassistant.helpers.storage import Store
+        trace = hass.data.setdefault(KEY, {}).setdefault(entry.entry_id, {"events": []})
+        record = {"state": "running", "timestamp": now()}
+        trace.setdefault("platforms", {})[platform] = record
+        try:
+            result = await function(hass, entry, *args, **kwargs)
+            record["state"] = "failed" if result is False else "completed"
+            if result is False:
+                record["error_code"] = "PLATFORM_SETUP_FAILED"
+            return result
+        except Exception as error:
+            name = type(error).__name__
+            record.update(state="failed", error_code="PLATFORM_SETUP_FAILED",
+                          exception_type=name if name in SAFE_TYPES else "Exception")
+            _LOGGER.error("Loxone entity platform failed: platform=%s type=%s", platform, record["exception_type"])
+            raise
+        finally:
+            record["timestamp"] = now()
+            if trace.get("state") in {"completed", "partial"}:
+                summarize_platforms(trace)
+                try:
+                    await Store(hass, 1, KEY + "." + entry.entry_id).async_save(trace)
+                except Exception:
+                    _LOGGER.warning("Loxone platform diagnostic history could not be saved")
+    return wrapped
 
 
 async def diagnostics(hass, entry):

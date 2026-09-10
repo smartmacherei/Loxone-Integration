@@ -32,6 +32,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt as dt_util
 
+from .startup_trace import tracked_platform
 from . import LoxoneEntity, MiniServer
 from .const import CONF_ACTIONID, DOMAIN, SENDDOMAIN, THROTTLE_KEEP_ALIVE_TIME
 from .helpers import (add_room_and_cat_to_value_values, clean_unit, get_all,
@@ -217,6 +218,7 @@ async def async_setup_platform(
         async_add_devices([new_sensor], update_before_add=True)
 
 
+@tracked_platform
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -254,7 +256,7 @@ async def async_setup_entry(
         entities.append(LoxoneTextSensor(**sensor))
 
     for sensor in get_all(loxconfig, "Meter"):
-        _LOGGER.info("Found Meter: %s", sensor)
+        _LOGGER.debug("Found Loxone meter")
         sensor = add_room_and_cat_to_value_values(loxconfig, sensor)
         device_info = LoxoneMeterSensor.create_device_info_from_sensor(sensor)
 
@@ -565,8 +567,9 @@ class LoxoneSensor(LoxoneEntity, SensorEntity):
 
 class LoxoneMeterSensor(LoxoneSensor, SensorEntity):
     def __init__(self, **kwargs):
+        # device_info is a read-only HA property, not a dynamic Loxone field.
+        device_info = kwargs.pop("device_info", None)
         super().__init__(**kwargs)
-        device_info = kwargs.get("device_info")
         if device_info:
             self._attr_device_info = device_info
 

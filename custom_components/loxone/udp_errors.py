@@ -25,6 +25,13 @@ STEPS = {
 
 # Explicit internal conditions, never inferred by matching an exception message.
 REASONS = {
+    "ARCHIVE_INVALID_ZIP": ("Die heruntergeladene Datei ist kein lesbares ZIP-Archiv.", "The downloaded file is not a readable ZIP archive."),
+    "ARCHIVE_DUPLICATE_ENTRIES": ("Das ZIP enthält mehrfach vorhandene Dateieinträge; eine sichere Zuordnung ist nicht möglich.", "The ZIP contains duplicate file entries; safe selection is not possible."),
+    "ARCHIVE_PROGRAM_MISSING": ("Im ZIP wurde keine erwartete sps-Programmdatei gefunden.", "The ZIP contains no expected sps program file."),
+    "ARCHIVE_MULTIPLE_PROGRAMS": ("Das ZIP enthält mehrere sps-Programmdateien. Die automatische Einrichtung unterstützt hier nur genau eine; eine Master-/Client-Zuordnung ist nicht bestätigt.", "The ZIP contains multiple sps program files. Automatic setup currently requires exactly one; master/client ownership is unconfirmed."),
+    "ARCHIVE_REQUIRED_FILES_MISSING": ("Im ZIP fehlen Begleitdateien, die unsere Sicherheitsprüfung voraussetzt. Das beweist kein beschädigtes Kundenprojekt; der Archivaufbau kann abweichen.", "The ZIP lacks companion files required by our safety check. This does not prove project corruption; the archive layout may differ."),
+    "ARCHIVE_SIZE_LIMIT": ("Die entpackte Gesamtgröße überschreitet das Sicherheitslimit von 64 MiB.", "The total uncompressed size exceeds the 64 MiB safety limit."),
+    "ARCHIVE_CHECKSUM_MISMATCH": ("Die ZIP-Integritätsprüfung meldet einen beschädigten Dateieintrag.", "The ZIP integrity check reports a corrupt file entry."),
     "PROGRAM_FORMAT_UNSUPPORTED": ("Das Programmformat ist für automatische Bearbeitung nicht freigegeben.", "The program format is not approved for automatic editing."),
     "UPLOAD_SIZE_MISMATCH": ("Das zurückgelesene Archiv überschreitet die erwartete Größe.", "The archive read back exceeds the expected size."),
     "UPLOAD_CHECKSUM_MISMATCH": ("Die Prüfsumme des zurückgelesenen Uploads stimmt nicht überein.", "The uploaded archive's read-back checksum does not match."),
@@ -38,7 +45,7 @@ REASONS = {
     "PREVIOUS_ATTEMPT_BLOCKED": ("Ein früherer Versuch sperrt die Wiederholung; dessen Fehlerdetails sind nicht verfügbar.", "An earlier attempt blocks repetition; its error details are unavailable."),
     "TEMPORARY_CLEANUP_UNCONFIRMED": ("Die Bereinigung der temporären Upload-Datei ist unbestätigt. Temporäre ha_udp_*.tmp-Dateien in /prog durch den Errichter prüfen lassen.", "Cleanup of the temporary upload file is unconfirmed. Have the installer check temporary ha_udp_*.tmp files in /prog."),
 }
-SAFE_TYPES = frozenset({"Exception", "OSError", "ValueError", "RuntimeError", "TimeoutError", "ConnectionError", "ConnectionRefusedError", "ConnectionResetError", "ConnectionAbortedError", "BrokenPipeError", "PermissionError", "FileNotFoundError", "IsADirectoryError", "NotADirectoryError", "UnicodeDecodeError", "UnicodeEncodeError", "KeyError", "IndexError", "TypeError", "JSONDecodeError", "BadZipFile", "LargeZipFile", "ParseError", "error_perm", "error_temp", "error_reply", "error_proto", "SSLError", "SSLCertVerificationError", "SSLEOFError", "gaierror", "RemoteDisconnected", "IncompleteRead", "ActivationUncertainError"})
+SAFE_TYPES = frozenset({"Exception", "OSError", "ValueError", "RuntimeError", "TimeoutError", "ConnectionError", "ConnectionRefusedError", "ConnectionResetError", "ConnectionAbortedError", "BrokenPipeError", "PermissionError", "FileNotFoundError", "IsADirectoryError", "NotADirectoryError", "UnicodeDecodeError", "UnicodeEncodeError", "KeyError", "IndexError", "AttributeError", "TypeError", "JSONDecodeError", "BadZipFile", "LargeZipFile", "ParseError", "error_perm", "error_temp", "error_reply", "error_proto", "SSLError", "SSLCertVerificationError", "SSLEOFError", "gaierror", "RemoteDisconnected", "IncompleteRead", "ActivationUncertainError"})
 
 
 def utc_now():
@@ -62,6 +69,9 @@ def failure(step, error=None, *, code=None, timestamp=None):
         code = step.upper() + "_" + suffix
     name = type(error).__name__ if error is not None else "Exception"
     data = {"code": code, "step": step, "exception_type": name if name in SAFE_TYPES else "Exception", "timestamp": timestamp or utc_now()}
+    extra = safe_archive_details(getattr(error, "archive_details", None))
+    if extra:
+        data["archive_details"] = extra
     description, check = details(data, "en")
     return dict(data, description=description, next_check=check)
 
@@ -77,7 +87,25 @@ def details(data, language):
         description = "Das Betriebssystem meldet keinen verfügbaren Speicherplatz." if de else "The operating system reports no space left."
     else:
         description = "Der Schritt ist fehlgeschlagen; eine genauere Ursache ist nicht bestätigt." if de else "The step failed; a more specific cause is unconfirmed."
+    if step == "archive_check" and code.startswith("ARCHIVE_"):
+        extra = safe_archive_details(data.get("archive_details"))
+        missing = extra.get("missing_required_files", [])
+        if missing:
+            description += (" Fehlende Pflichtdateien: " if de else " Missing required files: ") + ", ".join(missing) + "."
+        return description, ("Archivaufbau anhand der Diagnosedaten prüfen; bei Master-/Client-Verbund die Programmzuordnung klären. Schutzprüfung nicht umgehen." if de else "Check archive layout using diagnostics; clarify program ownership in a master/client installation. Do not bypass the safety check.")
     return description, STEPS[step][2 if de else 3]
+
+
+def safe_archive_details(value):
+    """Only counts and known required names, never customer filenames/content."""
+    if not isinstance(value, dict):
+        return {}
+    result = {k: value[k] for k in ("entry_count", "program_file_count")
+              if type(value.get(k)) is int and 0 <= value[k] <= 1000000}
+    missing = value.get("missing_required_files")
+    if isinstance(missing, list):
+        result["missing_required_files"] = sorted({n for n in missing if isinstance(n, str) and n in {"LoxAPP3.json", "permissions.bin", "Emergency.LoxCC", "Music.json"}})
+    return result
 
 
 def restore_failure(value):
@@ -100,6 +128,9 @@ def restore_failure(value):
             return None
     name = value.get("exception_type")
     data = {"code": code, "step": step, "timestamp": timestamp, "exception_type": name if isinstance(name, str) and name in SAFE_TYPES else "Exception"}
+    extra = safe_archive_details(value.get("archive_details"))
+    if extra:
+        data["archive_details"] = extra
     description, check = details(data, "en")
     return dict(data, description=description, next_check=check)
 

@@ -18,6 +18,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt as dt_util
 
+from .startup_trace import tracked_platform
 from . import LoxoneEntity
 from .const import DOMAIN, SENDDOMAIN
 from .helpers import add_room_and_cat_to_value_values, get_all
@@ -36,6 +37,7 @@ async def async_setup_platform(
     return True
 
 
+@tracked_platform
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,

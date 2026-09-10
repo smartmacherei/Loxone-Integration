@@ -4,6 +4,25 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.5] - 2026-09-10
+
+- Startfehler bei Loxone-Zählern behoben: Die gemeinsamen Geräteinformationen
+  werden korrekt übernommen. Der Fehler konnte bisher die Einrichtung der
+  gesamten Sensorplattform abbrechen.
+- UDP-Fehler bei der Archivprüfung werden genauer erklärt: nicht lesbares ZIP,
+  fehlende oder mehrere Programmdateien, doppelte Einträge, fehlende
+  Begleitdateien, Größenlimit und fehlerhafte Prüfsumme haben eigene Fehlercodes.
+  Diagnosedaten nennen sichere Dateizähler und fehlende bekannte Pflichtdateien,
+  ohne Kundendateinamen oder Projektinhalte auszugeben.
+- Der Diagnose-Download zeigt fehlgeschlagene Entitätsplattformen einzeln.
+  Ein teilweise erfolgreicher Start wird als `partial` gekennzeichnet, auch wenn
+  Home Assistant den Plattformfehler intern abfängt. Nach erfolgreicher
+  Wiederherstellung wird dieser aktuelle Fehler bereinigt.
+- Die Sicherheitsprüfung des Archivs bleibt unverändert streng. Es werden keine
+  zusätzlichen Uploads oder Miniserver-Neustarts ausgelöst und keine gesperrten
+  Versuche automatisch freigegeben. Ein abweichender Archivaufbau wird nicht
+  pauschal als beschädigtes Kundenprojekt bezeichnet.
+
 ## [1.4.4] - 2026-09-10
 
 - Startfehler aus Kundenlogs behoben: Die Raumzuordnung verwendet ausdrücklich

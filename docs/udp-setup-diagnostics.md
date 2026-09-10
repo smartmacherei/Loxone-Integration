@@ -76,6 +76,33 @@ Die Sprache richtet sich nach der HA-Konfigurationssprache (Deutsch, sonst Engli
 
 ## Lokale Prüfung
 
+Ab Version 1.4.5 unterscheidet die Archivprüfung folgende Fehler:
+
+| Fehlercode | Bestätigte Feststellung |
+| --- | --- |
+| `ARCHIVE_INVALID_ZIP` | Die heruntergeladene Datei lässt sich nicht als ZIP öffnen. |
+| `ARCHIVE_PROGRAM_MISSING` | Keine erwartete sps-Programmdatei gefunden. |
+| `ARCHIVE_MULTIPLE_PROGRAMS` | Mehrere sps-Programmdateien gefunden; automatische Auswahl nicht unterstützt. |
+| `ARCHIVE_DUPLICATE_ENTRIES` | Dateieinträge kommen mehrfach vor. |
+| `ARCHIVE_REQUIRED_FILES_MISSING` | Von der Sicherheitsprüfung geforderte Begleitdateien fehlen. |
+| `ARCHIVE_SIZE_LIMIT` | Entpackte Gesamtgröße überschreitet 64 MiB. |
+| `ARCHIVE_CHECKSUM_MISMATCH` | Die ZIP-Integritätsprüfung hat einen beschädigten Eintrag gefunden. |
+
+`archive_details` enthält nur Dateizähler und gegebenenfalls fehlende Namen aus
+der festen Liste `LoxAPP3.json`, `permissions.bin`, `Emergency.LoxCC`, `Music.json`.
+Andere Dateinamen und Inhalte werden nicht übernommen. Fehlende Begleitdateien
+beweisen kein beschädigtes Kundenprojekt: Der Archivaufbau kann abweichen.
+Diese Fehler entstehen vor Sicherung, FTP-Anmeldung und Upload.
+
+Beispiel: **Schritt: Archiv prüfen · Fehler: ARCHIVE_REQUIRED_FILES_MISSING ·
+Fehlende Pflichtdateien: Music.json.**
+
+English: **Step: Check archive · Error: ARCHIVE_MULTIPLE_PROGRAMS · The ZIP
+contains multiple sps program files. Automatic setup currently requires exactly
+one; master/client ownership is unconfirmed.**
+
+### Tests
+
 `python -m pytest tests -q`
 
 Die Tests verwenden künstliche Projektarchive und simulierte Netzwerkgrenzen.

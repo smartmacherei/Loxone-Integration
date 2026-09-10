@@ -20,6 +20,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
+from .startup_trace import tracked_platform
 from . import LoxoneEntity
 from .const import (SENDDOMAIN, SERVICE_DISABLE_SUN_AUTOMATION,
                     SERVICE_ENABLE_SUN_AUTOMATION, SERVICE_QUICK_SHADE,
@@ -43,6 +44,7 @@ async def async_setup_platform(
     return True
 
 
+@tracked_platform
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,

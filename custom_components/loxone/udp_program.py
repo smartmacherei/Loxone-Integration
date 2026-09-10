@@ -91,17 +91,30 @@ def encode(xml: bytes) -> bytes:
 def unpack(raw: bytes) -> tuple[str, bytes]:
     """Require a complete, intact program ZIP, never assemble from older files."""
     mark("archive_check")
-    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(raw))
+    except zipfile.BadZipFile:
+        raise coded_error("ARCHIVE_INVALID_ZIP", "Invalid program ZIP", ValueError) from None
+    with archive:
         names = archive.namelist()
         members = [n for n in names if re.fullmatch(r"sps\d*\.LoxCC", n, re.I)]
-        if len(names) != len(set(names)) or len(members) != 1:
-            raise ValueError("Ambiguous program ZIP")
+        def reject(code, message):
+            error = coded_error(code, message, ValueError)
+            error.archive_details = {"entry_count": len(names), "program_file_count": len(members),
+                "missing_required_files": sorted({"LoxAPP3.json", "permissions.bin", "Emergency.LoxCC", "Music.json"} - set(names))}
+            raise error
+        if len(names) != len(set(names)):
+            reject("ARCHIVE_DUPLICATE_ENTRIES", "Ambiguous program ZIP: duplicate entries")
+        if not members:
+            reject("ARCHIVE_PROGRAM_MISSING", "Ambiguous program ZIP: missing program file")
+        if len(members) > 1:
+            reject("ARCHIVE_MULTIPLE_PROGRAMS", "Ambiguous program ZIP: multiple program files")
         if not {"LoxAPP3.json", "permissions.bin", "Emergency.LoxCC", "Music.json"} <= set(names):
-            raise ValueError("Incomplete program ZIP; save the project with Loxone Config first")
+            reject("ARCHIVE_REQUIRED_FILES_MISSING", "Incomplete program ZIP; save the project with Loxone Config first")
         if sum(info.file_size for info in archive.infolist()) > MAX_SIZE:
-            raise ValueError("Program ZIP exceeds size limit")
+            reject("ARCHIVE_SIZE_LIMIT", "Program ZIP exceeds size limit")
         if archive.testzip():
-            raise ValueError("Program ZIP checksum mismatch")
+            reject("ARCHIVE_CHECKSUM_MISMATCH", "Program ZIP checksum mismatch")
         data = archive.read(members[0])
         mark("program_format")
         xml = decode(data)

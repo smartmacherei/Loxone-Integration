@@ -49,6 +49,14 @@ gespeichert. Ein erfolgreich abgeschlossener neuer Start ersetzt den aktuellen
 Fehler. Aus dem Speicher geladene ältere Startdaten tragen `historical: true`.
 
 `connection.current` zeigt den aktuellen WebSocket- und UDP-Zustand.
+Ab Version 1.4.5 enthält `integration_startup.platforms` zusätzlich den Status
+der einzelnen Entitätsplattformen, zum Beispiel `sensor`. Ein abgefangener
+Plattformfehler führt zu `state: partial`, `ENTITY_PLATFORMS_FAILED` und einer
+Liste `failed_platforms`. Der Plattformdatensatz nennt Fehlercode, sicheren
+Exception-Typ und Zeitpunkt. Ein erfolgreicher erneuter Plattformstart bereinigt
+diesen aktuellen Fehler. Das bestätigt die Einrichtung der Plattform, nicht die
+Erreichbarkeit jedes angeschlossenen Geräts.
+
 `connection.last_explicit_check` enthält die letzte bewusste Verbindungsprüfung;
 deren Resultat kann älter als der aktuelle Zustand sein. `udp_setup.step_history`
 enthält bis zu 50 Schrittwechsel des aktuellen UDP-Einrichtungsversuchs.

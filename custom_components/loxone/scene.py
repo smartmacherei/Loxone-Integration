@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
+from .startup_trace import tracked_platform
 from .const import (CONF_SCENE_GEN, CONF_SCENE_GEN_DELAY, DEFAULT_DELAY_SCENE,
                     DOMAIN, SENDDOMAIN)
 
@@ -29,6 +30,7 @@ async def async_setup_platform(
     return True
 
 
+@tracked_platform
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,

@@ -362,7 +362,7 @@ def test_unverified_cleanup_is_reported(tmp_path):
 
 @pytest.mark.parametrize("failure,step,code", [
     ("download", "program_download", "PROGRAM_DOWNLOAD_TIMEOUT"),
-    ("archive", "archive_check", "ARCHIVE_CHECK_FAILED"),
+    ("archive", "archive_check", "ARCHIVE_INVALID_ZIP"),
     ("format", "program_format", "PROGRAM_FORMAT_UNSUPPORTED"),
     ("destination", "udp_destination", "UDP_DESTINATION_FAILED"),
     ("corrupt", "upload_verify", "UPLOAD_SIZE_MISMATCH"),

@@ -47,6 +47,38 @@ class AreaMappingHATest(unittest.IsolatedAsyncioTestCase):
         handler.hass = self.hass
         return handler
 
+    async def test_meter_shared_device_info_does_not_set_read_only_property(self):
+        from custom_components.loxone.sensor import LoxoneMeterSensor
+        info = {"identifiers": {("loxone", "parent-meter")}, "name": "Meter"}
+        sensor = LoxoneMeterSensor(device_info=info, parent_id="parent-meter", uuidAction="meter-value",
+                                  type="analog", room="Room", cat="", name="Meter Actual",
+                                  details={"format": "%.1f kWh"})
+        self.assertEqual(sensor.name, "Meter Actual")
+        self.assertEqual(sensor.device_info, info)
+
+    async def test_caught_platform_failure_is_partial_then_recovers(self):
+        from custom_components.loxone import startup_trace as trace
+        async def broken(hass, entry):
+            raise AttributeError("PRIVATE_PROJECT")
+        broken.__module__ = "custom_components.loxone.sensor"
+        broken = trace.tracked_platform(broken)
+        async def setup(hass, entry):
+            trace.advance(hass, entry, "entity_platforms")
+            try: await broken(hass, entry)
+            except AttributeError: pass  # HA catches platform failures internally.
+            return True
+        await trace.tracked_setup(self.hass, self.entry, setup)
+        result = await trace.diagnostics(self.hass, self.entry)
+        self.assertEqual(result["state"], "partial")
+        self.assertEqual(result["failed_platforms"], ["sensor"])
+        self.assertNotIn("PRIVATE_PROJECT", str(result))
+        async def recovered(hass, entry): return True
+        recovered.__module__ = "custom_components.loxone.sensor"
+        await trace.tracked_platform(recovered)(self.hass, self.entry)
+        result = await trace.diagnostics(self.hass, self.entry)
+        self.assertEqual(result["state"], "completed")
+        self.assertNotIn("error_code", result)
+
     async def test_room_mapping_defaults_on_but_can_be_skipped(self):
         for schema in (flow.DATA_SCHEMA_SETUP, flow.DATA_SCHEMA_OPTIONS):
             self.assertTrue(schema(self.options)["edit_room_mapping"])
