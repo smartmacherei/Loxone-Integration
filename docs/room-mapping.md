@@ -4,7 +4,8 @@
 
 Unter **Einstellungen → Geräte & Dienste → Loxone → Konfigurieren** die Option
 **Loxone-Räume bestehenden HA-Bereichen zuordnen** aktivieren. Der zusätzliche
-Dialog ist auch bei der ersten Einrichtung verfügbar.
+Dialog ist auch bei der ersten Einrichtung verfügbar. Der Schalter ist standardmäßig
+eingeschaltet; zum Überspringen ausschalten.
 
 1. Gewünschte Bereiche zunächst in Home Assistant anlegen.
 2. Die Liste zeigt alle Loxone-Räume mit jeweils einer HA-Bereichsauswahl.
@@ -34,7 +35,8 @@ separate automatische UDP-Einrichtung.
 ## English
 
 Open **Settings → Devices & services → Loxone → Configure** and enable the optional
-room mapping checkbox. The same extra dialog is available during initial setup.
+room mapping checkbox. It is on by default; turn it off to skip the list.
+The same extra dialog is available during initial setup.
 Create the desired HA areas first. The list shows every Loxone room with its own
 HA area picker and preselects existing mappings. Choose the areas, use X to clear
 a mapping, then confirm once to save the complete list. Empty selections mean

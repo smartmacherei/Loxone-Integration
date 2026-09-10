@@ -46,12 +46,12 @@ XML = f'''<?xml version="1.0" encoding="UTF-8"?>
 def archive(xml=XML):
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr("sps0.LoxCC", program.encode(xml))
-        z.writestr("LoxAPP3.json", b'{"lastModified":"2026-09-05 12:00:00","controls":{}}')
-        z.writestr("permissions.bin", b"original permissions")
-        z.writestr("Emergency.LoxCC", b"original emergency program")
-        z.writestr("Music.json", b"{}")
-        z.writestr("other.bin", b"unchanged customer data")
+        z.writestr(zipfile.ZipInfo("sps0.LoxCC"), program.encode(xml))
+        z.writestr(zipfile.ZipInfo("LoxAPP3.json"), b'{"lastModified":"2026-09-05 12:00:00","controls":{}}')
+        z.writestr(zipfile.ZipInfo("permissions.bin"), b"original permissions")
+        z.writestr(zipfile.ZipInfo("Emergency.LoxCC"), b"original emergency program")
+        z.writestr(zipfile.ZipInfo("Music.json"), b"{}")
+        z.writestr(zipfile.ZipInfo("other.bin"), b"unchanged customer data")
     return output.getvalue()
 
 def test_boolean_u_settings_are_not_duplicate_object_ids():

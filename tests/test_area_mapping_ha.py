@@ -47,6 +47,11 @@ class AreaMappingHATest(unittest.IsolatedAsyncioTestCase):
         handler.hass = self.hass
         return handler
 
+    async def test_room_mapping_defaults_on_but_can_be_skipped(self):
+        for schema in (flow.DATA_SCHEMA_SETUP, flow.DATA_SCHEMA_OPTIONS):
+            self.assertTrue(schema(self.options)["edit_room_mapping"])
+            self.assertFalse(schema({**self.options, "edit_room_mapping": False})["edit_room_mapping"])
+
     async def test_room_fetch_accepts_https_and_url_hosts(self):
         from unittest.mock import MagicMock
         response = MagicMock()

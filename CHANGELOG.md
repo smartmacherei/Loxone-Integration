@@ -4,6 +4,13 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.3] - 2026-09-10
+
+- Die Raumzuordnung ist bei Einrichtung und Konfiguration standardmäßig
+  eingeschaltet. Nach dem Verbindungsdialog öffnet sich die gemeinsame Raumliste.
+  Zum Überspringen kann der Schalter ausgeschaltet werden. Bereiche werden
+  weiterhin erst durch die bestätigte Auswahl zugeordnet.
+
 ## [1.4.2] - 2026-09-10
 
 - Raumzuordnung als gemeinsame Liste: Alle Loxone-Räume erscheinen in einem

@@ -171,7 +171,7 @@ DATA_SCHEMA_SETUP = vol.Schema(
             CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
         ): BooleanSelector(),
         vol.Required(CONF_AUTO_CONFIGURE_UDP, default=True): BooleanSelector(),
-        vol.Optional("edit_room_mapping", default=False): BooleanSelector(),
+        vol.Optional("edit_room_mapping", default=True): BooleanSelector(),
         # UDP-Port fuer die Logger-Datagramme des Miniservers (0 = aus).
         vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
             NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
@@ -204,7 +204,7 @@ DATA_SCHEMA_OPTIONS = vol.Schema(
             CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
         ): BooleanSelector(),
         vol.Required(CONF_AUTO_CONFIGURE_UDP, default=False): BooleanSelector(),
-        vol.Optional("edit_room_mapping", default=False): BooleanSelector(),
+        vol.Optional("edit_room_mapping", default=True): BooleanSelector(),
         # UDP-Port fuer die Logger-Datagramme des Miniservers (0 = aus).
         vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
             NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
