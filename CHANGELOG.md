@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.4.1] - 2026-09-10
+
+- Verständliche deutsche und englische Beschriftungen im Einrichtungsdialog:
+  Jede Option erklärt jetzt direkt darunter, was sie bewirkt.
+- Lichtstimmungen als HA-Szenen, einzelne Lichtkreise und Raumzuordnung werden
+  ohne interne Fachbegriffe erklärt. Die Wartezeit betrifft nur das Anlegen der
+  Szenen beim Start, nicht das spätere Schalten.
+- UDP-Empfangsport und Miniserver-Webport sind klar unterscheidbar. Der Hinweis
+  auf Programmänderung und kurzen Logik-Neustart bleibt bei der UDP-Einrichtung.
+- Fehlerhafte Formatierung beim UDP-Port behoben (`UNCLOSED_TAG`).
+  Nach dem Update HA neu starten und die Browserseite neu laden, damit keine
+  alten Übersetzungen oder internen Feldnamen aus dem Cache angezeigt werden.
+- Nur Oberflächentexte geändert; Schalt- und Einrichtungsverhalten unverändert.
+
 ## [1.4.0] - 2026-09-10
 
 - Add optional Loxone room-to-Home Assistant area mapping during setup and in

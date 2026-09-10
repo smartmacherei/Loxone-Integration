@@ -6,19 +6,32 @@
     "step": {
       "user": {
         "title": "Set up Loxone",
-        "description": "Configure your Loxone Miniserver connection",
+        "description": "Connect your Miniserver and choose the features you want to use in Home Assistant. Each option explains what it does. Previously saved settings are shown here.",
         "data": {
-          "username": "User",
-          "port": "Port",
-          "host": "Miniserver Ip",
-          "password": "Password",
-          "generate_scenes": "generate scenes",
-          "generate_lightcontroller_subcontrols": "Enable LightControllerV2 subcontrols by default",
-          "generate_scenes_delay": "Delay for the scene generation if enabled",
-          "auto_discovery": "Auto-discover physical terminals (without Visu checkbox)",
-          "udp_port": "UDP port for real-time values of discovered terminals (Logger address in the Miniserver: /dev/udp/<HA-IP>/<port>; 0 = off)",
-          "auto_configure_udp": "Automatically set up real-time UDP (backs up and changes the Miniserver program; briefly restarts its logic)",
-          "edit_room_mapping": "Map Loxone rooms to existing HA areas (optional)"
+          "username": "Miniserver username",
+          "password": "Miniserver password",
+          "host": "Miniserver address",
+          "port": "Miniserver web port",
+          "generate_scenes": "Create HA scenes from Loxone lighting moods",
+          "generate_scenes_delay": "Wait before creating scenes (seconds)",
+          "generate_lightcontroller_subcontrols": "Show individual lighting circuits",
+          "auto_discovery": "Discover additional inputs and outputs",
+          "auto_configure_udp": "Set up real-time values automatically (UDP)",
+          "edit_room_mapping": "Assign Loxone rooms to HA areas",
+          "udp_port": "UDP receiving port in Home Assistant"
+        },
+        "data_description": {
+          "username": "User Home Assistant uses to sign in to the Miniserver.",
+          "password": "Password for this Miniserver user.",
+          "host": "IP address or hostname of the Miniserver, e.g. 192.168.1.10.",
+          "port": "Usually 80 for HTTP or 443 for HTTPS.",
+          "generate_scenes": "Makes the moods of your Loxone lighting controllers available as Home Assistant scenes, including for use in automations.",
+          "generate_scenes_delay": "Waits when the integration loads so lighting controllers are ready. Does not delay switching a scene. Usually leave at 3 seconds.",
+          "generate_lightcontroller_subcontrols": "Adds the individual circuits of a Loxone lighting controller as separate HA entities so you can control them individually.",
+          "auto_discovery": "Also finds physical inputs and outputs that are not enabled for visualization in Loxone and adds them to HA.",
+          "auto_configure_udp": "Sets up current values for the additionally discovered inputs and outputs. Backs up and changes the Miniserver program and briefly restarts its logic. When off, any required UDP transmission must be configured manually.",
+          "edit_room_mapping": "Opens another dialog after you confirm this form. Match a Loxone room to an existing Home Assistant area. Existing manual assignments are preserved.",
+          "udp_port": "Usually leave at 55555. Set to 0 to disable UDP reception. For manual setup, use the same destination port on the Miniserver."
         }
       },
       "room_mapping": {
@@ -42,20 +55,33 @@
     "step": {
       "init": {
         "data": {
-          "username": "User",
-          "port": "Port",
-          "host": "Miniserver Ip",
-          "password": "Password",
-          "generate_scenes": "Generate scenes",
-          "generate_lightcontroller_subcontrols": "Enable LightControllerV2 subcontrols by default",
-          "generate_scenes_delay": "Delay for the scene generation if enabled",
-          "auto_discovery": "Auto-discover physical terminals (without Visu checkbox)",
-          "udp_port": "UDP port for real-time values of discovered terminals (Logger address in the Miniserver: /dev/udp/<HA-IP>/<port>; 0 = off)",
-          "auto_configure_udp": "Automatically set up real-time UDP (backs up and changes the Miniserver program; briefly restarts its logic)",
-          "edit_room_mapping": "Map Loxone rooms to existing HA areas (optional)"
+          "username": "Miniserver username",
+          "password": "Miniserver password",
+          "host": "Miniserver address",
+          "port": "Miniserver web port",
+          "generate_scenes": "Create HA scenes from Loxone lighting moods",
+          "generate_scenes_delay": "Wait before creating scenes (seconds)",
+          "generate_lightcontroller_subcontrols": "Show individual lighting circuits",
+          "auto_discovery": "Discover additional inputs and outputs",
+          "auto_configure_udp": "Set up real-time values automatically (UDP)",
+          "edit_room_mapping": "Assign Loxone rooms to HA areas",
+          "udp_port": "UDP receiving port in Home Assistant"
         },
-        "description": "Configure your Miniserver connection and real-time updates.",
-        "title": "Loxone (smartmacherei)"
+        "description": "Connect your Miniserver and choose the features you want to use in Home Assistant. Each option explains what it does. Previously saved settings are shown here.",
+        "title": "Loxone (smartmacherei)",
+        "data_description": {
+          "username": "User Home Assistant uses to sign in to the Miniserver.",
+          "password": "Password for this Miniserver user.",
+          "host": "IP address or hostname of the Miniserver, e.g. 192.168.1.10.",
+          "port": "Usually 80 for HTTP or 443 for HTTPS.",
+          "generate_scenes": "Makes the moods of your Loxone lighting controllers available as Home Assistant scenes, including for use in automations.",
+          "generate_scenes_delay": "Waits when the integration loads so lighting controllers are ready. Does not delay switching a scene. Usually leave at 3 seconds.",
+          "generate_lightcontroller_subcontrols": "Adds the individual circuits of a Loxone lighting controller as separate HA entities so you can control them individually.",
+          "auto_discovery": "Also finds physical inputs and outputs that are not enabled for visualization in Loxone and adds them to HA.",
+          "auto_configure_udp": "Sets up current values for the additionally discovered inputs and outputs. Backs up and changes the Miniserver program and briefly restarts its logic. When off, any required UDP transmission must be configured manually.",
+          "edit_room_mapping": "Opens another dialog after you confirm this form. Match a Loxone room to an existing Home Assistant area. Existing manual assignments are preserved.",
+          "udp_port": "Usually leave at 55555. Set to 0 to disable UDP reception. For manual setup, use the same destination port on the Miniserver."
+        }
       },
       "room_mapping": {
         "title": "Map rooms",
