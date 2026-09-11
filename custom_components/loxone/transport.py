@@ -101,7 +101,12 @@ class SignalRouter:
         if accepted:
             self.emit(accepted)
 
-    def due(self, keys):
+    def due(self, keys, limit=None):
+        """Keys to poll now, least recently attempted first, at most ``limit``.
+
+        The limit bounds the request load per cycle; the ordering rotates
+        fairly through all keys so none is starved.
+        """
         # WS may have updated while UDP had priority. Recover that snapshot
         # without waiting for another change on an otherwise quiet signal.
         if self.websocket_connected and not self.udp_healthy:
@@ -114,7 +119,8 @@ class SignalRouter:
             300 if self.last.get(key.lower()) is not None and (
                 (key.lower() in self.udp_signals and self.udp_healthy)
                 or (self.websocket_connected and key.lower() in self.ws_at)) else 30)]
-        return sorted(eligible, key=lambda key: self.attempted_at.get(key.lower(), -1e9))
+        ordered = sorted(eligible, key=lambda key: self.attempted_at.get(key.lower(), -1e9))
+        return ordered[:limit] if limit else ordered
 
     def attempted(self, key):
         self.attempted_at[key.lower()] = self.clock()
@@ -123,8 +129,12 @@ class SignalRouter:
         self.last.update({key.lower(): value for key, value in values.items()})
         self.seen_at.update({key.lower(): self.clock() for key in values})
 
-    def expire(self, keys):
-        """Do not display a frozen value as current after all usable paths fail."""
+    def expire(self, keys, max_age=90):
+        """Do not display a frozen value as current after all usable paths fail.
+
+        ``max_age`` grows with the poll rotation period so a value that is
+        simply waiting for its turn is not declared unavailable.
+        """
         missing = {}
         now = self.clock()
         for original in keys:
@@ -133,7 +143,7 @@ class SignalRouter:
                 continue
             if self.websocket_connected and key in self.ws_at:
                 continue
-            if self.last.get(key) is not None and now - self.seen_at.get(key, -1e9) >= 90:
+            if self.last.get(key) is not None and now - self.seen_at.get(key, -1e9) >= max_age:
                 self.last[key] = None
                 self.sources[key] = "unavailable"
                 missing[original] = None

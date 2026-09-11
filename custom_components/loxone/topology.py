@@ -486,12 +486,15 @@ async def async_fetch_values(session, host, port, username, password, uuids, raw
     raw_uuids = set(raw_uuids)
     out: dict = {}
     semaphore = asyncio.Semaphore(8)
+    # A single Miniserver, especially Gen 1, gets at most two requests at once.
+    per_host: dict = {}
     async def fetch(u):
         try:
-            async with semaphore:
+            target_host, target_port = hosts.get(u, (host, port))
+            gate = per_host.setdefault((target_host, target_port), asyncio.Semaphore(2))
+            async with semaphore, gate:
                 if on_attempt:
                     on_attempt(u)
-                target_host, target_port = hosts.get(u, (host, port))
                 base = "http://{}:{}".format(target_host, target_port)
                 async with session.get(base + "/jdev/sps/io/" + u, auth=auth, timeout=timeout) as resp:
                     if resp.status != 200:

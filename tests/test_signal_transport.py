@@ -167,3 +167,27 @@ def test_registry_entry_collection_does_not_probe_mapping_api():
             raise AssertionError(name)
     assert list(compat.registry_entries(Collection())) == [entry]
     assert list(compat.registry_entries({"device": entry})) == [entry]
+
+
+def test_poll_budget_rotates_fairly_and_bounds_each_cycle():
+    r, clock, _ = router()
+    keys = [f"00000000-0000-0000-00000000000000{i:02x}" for i in range(6)]
+    first = r.due(keys, 4)
+    assert len(first) == 4
+    for key in first:
+        r.attempted(key)
+    clock[0] = 31
+    second = r.due(keys, 4)
+    assert second[:2] == [k for k in keys if k not in first]  # the two never-attempted keys go first
+    assert len(second) == 4 and len(r.due(keys)) == 6
+
+
+def test_expiry_window_follows_rotation_period():
+    r, clock, events = router()
+    r.receive("poll", {U: 1})
+    clock[0] = 200
+    r.expire([U], max_age=600)
+    assert events == [{U: 1}]
+    clock[0] = 700
+    r.expire([U], max_age=600)
+    assert events[-1] == {U: None}

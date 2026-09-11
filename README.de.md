@@ -57,10 +57,12 @@ Bei neuen Installationen bietet das Formular die automatische Echtzeiteinrichtun
 für geeignete entdeckte Klemmen an. Bestehende Installationen behalten ihr Verhalten,
 bis du die Option ausdrücklich einschaltest.
 
-Die Zahl zusätzlich erkannter Klemmen ist begrenzt (Vorgabe 500, im Formular
-einstellbar). Klemmen über der Grenze werden nicht angelegt, damit eine sehr große Anlage,
-etwa ein Gateway/Client-Verbund mit vielen Miniservern, weder Miniserver noch Netzwerk noch
-Home Assistant mit Entitäten, Abfragen und Loggern überlastet. Nach der
+Eine Grenze gilt für alle Wege (Vorgabe 500, oben im Formular einstellbar): So viele
+zusätzlich erkannte Klemmen werden zu Entitäten, abgefragt und mit UDP-Loggern versehen;
+später begrenzt sie auch Signale von Home Assistant nach Loxone. Die Abfrage selbst ist auf
+200 Anfragen je 30 Sekunden und zwei gleichzeitige je Miniserver gedeckelt, damit eine sehr
+große Anlage, etwa ein Gateway/Client-Verbund mit vielen Miniservern, im Umlauf abgefragt
+wird statt Miniserver oder Netzwerk zu überlasten. Nach der
 Einrichtung liest die Integration alle 60 Sekunden nur das Verzeichnislisting des
 Miniserver-Programms; das Programm selbst wird erst nach einem neuen Speichern aus
 Loxone Config erneut heruntergeladen.

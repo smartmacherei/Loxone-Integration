@@ -61,6 +61,10 @@ _LOGGER = logging.getLogger(__name__)
 # das also fuer immer auf ihrem Startwert eingefroren. 30s ist der Kompromiss
 # aus Aktualitaet und Last: eine Abfrage je Klemme und Intervall.
 DISCOVERY_POLL_INTERVAL = timedelta(seconds=30)
+# Hoechstens so viele HTTP-Abfragen je Zyklus, unabhaengig von der Klemmenzahl:
+# grosse Anlagen (Gateway/Client) werden im Umlauf abgefragt, die Last je
+# Miniserver bleibt gedeckelt. 200 je 30 s sind im Mittel unter 7 Anfragen/s.
+DISCOVERY_POLL_BATCH = 200
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -475,6 +479,11 @@ async def _async_setup_entry(hass, config_entry):
                         _poll_uuids = [_u for _u, _c in _new]
                         _session = async_get_clientsession(hass)
                         _opts = config_entry.options
+                        # Rotation period in seconds; a value waiting for its turn
+                        # must not expire as unavailable.
+                        _cycles = -(-len(_poll_uuids) // DISCOVERY_POLL_BATCH)
+                        _period = _cycles * DISCOVERY_POLL_INTERVAL.total_seconds()
+                        _max_age = max(90, 3 * _period)
 
                         async def _poll_discovered(_now, _uuids=_poll_uuids):
                             if _poll_discovered.running or _poll_discovered.closed:
@@ -487,12 +496,12 @@ async def _async_setup_entry(hass, config_entry):
                                 values = await async_fetch_values(
                                     _session, _opts.get(CONF_HOST), _opts.get(CONF_PORT),
                                     _opts.get(CONF_USERNAME), _opts.get(CONF_PASSWORD),
-                                    _router.due(_uuids), _raw_uuids, _router.attempted, _router.http_scales,
+                                    _router.due(_uuids, DISCOVERY_POLL_BATCH), _raw_uuids, _router.attempted, _router.http_scales,
                                     hosts=_hosts,
                                 )
                                 if not _poll_discovered.closed:
                                     _router.receive("poll", values, snapshot)
-                                    _router.expire(_uuids)
+                                    _router.expire(_uuids, max_age=_max_age)
                             finally:
                                 _poll_discovered.running = False
                         _poll_discovered.running = False
@@ -505,10 +514,10 @@ async def _async_setup_entry(hass, config_entry):
                             )
                         )
                         _LOGGER.info(
-                            "Loxone Auto-Discovery: %s Klemmen werden alle %ss "
-                            "per HTTP nachgezogen (WS pusht sie nicht)",
-                            len(_poll_uuids),
-                            DISCOVERY_POLL_INTERVAL.total_seconds(),
+                            "Loxone Auto-Discovery: %s Klemmen werden per HTTP nachgezogen, "
+                            "hoechstens %s je %ss, jede Klemme etwa alle %ss (WS pusht sie nicht)",
+                            len(_poll_uuids), DISCOVERY_POLL_BATCH,
+                            DISCOVERY_POLL_INTERVAL.total_seconds(), _period,
                         )
 
             except Exception as _e:  # noqa: BLE001

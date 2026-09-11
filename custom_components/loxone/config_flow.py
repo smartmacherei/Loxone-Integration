@@ -168,14 +168,15 @@ def _form_schema(auto_udp_default):
             vol.Required(CONF_PORT, default=DEFAULT_PORT): NumberSelector(
                 NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=1, max=65535)
             ),
+            # One limit for every way: discovered entities and their polling,
+            # UDP loggers, and later signals from HA into Loxone.
+            vol.Optional(CONF_UDP_MAX_SIGNALS, default=DEFAULT_UDP_MAX_SIGNALS): NumberSelector(
+                NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=1, max=10000)
+            ),
             # Way 1: Home Assistant reads the Miniserver.
             vol.Required(
                 CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
             ): BooleanSelector(),
-            # One limit for discovered entities, their polling and UDP loggers.
-            vol.Optional(CONF_UDP_MAX_SIGNALS, default=DEFAULT_UDP_MAX_SIGNALS): NumberSelector(
-                NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=1, max=10000)
-            ),
             vol.Required(
                 CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, default=False
             ): BooleanSelector(),

@@ -56,10 +56,12 @@ For new installations, the setup form offers automatic real-time configuration f
 eligible discovered terminals. Existing installations keep their current behavior
 until you explicitly enable the option.
 
-The number of additionally discovered terminals is limited (default 500, adjustable in
-the form). Terminals beyond the limit are not created, so a very large installation, for
-example a Gateway/Client system with many Miniservers, cannot flood the Miniservers, the
-network or Home Assistant with entities, polling and loggers. Once configured, the integration
+One limit applies to every way (default 500, adjustable at the top of the form): this many
+additionally discovered terminals become entities, are polled and get UDP loggers; later it
+also bounds signals from Home Assistant into Loxone. Polling itself is capped at 200 requests
+per 30 seconds and two concurrent requests per Miniserver, so a very large installation, for
+example a Gateway/Client system with many Miniservers, is polled in rotation instead of
+flooding the Miniservers or the network. Once configured, the integration
 only reads the Miniserver's program directory listing every 60 seconds; the program
 itself is downloaded again only after Loxone Config saved a new one.
 

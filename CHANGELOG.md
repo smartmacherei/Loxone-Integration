@@ -4,6 +4,17 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.6.1] - 2026-09-11
+
+- Die Höchstzahl gilt ausdrücklich für alle Wege und steht jetzt oben im Formular:
+  zusätzlich erkannte Klemmen als Entitäten, ihre Abfrage, UDP-Logger und künftig
+  Signale von Home Assistant nach Loxone. Schlüssel und gespeicherter Wert bleiben.
+- Die Abfrage erkannter Klemmen ist unabhängig von der Anzahl gedeckelt: höchstens
+  200 Anfragen je 30-Sekunden-Zyklus, höchstens zwei gleichzeitig je Miniserver.
+  Große Anlagen werden im Umlauf abgefragt, die am längsten nicht abgefragte Klemme
+  zuerst; das Protokoll nennt den daraus folgenden Abstand je Klemme. Werte, die nur
+  auf ihre Runde warten, werden nicht als nicht verfügbar markiert.
+
 ## [1.6.0] - 2026-09-11
 
 - Gateway/Client-Verbünde: Die Erkennung liest jetzt das Gesamtprojekt `sps.Loxone`

@@ -17,7 +17,7 @@ behavior and the limitations of read-only special values.
 | Auto-discover physical terminals | On | Add eligible terminals outside the visualization |
 | Automatically set up real-time UDP | On | Back up and configure the logger program automatically |
 | UDP port | `55555` | Receive logger packets; `0` disables UDP and automatic program changes |
-| Maximum number of additionally discovered terminals | `500` | One bound for discovered entities, their polling and logger references, in program order |
+| Maximum number of additional signals | `500` | One bound for every way: discovered entities, their polling, logger references and, later, signals into Loxone; program order. Polling itself is capped at 200 requests per 30 s and 2 concurrent per Miniserver |
 | LightControllerV2 subcontrols | Off | Enable individual light-controller channels by default |
 
 Lighting moods are always available as effects of the light entity. The scene options
