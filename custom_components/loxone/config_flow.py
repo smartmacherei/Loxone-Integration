@@ -24,9 +24,9 @@ from homeassistant.helpers.selector import (AreaSelector, BooleanSelector,
                                             TextSelectorType)
 
 from .const import (CONF_AUTO_CONFIGURE_UDP, CONF_AUTO_DISCOVERY, CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN,
-                    CONF_SCENE_GEN, CONF_SCENE_GEN_DELAY, CONF_UDP_PORT,
-                    DEFAULT_AUTO_DISCOVERY, DEFAULT_DELAY_SCENE, DEFAULT_IP,
-                    DEFAULT_PORT, DEFAULT_UDP_PORT, DOMAIN)
+                    CONF_UDP_MAX_SIGNALS, CONF_UDP_PORT,
+                    DEFAULT_AUTO_DISCOVERY, DEFAULT_IP,
+                    DEFAULT_PORT, DEFAULT_UDP_MAX_SIGNALS, DEFAULT_UDP_PORT, DOMAIN)
 from .area_mapping import CONF_ROOM_MAPPING
 
 
@@ -126,10 +126,10 @@ async def validate_loxone_setup(
     # Ensure port is stored as int
     if CONF_PORT in user_input:
         user_input[CONF_PORT] = int(user_input[CONF_PORT])
-    if CONF_SCENE_GEN_DELAY in user_input:
-        user_input[CONF_SCENE_GEN_DELAY] = int(user_input[CONF_SCENE_GEN_DELAY])
     if CONF_UDP_PORT in user_input:
         user_input[CONF_UDP_PORT] = int(user_input[CONF_UDP_PORT])
+    if CONF_UDP_MAX_SIGNALS in user_input:
+        user_input[CONF_UDP_MAX_SIGNALS] = int(user_input[CONF_UDP_MAX_SIGNALS])
 
     if user_input.get("edit_room_mapping"):
         try:
@@ -146,71 +146,52 @@ async def validate_loxone_setup(
     return user_input
 
 
-DATA_SCHEMA_SETUP = vol.Schema(
-    {
-        vol.Required(CONF_USERNAME, default=""): TextSelector(
-            TextSelectorConfig(type=TextSelectorType.TEXT)
-        ),
-        vol.Required(CONF_PASSWORD, default=""): TextSelector(
-            TextSelectorConfig(type=TextSelectorType.PASSWORD)
-        ),
-        vol.Required(CONF_HOST, default=DEFAULT_IP): TextSelector(
-            TextSelectorConfig(type=TextSelectorType.TEXT)
-        ),
-        vol.Required(CONF_PORT, default=DEFAULT_PORT): NumberSelector(
-            NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=1, max=65535)
-        ),
-        vol.Required(CONF_SCENE_GEN, default=True): BooleanSelector(),
-        vol.Optional(CONF_SCENE_GEN_DELAY, default=DEFAULT_DELAY_SCENE): NumberSelector(
-            NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=3)
-        ),
-        vol.Required(
-            CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, default=False
-        ): BooleanSelector(),
-        vol.Required(
-            CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
-        ): BooleanSelector(),
-        vol.Required(CONF_AUTO_CONFIGURE_UDP, default=True): BooleanSelector(),
-        vol.Optional("edit_room_mapping", default=True): BooleanSelector(),
-        # UDP-Port fuer die Logger-Datagramme des Miniservers (0 = aus).
-        vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
-            NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
-        ),
-    }
-)
+def _form_schema(auto_udp_default):
+    """Connection data, then the two directions.
 
-DATA_SCHEMA_OPTIONS = vol.Schema(
-    {
-        vol.Required(CONF_USERNAME, default=""): TextSelector(
-            TextSelectorConfig(type=TextSelectorType.TEXT)
-        ),
-        vol.Required(CONF_PASSWORD, default=""): TextSelector(
-            TextSelectorConfig(type=TextSelectorType.PASSWORD)
-        ),
-        vol.Required(CONF_HOST, default=DEFAULT_IP): TextSelector(
-            TextSelectorConfig(type=TextSelectorType.TEXT)
-        ),
-        vol.Required(CONF_PORT, default=DEFAULT_PORT): NumberSelector(
-            NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=1, max=65535)
-        ),
-        vol.Required(CONF_SCENE_GEN, default=True): BooleanSelector(),
-        vol.Optional(CONF_SCENE_GEN_DELAY, default=DEFAULT_DELAY_SCENE): NumberSelector(
-            NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=3)
-        ),
-        vol.Required(
-            CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, default=False
-        ): BooleanSelector(),
-        vol.Required(
-            CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
-        ): BooleanSelector(),
-        vol.Required(CONF_AUTO_CONFIGURE_UDP, default=False): BooleanSelector(),
-        vol.Optional("edit_room_mapping", default=True): BooleanSelector(),
-        # UDP-Port fuer die Logger-Datagramme des Miniservers (0 = aus).
-        vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
-            NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
-        ),
-    }
-)
+    Way 1 (HA -> Loxone) is always active: HA reads controls and terminals from
+    the Miniserver; its options only refine what gets created. Way 2 (Loxone ->
+    HA) is optional: the Miniserver pushes real-time values over UDP, which
+    requires changing its program.
+    """
+    return vol.Schema(
+        {
+            vol.Required(CONF_USERNAME, default=""): TextSelector(
+                TextSelectorConfig(type=TextSelectorType.TEXT)
+            ),
+            vol.Required(CONF_PASSWORD, default=""): TextSelector(
+                TextSelectorConfig(type=TextSelectorType.PASSWORD)
+            ),
+            vol.Required(CONF_HOST, default=DEFAULT_IP): TextSelector(
+                TextSelectorConfig(type=TextSelectorType.TEXT)
+            ),
+            vol.Required(CONF_PORT, default=DEFAULT_PORT): NumberSelector(
+                NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=1, max=65535)
+            ),
+            # Way 1: Home Assistant reads the Miniserver.
+            vol.Required(
+                CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
+            ): BooleanSelector(),
+            vol.Required(
+                CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, default=False
+            ): BooleanSelector(),
+            vol.Optional("edit_room_mapping", default=True): BooleanSelector(),
+            # Way 2: the Miniserver pushes real-time values to HA (UDP logger).
+            vol.Required(CONF_AUTO_CONFIGURE_UDP, default=auto_udp_default): BooleanSelector(),
+            # UDP-Port fuer die Logger-Datagramme des Miniservers (0 = aus).
+            vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
+                NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
+            ),
+            vol.Optional(CONF_UDP_MAX_SIGNALS, default=DEFAULT_UDP_MAX_SIGNALS): NumberSelector(
+                NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=1, max=10000)
+            ),
+        }
+    )
+
+
+DATA_SCHEMA_SETUP = _form_schema(auto_udp_default=True)
+# Existing entries stay read-only towards the Miniserver until enabled explicitly.
+DATA_SCHEMA_OPTIONS = _form_schema(auto_udp_default=False)
 
 CONFIG_FLOW = {
     "user": SchemaFlowFormStep(
@@ -235,7 +216,7 @@ OPTIONS_FLOW = {
 class LoxoneFlowHandler(SchemaConfigFlowHandler, domain=DOMAIN):
     """Handle Loxone config flow."""
 
-    VERSION = 3
+    VERSION = 4
     config_flow = CONFIG_FLOW
     options_flow = OPTIONS_FLOW
 

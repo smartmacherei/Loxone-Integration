@@ -14,9 +14,16 @@ ein UDP-Logger im Miniserver-Programm eingerichtet.
 | Physische Klemmen automatisch entdecken | Ein | Geeignete Klemmen außerhalb der Visualisierung ergänzen |
 | UDP-Echtzeit automatisch einrichten | Ein | Programm sichern und Logger automatisch einrichten |
 | UDP-Port | `55555` | `0` deaktiviert UDP und automatische Programmänderungen |
-| Szenen generieren | Ein | Szenen unterstützter Bausteine anlegen |
-| Verzögerung der Szenenerstellung | 3 Sekunden | Erstellung verzögern |
+| Höchstzahl der Echtzeit-Signale | `500` | Obergrenze für Logger-Referenzen; Klemmen darüber bleiben bei der 30-Sekunden-Abfrage |
 | LightControllerV2-Unterkanäle | Aus | Einzelne Lichtkanäle standardmäßig aktivieren |
+
+Lichtstimmungen sind immer als Effekte der Licht-Entität verfügbar. Die Szenen-Optionen
+früherer Versionen wurden in 1.5.0 entfernt.
+
+Nach der Einrichtung liest die 60-Sekunden-Prüfung nur noch das Verzeichnislisting
+des Miniserver-Programms. Das Programmarchiv selbst wird erst nach einem neuen
+Speichern aus Loxone Config erneut heruntergeladen; eine ruhende Anlage erzeugt
+keine wiederholten Downloads.
 
 Voraussetzungen sind ein vollständiges aktuelles Programm-ZIP, geeignete Lese-,
 Upload- und Aktivierungsberechtigungen, FTP/FTPS auf Port 21, eine IPv4-Verbindung

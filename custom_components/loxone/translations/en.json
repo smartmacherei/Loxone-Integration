@@ -6,32 +6,30 @@
     "step": {
       "user": {
         "title": "Set up Loxone",
-        "description": "Connect your Miniserver and choose the features you want to use in Home Assistant. Each option explains what it does. Previously saved settings are shown here.",
+        "description": "Connect your Miniserver. Below the connection data are the two ways. Way 1 (HA → Loxone) is always active: Home Assistant reads controls and terminals from the Miniserver; its options only decide what gets created. Way 2 (Loxone → HA) is optional: the Miniserver pushes real-time values to Home Assistant over UDP, which changes its program. Previously saved settings are shown here.",
         "data": {
           "username": "Miniserver username",
           "password": "Miniserver password",
           "host": "Miniserver address",
           "port": "Miniserver web port",
-          "generate_scenes": "Create HA scenes from Loxone lighting moods",
-          "generate_scenes_delay": "Wait before creating scenes (seconds)",
-          "generate_lightcontroller_subcontrols": "Show individual lighting circuits",
-          "auto_discovery": "Discover additional inputs and outputs",
-          "auto_configure_udp": "Set up real-time values automatically (UDP)",
-          "edit_room_mapping": "Assign Loxone rooms to HA areas",
-          "udp_port": "UDP receiving port in Home Assistant"
+          "auto_discovery": "Way 1 (HA → Loxone): Discover additional inputs and outputs",
+          "generate_lightcontroller_subcontrols": "Way 1 (HA → Loxone): Show individual lighting circuits",
+          "edit_room_mapping": "Way 1 (HA → Loxone): Assign Loxone rooms to HA areas",
+          "auto_configure_udp": "Way 2 (Loxone → HA): Set up real-time values over UDP automatically",
+          "udp_port": "Way 2 (Loxone → HA): UDP receiving port in Home Assistant",
+          "udp_max_signals": "Way 2 (Loxone → HA): Maximum number of real-time signals"
         },
         "data_description": {
           "username": "User Home Assistant uses to sign in to the Miniserver.",
           "password": "Password for this Miniserver user.",
           "host": "IP address or hostname of the Miniserver, e.g. 192.168.1.10.",
           "port": "Usually 80 for HTTP or 443 for HTTPS.",
-          "generate_scenes": "Makes the moods of your Loxone lighting controllers available as Home Assistant scenes, including for use in automations.",
-          "generate_scenes_delay": "Waits when the integration loads so lighting controllers are ready. Does not delay switching a scene. Usually leave at 3 seconds.",
-          "generate_lightcontroller_subcontrols": "Adds the individual circuits of a Loxone lighting controller as separate HA entities so you can control them individually.",
           "auto_discovery": "Also finds physical inputs and outputs that are not enabled for visualization in Loxone and adds them to HA.",
-          "auto_configure_udp": "Sets up current values for the additionally discovered inputs and outputs. Backs up and changes the Miniserver program and briefly restarts its logic. When off, any required UDP transmission must be configured manually.",
+          "generate_lightcontroller_subcontrols": "Adds the individual circuits of a Loxone lighting controller as separate HA entities. Lighting moods are always available as effects of the light entity, independent of this option.",
           "edit_room_mapping": "Opens another dialog after you confirm this form. Match a Loxone room to an existing Home Assistant area. Existing manual assignments are preserved.",
-          "udp_port": "Usually leave at 55555. Set to 0 to disable UDP reception. For manual setup, use the same destination port on the Miniserver."
+          "auto_configure_udp": "The Miniserver reports changes of the additionally discovered inputs and outputs to HA immediately. This backs up and changes the Miniserver program and briefly restarts its logic. Use at your own risk, see the disclaimer in the documentation. When off, values are polled every 30 seconds, or you configure the UDP logger manually.",
+          "udp_port": "Usually leave at 55555. Set to 0 to disable UDP reception. For manual setup, use the same destination port on the Miniserver.",
+          "udp_max_signals": "Limits how many discovered terminals are transmitted over UDP in real time. Protects the Miniserver, the network and Home Assistant on very large installations. Terminals above the limit are still polled every 30 seconds."
         }
       },
       "room_mapping": {
@@ -53,28 +51,26 @@
           "password": "Miniserver password",
           "host": "Miniserver address",
           "port": "Miniserver web port",
-          "generate_scenes": "Create HA scenes from Loxone lighting moods",
-          "generate_scenes_delay": "Wait before creating scenes (seconds)",
-          "generate_lightcontroller_subcontrols": "Show individual lighting circuits",
-          "auto_discovery": "Discover additional inputs and outputs",
-          "auto_configure_udp": "Set up real-time values automatically (UDP)",
-          "edit_room_mapping": "Assign Loxone rooms to HA areas",
-          "udp_port": "UDP receiving port in Home Assistant"
+          "auto_discovery": "Way 1 (HA → Loxone): Discover additional inputs and outputs",
+          "generate_lightcontroller_subcontrols": "Way 1 (HA → Loxone): Show individual lighting circuits",
+          "edit_room_mapping": "Way 1 (HA → Loxone): Assign Loxone rooms to HA areas",
+          "auto_configure_udp": "Way 2 (Loxone → HA): Set up real-time values over UDP automatically",
+          "udp_port": "Way 2 (Loxone → HA): UDP receiving port in Home Assistant",
+          "udp_max_signals": "Way 2 (Loxone → HA): Maximum number of real-time signals"
         },
-        "description": "Connect your Miniserver and choose the features you want to use in Home Assistant. Each option explains what it does. Previously saved settings are shown here.",
+        "description": "Connect your Miniserver. Below the connection data are the two ways. Way 1 (HA → Loxone) is always active: Home Assistant reads controls and terminals from the Miniserver; its options only decide what gets created. Way 2 (Loxone → HA) is optional: the Miniserver pushes real-time values to Home Assistant over UDP, which changes its program. Previously saved settings are shown here.",
         "title": "Loxone (smartmacherei)",
         "data_description": {
           "username": "User Home Assistant uses to sign in to the Miniserver.",
           "password": "Password for this Miniserver user.",
           "host": "IP address or hostname of the Miniserver, e.g. 192.168.1.10.",
           "port": "Usually 80 for HTTP or 443 for HTTPS.",
-          "generate_scenes": "Makes the moods of your Loxone lighting controllers available as Home Assistant scenes, including for use in automations.",
-          "generate_scenes_delay": "Waits when the integration loads so lighting controllers are ready. Does not delay switching a scene. Usually leave at 3 seconds.",
-          "generate_lightcontroller_subcontrols": "Adds the individual circuits of a Loxone lighting controller as separate HA entities so you can control them individually.",
           "auto_discovery": "Also finds physical inputs and outputs that are not enabled for visualization in Loxone and adds them to HA.",
-          "auto_configure_udp": "Sets up current values for the additionally discovered inputs and outputs. Backs up and changes the Miniserver program and briefly restarts its logic. When off, any required UDP transmission must be configured manually.",
+          "generate_lightcontroller_subcontrols": "Adds the individual circuits of a Loxone lighting controller as separate HA entities. Lighting moods are always available as effects of the light entity, independent of this option.",
           "edit_room_mapping": "Opens another dialog after you confirm this form. Match a Loxone room to an existing Home Assistant area. Existing manual assignments are preserved.",
-          "udp_port": "Usually leave at 55555. Set to 0 to disable UDP reception. For manual setup, use the same destination port on the Miniserver."
+          "auto_configure_udp": "The Miniserver reports changes of the additionally discovered inputs and outputs to HA immediately. This backs up and changes the Miniserver program and briefly restarts its logic. Use at your own risk, see the disclaimer in the documentation. When off, values are polled every 30 seconds, or you configure the UDP logger manually.",
+          "udp_port": "Usually leave at 55555. Set to 0 to disable UDP reception. For manual setup, use the same destination port on the Miniserver.",
+          "udp_max_signals": "Limits how many discovered terminals are transmitted over UDP in real time. Protects the Miniserver, the network and Home Assistant on very large installations. Terminals above the limit are still polled every 30 seconds."
         }
       },
       "room_mapping": {

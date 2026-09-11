@@ -28,18 +28,19 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.discovery import async_load_platform
+from homeassistant.helpers.dispatcher import (async_dispatcher_connect,
+                                              async_dispatcher_send)
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.setup import async_setup_component
 
 from .const import (ATTR_AREA_CREATE, ATTR_CODE, ATTR_COMMAND, ATTR_DEVICE,
                     ATTR_UUID, ATTR_VALUE, CONF_AUTO_DISCOVERY,
-                    CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, CONF_SCENE_GEN,
-                    CONF_SCENE_GEN_DELAY, CONF_UDP_PORT, DEFAULT,
-                    DEFAULT_AUTO_DISCOVERY, DEFAULT_DELAY_SCENE, DEFAULT_PORT,
-                    DEFAULT_UDP_PORT, DOMAIN, DOMAIN_DEVICES, ERROR_VALUE,
-                    EVENT, LOXONE_PLATFORMS, SECUREDSENDDOMAIN, SENDDOMAIN,
-                    cfmt)
+                    CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, CONF_UDP_MAX_SIGNALS,
+                    CONF_UDP_PORT, DEFAULT, DEFAULT_AUTO_DISCOVERY,
+                    DEFAULT_PORT, DEFAULT_UDP_MAX_SIGNALS, DEFAULT_UDP_PORT,
+                    DOMAIN, DOMAIN_DEVICES, ERROR_VALUE, LOXONE_PLATFORMS,
+                    SECUREDSENDDOMAIN, SENDDOMAIN, SIGNAL_STATE_UPDATE, cfmt)
 from .coordinator import LoxoneCoordinator
 from .helpers import get_miniserver_type
 from .miniserver import MiniServer, get_miniserver_from_hass
@@ -69,10 +70,6 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Required(CONF_PASSWORD): cv.string,
                 vol.Required(CONF_HOST): cv.string,
                 vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-                vol.Optional(CONF_SCENE_GEN, default=True): cv.boolean,
-                vol.Optional(
-                    CONF_SCENE_GEN_DELAY, default=DEFAULT_DELAY_SCENE
-                ): cv.positive_int,
                 vol.Required(CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, default=False): bool,
             }
         ),
@@ -173,18 +170,26 @@ async def async_setup(hass, config):
 
 
 async def async_migrate_entry(hass, config_entry):
-    # _LOGGER.debug("Migrating from version %s", config_entry.version)
-    if config_entry.version == 1:
-        new = {**config_entry.options, CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN: True}
-        config_entry.options = {**new}
-        config_entry.version = 2
-        _LOGGER.info("Migration to version %s successful", 2)
-
-    if config_entry.version == 2:
-        new = {**config_entry.options, CONF_SCENE_GEN_DELAY: DEFAULT_DELAY_SCENE}
-        config_entry.options = {**new}
-        config_entry.version = 3
-        _LOGGER.info("Migration to version %s successful", 3)
+    options = {**config_entry.options}
+    version = config_entry.version
+    if version == 1:
+        options[CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN] = True
+        version = 2
+    if version == 2:
+        version = 3
+    if version == 3:
+        # 1.5.0: light moods stay available as light effects. The generated
+        # scene entities are gone, so their registry records must not linger.
+        for key in ("generate_scenes", "generate_scenes_delay"):
+            options.pop(key, None)
+        registry = er.async_get(hass)
+        for entry in er.async_entries_for_config_entry(registry, config_entry.entry_id):
+            if entry.domain == "scene":
+                registry.async_remove(entry.entity_id)
+        version = 4
+    if version != config_entry.version:
+        hass.config_entries.async_update_entry(config_entry, options=options, version=version)
+        _LOGGER.info("Migration to version %s successful", version)
     return True
 
 
@@ -195,8 +200,6 @@ async def async_set_options(hass, config_entry):
         CONF_PORT: options_in.pop(CONF_PORT, DEFAULT_PORT),
         CONF_USERNAME: options_in.pop(CONF_USERNAME, ""),
         CONF_PASSWORD: options_in.pop(CONF_PASSWORD, ""),
-        CONF_SCENE_GEN: options_in.pop(CONF_SCENE_GEN, ""),
-        CONF_SCENE_GEN_DELAY: options_in.pop(CONF_SCENE_GEN_DELAY, DEFAULT_DELAY_SCENE),
         CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN: options_in.pop(
             CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, ""
         ),
@@ -205,6 +208,7 @@ async def async_set_options(hass, config_entry):
         ),
         CONF_UDP_PORT: options_in.pop(CONF_UDP_PORT, DEFAULT_UDP_PORT),
         "auto_configure_udp": options_in.pop("auto_configure_udp", False),
+        CONF_UDP_MAX_SIGNALS: options_in.pop(CONF_UDP_MAX_SIGNALS, DEFAULT_UDP_MAX_SIGNALS),
     }
     hass.config_entries.async_update_entry(
         config_entry, data=config_entry.data, options=options
@@ -339,8 +343,11 @@ async def _async_setup_entry(hass, config_entry):
 
     advance(hass, config_entry, "topology_discovery")
     _program = None
-    from .transport import SignalRouter
-    _router = SignalRouter(lambda values: hass.bus.async_fire(EVENT, values))
+    from .transport import SignalRouter, StateUpdate
+    # Dispatcher instead of a bus event: the recorder would otherwise store
+    # every Loxone value (and warn about oversized snapshots).
+    _router = SignalRouter(lambda values: async_dispatcher_send(
+        hass, SIGNAL_STATE_UPDATE, StateUpdate(values)))
     hass.data.setdefault(DOMAIN + "_transport", {})[config_entry.entry_id] = _router
     def _remove_transport():
         hass.data.get(DOMAIN + "_transport", {}).pop(config_entry.entry_id, None)
@@ -921,8 +928,8 @@ class LoxoneEntity(Entity):
             self._attr_extra_state_attributes["category"] = kwargs["cat"]
 
     async def async_added_to_hass(self):
-        """Subscribe to device events."""
-        self.listener = self.hass.bus.async_listen(EVENT, self.event_handler)
+        """Subscribe to Miniserver state updates."""
+        self.listener = async_dispatcher_connect(self.hass, SIGNAL_STATE_UPDATE, self.event_handler)
 
     async def async_will_remove_from_hass(self):
         """Disconnect callbacks."""

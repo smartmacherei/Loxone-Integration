@@ -22,7 +22,6 @@ LOXONE_PLATFORMS: Final[list[Platform]] = [
     Platform.MEDIA_PLAYER,
     Platform.NUMBER,
     Platform.BUTTON,
-    Platform.SCENE,
     Platform.SELECT,
 ]
 
@@ -30,10 +29,10 @@ LOXONE_DEFAULT_PORT = 80
 
 ERROR_VALUE = -1
 DEFAULT_PORT = 80
-DEFAULT_DELAY_SCENE = 3
 DEFAULT_IP = ""
 
-EVENT = "loxone_event"
+# Dispatcher signal carrying changed Miniserver values to the entities.
+SIGNAL_STATE_UPDATE = "loxone_state_update"
 DOMAIN = "loxone"
 LOX_CONFIG = "loxconfig"
 
@@ -51,8 +50,6 @@ ATTR_AREA_CREATE = "create_areas"
 DOMAIN_DEVICES = "devices"
 
 CONF_ACTIONID = "uuidAction"
-CONF_SCENE_GEN = "generate_scenes"
-CONF_SCENE_GEN_DELAY = "generate_scenes_delay"
 CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN = "generate_lightcontroller_subcontrols"
 # Auto-Discovery: physische Klemmen ohne Visu-Haekchen als Entities ergaenzen.
 # Vorgabe True = bisheriges Verhalten. Fuer Kundenprojekte abschaltbar, weil
@@ -104,3 +101,9 @@ DEFAULT_UDP_PORT = 55555
 # Automatic program modification is explicit in the setup form. Existing entries
 # without this option stay read-only until the user enables it.
 CONF_AUTO_CONFIGURE_UDP = "auto_configure_udp"
+
+# Upper bound for terminals that get a UDP logger reference. Protects the
+# Miniserver, the network and HA on very large installations; terminals beyond
+# the limit keep the 30-second polling. User-adjustable in the setup form.
+CONF_UDP_MAX_SIGNALS = "udp_max_signals"
+DEFAULT_UDP_MAX_SIGNALS = 500

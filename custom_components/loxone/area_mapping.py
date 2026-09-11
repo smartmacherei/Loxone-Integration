@@ -35,9 +35,7 @@ def room_for_entity(unique_id, rooms):
         return rooms[key]
     if "/" in key:
         return rooms.get(key.split("/", 1)[0])
-    # Generated light scenes use <controller UUID>-<numeric mood ID>.
-    parent, _, mood = key.rpartition("-")
-    return rooms.get(parent) if mood.isdigit() else None
+    return None
 
 
 def plan_mapping(entry_id, entities, devices, rooms, mapping, valid_areas, owned, new_devices):

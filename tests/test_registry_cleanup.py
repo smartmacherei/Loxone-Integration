@@ -77,8 +77,9 @@ def test_backup_is_complete_and_failure_propagates(tmp_path):
         cleanup.write_backup(path, snapshot)
 
 
+@pytest.mark.parametrize("modern", [False, True])
 @pytest.mark.parametrize("condition", ["success", "backup_failure", "changed_program", "changed_registry", "invalid_archive"])
-def test_async_cleanup_guards_and_removal_order(monkeypatch, tmp_path, condition):
+def test_async_cleanup_guards_and_removal_order(monkeypatch, tmp_path, condition, modern):
     """Exercise the real lifecycle, including failures across executor awaits."""
     import io
     import zipfile
@@ -98,8 +99,21 @@ def test_async_cleanup_guards_and_removal_order(monkeypatch, tmp_path, condition
             return "project", b'changed' if self.count == 2 and condition == "changed_program" else raw
     devices = NS(devices={"device": NS(**device())})
     entities = NS(entities={"sensor.old": NS(**entity())})
-    devices.async_update_device = lambda key, **kw: calls.append(("device", key, kw))
+    devices.async_get = devices.devices.get
+    entities.async_get = entities.entities.get
+    devices.async_remove_device = lambda key: calls.append(("device", key))
     entities.async_remove = lambda key: calls.append(("entity", key))
+    if modern:
+        record = devices.devices["device"]
+        record.config_entry_id = ENTRY
+        del record.config_entries
+        class DeviceCollection:
+            def __iter__(self):
+                return iter([record])
+            def __getattr__(self, name):
+                raise AssertionError("Deprecated mapping access: " + name)
+        devices.devices = DeviceCollection()
+
     er, dr = NS(async_get=lambda h: entities), NS(async_get=lambda h: devices)
     def unpack(data):
         if condition == "invalid_archive": raise ValueError("checksum")
@@ -108,6 +122,7 @@ def test_async_cleanup_guards_and_removal_order(monkeypatch, tmp_path, condition
         "attr": NS(asdict=lambda obj, **kw: vars(obj).copy()),
         "homeassistant.helpers": NS(entity_registry=er, device_registry=dr),
         "cleanup_test": types.ModuleType("cleanup_test"),
+        "cleanup_test.registry_compat": NS(registry_entries=lambda items: items.values() if isinstance(items, dict) else iter(items)),
         "cleanup_test.udp_install": NS(ProgramClient=Client),
         "cleanup_test.udp_program": NS(unpack=unpack, digest=lambda value: "hash"),
     }.items():
@@ -128,6 +143,16 @@ def test_async_cleanup_guards_and_removal_order(monkeypatch, tmp_path, condition
     entry = NS(entry_id=ENTRY, options=dict(host="host", port=80, username="user", password="private"))
     asyncio.run(cleanup.async_cleanup_registry(hass, entry, xml, app))
     if condition == "success":
-        assert calls == [("backup",), ("entity", "sensor.old"), ("device", "device", {"remove_config_entry_id": ENTRY})]
+        assert calls == [("backup",), ("entity", "sensor.old"), ("device", "device")]
     else:
         assert not any(c[0] in {"entity", "device"} for c in calls)
+
+
+def test_modern_device_ownership_and_child_protection():
+    modern = device(config_entry_id=ENTRY)
+    del modern["config_entries"]
+    assert cleanup.plan_cleanup(ENTRY, [modern], [], set(), set()) == ([], ["device"])
+    child = device(id="child", parent_device_id="device", identifiers=[])
+    assert cleanup.plan_cleanup(ENTRY, [modern, child], [], set(), set()) == ([], [])
+    modern["config_entry_id"] = "foreign"
+    assert cleanup.plan_cleanup(ENTRY, [modern], [], set(), set()) == ([], [])

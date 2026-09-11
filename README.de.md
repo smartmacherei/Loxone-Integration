@@ -12,8 +12,8 @@ bleibt auf die Funktionen konzentriert, die du dort tatsächlich brauchst.
 Die Integration basiert auf [PyLoxone](https://github.com/JoDehli/PyLoxone), erweitert
 um Geräteerkennung und automatische Einrichtung von smartmacherei.
 
-[20 Ger?te in Home Assistant ansehen](docs/screenshots/1.3.3/README.md) ? echte
-Ger?teansichten auf Deutsch und Englisch aus der Demo-Installation.
+[20 Geräte in Home Assistant ansehen](docs/screenshots/1.3.3/README.md) — echte
+Geräteansichten auf Deutsch und Englisch aus der Demo-Installation.
 
 ## Was du bekommst
 
@@ -26,9 +26,12 @@ Ger?teansichten auf Deutsch und Englisch aus der Demo-Installation.
 - **Geprüfte Projektsicherung vor Änderungen.** Vollständiges Originalprogramm und
   eine Projektdatei zum Öffnen in Loxone Config aufbewahren.
 
-**Aktuelle Veröffentlichung: 1.3.6.** Projektsicherung, automatischer Upload/Neustart, UDP-
+**Aktuelle Veröffentlichung: 1.5.0.** Projektsicherung, automatischer Upload/Neustart, UDP-
 Lebenszeichen und erneutes Laden wurden am Demokoffer geprüft. Physische
 Zustandswechsel und Wiederherstellung aus der Sicherung müssen noch abgenommen werden.
+Gateway/Client-Anlagen (mehrere Miniserver, mehrere Programmdateien in einem Archiv)
+werden erkannt und unverändert gelassen; die automatische UDP-Einrichtung unterstützt
+sie noch nicht.
 
 ## Installation mit HACS
 
@@ -38,17 +41,29 @@ Zustandswechsel und Wiederherstellung aus der Sicherung müssen noch abgenommen 
 4. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Loxone**.
 5. Adresse, HTTP-Port und Zugangsdaten des Miniservers eingeben. Die Vorgabe ist
    `80`. Falls der Miniserver einen anderen HTTP-Port nutzt, diesen ausdrücklich eintragen.
+6. Unter den Zugangsdaten zeigt das Formular die zwei Wege. **Weg 1 (HA → Loxone)** ist
+   immer aktiv: Home Assistant liest Bausteine und Klemmen vom Miniserver; die Optionen
+   dazu bestimmen nur, was angelegt wird. **Weg 2 (Loxone → HA)** ist optional: Der
+   Miniserver sendet Echtzeitwerte per UDP. Dafür wird das Miniserver-Programm geändert,
+   vor dem Einschalten den [Haftungsausschluss](#haftungsausschluss) lesen.
 
 HACS bietet die GitHub-Veröffentlichungen dieses benutzerdefinierten Repositorys an.
 PyLoxone und dieser Fork verwenden dieselbe Domain `loxone`; nur eine Variante
 installieren. Ein vom Werkszustand abweichendes Passwort und Leseberechtigungen für
 das Programm sind erforderlich. HA muss den Miniserver im lokalen Netz erreichen können.
 
-## Automatische Echtzeiteinrichtung in 1.3.3
+## Automatische Echtzeiteinrichtung (UDP)
 
 Bei neuen Installationen bietet das Formular die automatische Echtzeiteinrichtung
 für geeignete entdeckte Klemmen an. Bestehende Installationen behalten ihr Verhalten,
 bis du die Option ausdrücklich einschaltest.
+
+Die Zahl der Echtzeit-Signale ist begrenzt (Vorgabe 500, im Formular einstellbar),
+damit eine sehr große Anlage weder Miniserver noch Netzwerk noch Home Assistant
+überlastet. Klemmen über der Grenze bleiben bei der 30-Sekunden-Abfrage. Nach der
+Einrichtung liest die Integration alle 60 Sekunden nur das Verzeichnislisting des
+Miniserver-Programms; das Programm selbst wird erst nach einem neuen Speichern aus
+Loxone Config erneut heruntergeladen.
 
 **Die automatische Einrichtung ändert das Miniserver-Programm und startet seine
 Logik kurz neu.** Dafür werden Berechtigungen zum Hochladen und Aktivieren benötigt.
@@ -78,6 +93,14 @@ Bedienfunktionen, lesende Zustände und Sonderformate mit dem aktuellen Prüfsta
   diese ebenfalls steuert, die gewünschten Entities prüfen oder Discovery abschalten.
 - Die Miniserver-IP wird nicht automatisch nachgeführt. Eine stabile Adresse nutzen
   oder die Host-Einstellung anpassen.
+- Gateway/Client-Anlagen: Das Programmarchiv eines Gateways enthält je Miniserver ein
+  Programm. Die automatische UDP-Einrichtung bricht vor jeder Änderung mit dem
+  Fehlercode `ARCHIVE_MULTIPLE_PROGRAMS` ab. Alles andere (WebSocket, Abfrage) läuft normal.
+- Zustandsupdates erreichen die Entitäten über einen internen Dispatcher. Das frühere
+  Bus-Ereignis `loxone_event` wird nicht mehr ausgelöst; das hält die Recorder-Datenbank
+  klein. Automationen sollten Entitätszustände nutzen; `loxone_send` für Befehle bleibt.
+- Lichtstimmungen stehen als Effekte der Licht-Entität bereit. Erzeugte Szenen-Entitäten
+  wurden in 1.5.0 entfernt; ihre Registereinträge werden automatisch bereinigt.
 
 Nach Installation einer neuen Integrationsversion Home Assistant neu starten.
 
@@ -105,6 +128,26 @@ Eingänge senden möglicherweise erst bei der nächsten Änderung.
 
 Für Support Versionsnummern und Fehlerbild angeben.
 **Keine Zugangsdaten oder Projektsicherungen öffentlich hochladen.**
+
+## Haftungsausschluss
+
+Diese Integration ist ein unabhängiges Projekt der smartmacherei e.U. Sie steht in
+keiner Verbindung zur Loxone Electronics GmbH und wird von dieser weder unterstützt
+noch freigegeben. „Loxone“ und „Miniserver“ sind Marken der jeweiligen Inhaber.
+
+**Die automatische Echtzeiteinrichtung (Weg 2) lädt das Miniserver-Programm herunter,
+ergänzt eine Seite mit Logger-Objekten, lädt das geänderte Programm hoch und startet
+die Miniserver-Logik neu.** Die Integration sichert und prüft vorher das vollständige
+Original und bricht bei jeder fehlgeschlagenen Prüfung ab. Die Nutzung erfolgt dennoch
+auf eigene Gefahr. Die Software wird gemäß Apache License 2.0 „wie besehen“ ohne jede
+Gewährleistung bereitgestellt. Soweit gesetzlich zulässig, übernehmen die smartmacherei
+e.U. und die Mitwirkenden keine Haftung für Schäden jeder Art aus der Nutzung dieser
+Integration, insbesondere nicht für Verlust oder Beschädigung von Miniserver-Programmen,
+Fehlfunktion oder Ausfall gebäudetechnischer Anlagen (Heizung, Beleuchtung, Beschattung,
+Zutritt, Alarmanlage), Datenverlust oder Kosten einer Wiederherstellung. Erstelle vor
+dem Einschalten eine eigene aktuelle Projektsicherung in Loxone Config, prüfe danach das
+geänderte Programm und aktiviere die automatische Einrichtung nur auf Anlagen, die du
+ändern darfst.
 
 ## Lizenz
 

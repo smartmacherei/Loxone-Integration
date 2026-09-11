@@ -344,6 +344,57 @@ def test_explicit_unsupported_tls_keeps_existing_plain_ftp_fallback(tmp_path, mo
     assert client.events == ["upload", "activate", "restart"]
 
 
+def test_unchanged_program_listing_skips_download(reporting, tmp_path):
+    setup = manager(reporting, tmp_path)
+    client = setup.client
+    client.listing = b"-  1000  2026-09-05 12:00:00  sps_1_20260905120000.zip\n"
+    restart, current = client.get, client.current
+    def get(path):
+        return client.listing if path == "/dev/fslist/prog" else restart(path)
+    def listed_current():
+        client.last_listing = client.listing
+        return current()
+    client.get, client.current = get, listed_current
+    asyncio.run(setup.check())  # upload reads the program twice: before and at activation
+    assert setup.status["state"] == "restarting" and client.calls == 2
+    asyncio.run(setup.check())  # after an activation the full check runs again
+    assert setup.status["state"] == "blocked" and client.calls == 3
+    asyncio.run(setup.check())  # unchanged listing: the program is not downloaded
+    assert client.calls == 3 and setup.status["state"] == "blocked"
+    assert setup.status["last_listing_check"]
+    client.listing = b"-  1000  2026-09-05 12:05:00  sps_1_20260905120500.zip\n"
+    client.raw = client.files.pop("sps_new.zip")
+    asyncio.run(setup.check())
+    assert setup.status["state"] == "configured" and client.calls == 4
+    asyncio.run(setup.check())
+    assert client.calls == 4 and setup.status["state"] == "configured"
+
+
+def test_repeated_failure_is_warned_once(reporting, tmp_path, caplog):
+    setup = manager(reporting, tmp_path)
+    def fail(port): raise RuntimeError(SECRET)
+    setup.client.destination = fail
+    with caplog.at_level(logging.DEBUG):
+        for _ in range(3):
+            asyncio.run(setup.check())
+    failures = [r for r in caplog.records if "UDP_DESTINATION_FAILED" in r.getMessage()]
+    assert [r.levelno for r in failures] == [logging.WARNING, logging.DEBUG, logging.DEBUG]
+
+
+def test_signal_limit_keeps_program_order(reporting, tmp_path, monkeypatch, caplog):
+    setup = manager(reporting, tmp_path)
+    del setup.select  # use the real selection instead of the fixture stub
+    uuids = [f"18f7cbc0-017a-4c94-ffffa13734b4be{i:02x}" for i in range(7)]
+    monkeypatch.setattr(reporting.setup, "enumerate_discoverable", lambda xml, controls: [(u, {}) for u in uuids])
+    setup.limit = 5
+    with caplog.at_level(logging.WARNING):
+        selected = setup.select(archive(), b"<Loxone/>")
+    assert selected == set(uuids[:5]) and setup.signals_discovered == 7
+    assert "udp_max_signals" in caplog.text
+    setup.limit = 7
+    assert setup.select(archive(), b"<Loxone/>") == set(uuids)
+
+
 def test_timeout_description_does_not_invent_firewall_cause(tmp_path):
     client = FakeClient(tmp_path)
     def fail(): raise TimeoutError(SECRET)

@@ -25,9 +25,11 @@ German and English screenshots from the demo installation.
 - **A verified project backup before changes.** Keep the complete original program
   and a project file that can be opened in Loxone Config.
 
-**Current release: 1.3.6.** Project backup, automatic upload/restart, UDP heartbeat reception and
+**Current release: 1.5.0.** Project backup, automatic upload/restart, UDP heartbeat reception and
 integration reload were verified on the demo installation. Physical device
 transitions and restoration from backup still require acceptance testing.
+Gateway/Client installations (several Miniservers, several program files in one
+archive) are detected and left unchanged; automatic UDP setup for them is not yet supported.
 
 ## Install with HACS
 
@@ -37,17 +39,28 @@ transitions and restoration from backup still require acceptance testing.
 4. Open **Settings → Devices & services → Add integration → Loxone**.
 5. Enter the Miniserver address, HTTP port, username and password. The form defaults
    to `80`. If your Miniserver uses another HTTP port, enter that port explicitly.
+6. Below the connection data the form shows two ways. **Way 1 (HA → Loxone)** is always
+   active: Home Assistant reads controls and terminals from the Miniserver; its options
+   only decide what gets created. **Way 2 (Loxone → HA)** is optional: the Miniserver
+   pushes real-time values over UDP. It changes the Miniserver program, see the
+   [disclaimer](#disclaimer) before enabling it.
 
 HACS offers the published GitHub releases for this custom repository.
 This fork uses the same `loxone` domain as PyLoxone. Install only one of them.
 Use a non-default Miniserver password and an account allowed to read the program.
 Home Assistant must be able to reach the Miniserver on the local network.
 
-## Automatic real-time setup in 1.3.3
+## Automatic real-time setup (UDP)
 
 For new installations, the setup form offers automatic real-time configuration for
 eligible discovered terminals. Existing installations keep their current behavior
 until you explicitly enable the option.
+
+The number of real-time signals is limited (default 500, adjustable in the form) so a
+very large installation cannot flood the Miniserver, the network or Home Assistant.
+Terminals above the limit keep the 30-second polling. Once configured, the integration
+only reads the Miniserver's program directory listing every 60 seconds; the program
+itself is downloaded again only after Loxone Config saved a new one.
 
 **Automatic setup changes the Miniserver program and briefly restarts its logic.**
 It needs permission to upload and activate the program. Before any change, the
@@ -77,6 +90,14 @@ native controls, read-only states, special formats and the tested project covera
   Loxone program also controls those outputs; disable unwanted entities or discovery.
 - The integration does not automatically discover a changed Miniserver IP address.
   Use a stable address or update the host option.
+- Gateway/Client installations: the program archive of a Gateway contains one program
+  per Miniserver. Automatic UDP setup stops before any change with the error code
+  `ARCHIVE_MULTIPLE_PROGRAMS`. Everything else (WebSocket, polling) works as usual.
+- State updates reach the entities through an internal dispatcher. The former bus
+  event `loxone_event` is no longer fired, which keeps the recorder database small.
+  Automations should use entity states; `loxone_send` for commands is unchanged.
+- Lighting moods are available as effects of the light entity. Generated scene
+  entities were removed in 1.5.0; their registry entries are cleaned up automatically.
 
 Installing updated integration code requires restarting Home Assistant.
 
@@ -102,6 +123,25 @@ may not send updates until their value changes.
 
 For support, include integration, HA and Miniserver versions and the observed error.
 **Do not attach project backups or credentials to public issues.**
+
+## Disclaimer
+
+This integration is an independent project by smartmacherei e.U. It is not affiliated
+with, endorsed by or supported by Loxone Electronics GmbH. "Loxone" and "Miniserver"
+are trademarks of their respective owners.
+
+**Automatic real-time setup (Way 2) downloads the Miniserver program, adds a page with
+logger objects, uploads the changed program and restarts the Miniserver logic.** The
+integration saves and verifies a complete backup first and stops whenever a check fails.
+You nevertheless use this feature at your own risk. The software is provided "as is"
+without warranty of any kind, as stated in the Apache License 2.0. To the extent
+permitted by law, smartmacherei e.U. and the contributors accept no liability for damage
+of any kind resulting from the use of this integration, including but not limited to
+loss or corruption of Miniserver programs, malfunction or downtime of building services
+(heating, lighting, shading, access control, alarm systems), data loss, or the cost of
+restoring a project. Before enabling automatic setup, keep your own current project
+backup in Loxone Config, review the changed program afterwards, and enable it only on
+installations you are authorised to change.
 
 ## License
 

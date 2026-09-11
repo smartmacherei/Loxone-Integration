@@ -16,7 +16,7 @@ from homeassistant.helpers.event import async_track_time_interval
 from .const import DOMAIN
 from .topology import enumerate_discoverable
 from .udp_install import ProgramClient, install
-from .udp_errors import details, failure, notification, restore_failure
+from .udp_errors import details, failure, notification, restore_failure, utc_now
 from .udp_program import digest
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,6 +32,9 @@ class UdpSetup:
         identity = hashlib.sha256(str(options["host"]).encode()).hexdigest()[:16]
         self.directory = hass.config.path("loxone_backups", identity)
         self.port = int(options["udp_port"] if "udp_port" in options else 55555)
+        # Upper bound for logger references, so a very large installation cannot
+        # flood the Miniserver, the network or HA. Terminals beyond it keep polling.
+        self.limit = int(options.get("udp_max_signals") or 500)
         self.stop = threading.Event()
         self.task = None
         self.initial_sha = digest(program) if program else None
@@ -40,12 +43,22 @@ class UdpSetup:
         self.cancel_interval = None
         # Private support evidence: excluded from status, notifications and logs.
         self.failed_program = None
+        self.listing_sha = None
+        self.logged = None
+        self.signals_discovered = None
 
-    @staticmethod
-    def select(raw, xml):
+    def select(self, raw, xml):
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
             controls = json.loads(archive.read("LoxAPP3.json"))
-        return {u for u, _ in enumerate_discoverable(xml, controls)}
+        # Program order is stable, so repeated checks select the same terminals.
+        found = [u for u, _ in enumerate_discoverable(xml, controls)]
+        self.signals_discovered = len(found)
+        if len(found) > self.limit:
+            _LOGGER.warning("Loxone UDP: %s discovered terminals exceed the limit of %s; only the "
+                            "first %s receive real-time updates (option udp_max_signals)",
+                            len(found), self.limit, self.limit)
+            found = found[:self.limit]
+        return set(found)
 
     def start(self):
         self.cancel_interval = async_track_time_interval(self.hass, self.tick, timedelta(seconds=60))
@@ -65,9 +78,20 @@ class UdpSetup:
         previous = self.status.get("state")
         previous_error = self.status.get("error")
         previous_attempt = self.status.get("error_attempt")
+        if previous in {"configured", "error", "blocked"} and self.listing_sha is not None:
+            # Only the small directory listing is read every interval. The full
+            # program is downloaded again only after Config saved a new one.
+            try:
+                listing = await self.hass.async_add_executor_job(self.client.get, "/dev/fslist/prog")
+            except Exception:
+                listing = None
+            if listing is not None and digest(listing) == self.listing_sha:
+                self.status["last_listing_check"] = utc_now()
+                return
         self.status.update(state="checking", step="program_download", backup_verified=False)
         self.status["step_history"] = []
         self.status.pop("backup", None)
+        self.client.last_listing = None
         loop = asyncio.get_running_loop()
         active = True
 
@@ -99,6 +123,7 @@ class UdpSetup:
                 self.notify(notification(self.status["error"], self.language, blocked=True))
             elif result["state"] == "configured":
                 self.failed_program = None
+                self.logged = None
                 for key in ("cleanup_warning", "activation_error"):
                     self.archive_detail(key)
                 if self.status.get("error"):
@@ -135,8 +160,12 @@ class UdpSetup:
                 self.status["activation_error"] = activation_error
                 _LOGGER.warning("Loxone UDP original activation failure: code=%s step=%s exception=%s",
                                 activation_error["code"], activation_error["step"], activation_error["exception_type"])
-            _LOGGER.warning("Loxone automatic UDP setup failed: code=%s step=%s exception=%s; %s Next check: %s",
-                            data["code"], data["step"], data["exception_type"], data["description"], data["next_check"])
+            # The same failure every minute is one warning, then debug only.
+            key = (data["code"], data["step"])
+            log = _LOGGER.debug if key == self.logged else _LOGGER.warning
+            self.logged = key
+            log("Loxone automatic UDP setup failed: code=%s step=%s exception=%s; %s Next check: %s",
+                data["code"], data["step"], data["exception_type"], data["description"], data["next_check"])
             message = notification(data, self.language)
             message += ("\n\nFür Support: Diagnosedaten herunterladen. Der Download enthält das vollständige Programmarchiv, sofern abrufbar; bitte vertraulich weitergeben."
                         if self.language.startswith("de") else
@@ -148,6 +177,9 @@ class UdpSetup:
             self.notify(message)
         finally:
             active = False
+            self.status.update(signal_limit=self.limit, signals_discovered=self.signals_discovered)
+            listing = getattr(self.client, "last_listing", None)
+            self.listing_sha = digest(listing) if listing else None
 
     @property
     def language(self):

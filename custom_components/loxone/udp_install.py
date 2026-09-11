@@ -47,7 +47,11 @@ class ProgramClient:
             conn.close()
 
     def current(self):
-        name = newest_archive(self.get("/dev/fslist/prog").decode())
+        listing = self.get("/dev/fslist/prog")
+        # Change signature for the periodic check: Config saves a new file name
+        # every time, so an unchanged listing means an unchanged program.
+        self.last_listing = listing
+        name = newest_archive(listing.decode())
         return name, self.get("/dev/fsget/prog/" + name)
 
     def destination(self, port):

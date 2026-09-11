@@ -149,3 +149,21 @@ def test_unload_cleanup_does_not_return_an_object_for_ha_to_await():
     assert ns["_remove_transport"]() is None
     assert set(hass.data["loxone_transport"]) == {"other"}
     assert ns["_remove_transport"]() is None
+
+
+def test_state_update_keeps_event_data_interface():
+    update = transport.StateUpdate({U: 1})
+    assert update.data == {U: 1} and U in update.data
+
+
+def test_registry_entry_collection_does_not_probe_mapping_api():
+    from types import SimpleNamespace
+    compat = load("registry_compat")
+    entry = SimpleNamespace(id="device")
+    class Collection:
+        def __iter__(self):
+            return iter([entry])
+        def __getattr__(self, name):
+            raise AssertionError(name)
+    assert list(compat.registry_entries(Collection())) == [entry]
+    assert list(compat.registry_entries({"device": entry})) == [entry]

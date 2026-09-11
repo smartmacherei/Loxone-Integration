@@ -17,8 +17,7 @@ from homeassistant.components.sensor import (CONF_STATE_CLASS, PLATFORM_SCHEMA,
                                              SensorEntityDescription,
                                              SensorStateClass)
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (CONCENTRATION_PARTS_PER_MILLION,
-                                 CONF_DEVICE_CLASS, CONF_NAME,
+from homeassistant.const import (CONF_DEVICE_CLASS, CONF_NAME,
                                  CONF_UNIT_OF_MEASUREMENT, CONF_VALUE_TEMPLATE,
                                  LIGHT_LUX, PERCENTAGE, STATE_UNKNOWN,
                                  UnitOfEnergy, UnitOfPower, UnitOfSpeed,
@@ -143,7 +142,7 @@ SENSOR_TYPES: tuple[LoxoneEntityDescription, ...] = (
     ),
     LoxoneEntityDescription(
         key="carbon_dioxide",
-        loxone_format_strings=(CONCENTRATION_PARTS_PER_MILLION,),
+        loxone_format_strings=("ppm",),
         state_class=SensorStateClass.MEASUREMENT,
         device_class=SensorDeviceClass.CO2,
     ),

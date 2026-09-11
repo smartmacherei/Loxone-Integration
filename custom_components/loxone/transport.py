@@ -19,6 +19,18 @@ def logger_inventory(xml, port):
     return signals, next(iter(seconds & signals), None)
 
 
+class StateUpdate:
+    """Changed signal values, delivered to entities through the HA dispatcher.
+
+    ``data`` keeps the interface of the former ``loxone_event`` bus event, which
+    is no longer fired: every value would otherwise be written to the recorder.
+    """
+    __slots__ = ("data",)
+
+    def __init__(self, data):
+        self.data = data
+
+
 class SignalRouter:
     """Heartbeat loss selects fallback, while unchanged signals stay healthy."""
     def __init__(self, emit, clock=time.monotonic):

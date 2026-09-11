@@ -45,13 +45,13 @@ def plan_cleanup(entry_id, devices, entities, active_ids, known):
     remove_devices = set()
     for d in devices:
         identifiers = d.get("identifiers", [])
-        if (set(d["config_entries"]) != {entry_id} or not identifiers
+        if ((set(d.get("config_entries", [])) if "config_entry_id" not in d else {d["config_entry_id"]}) != {entry_id} or not identifiers
                 or not all(domain == "loxone" and absent(value) for domain, value in identifiers)):
             continue
         if any(e.get("device_id") == d["id"] and e["entity_id"] not in remove_entities for e in entities):
             continue
         # Preserve parents still referenced by another device.
-        if any(other.get("via_device_id") == d["id"] for other in devices):
+        if any((other.get("via_device_id") == d["id"] or other.get("parent_device_id") == d["id"]) for other in devices):
             continue
         remove_devices.add(d["id"])
     return sorted(remove_entities), sorted(remove_devices)
@@ -85,6 +85,7 @@ async def async_cleanup_registry(hass, entry, program, app):
         return
     import attr
     from homeassistant.helpers import device_registry as dr, entity_registry as er
+    from .registry_compat import registry_entries
     from .udp_install import ProgramClient
     from .udp_program import digest, unpack
 
@@ -93,8 +94,10 @@ async def async_cleanup_registry(hass, entry, program, app):
         devices, entities = dr.async_get(hass), er.async_get(hass)
 
         def snapshot():
-            return ([attr.asdict(d, recurse=False) for d in devices.devices.values()],
-                    [attr.asdict(e, recurse=False) for e in entities.entities.values()])
+            return ([attr.asdict(d, recurse=False) for d in (
+                        *registry_entries(devices.devices),
+                        *registry_entries(getattr(devices, "child_devices", ())))],
+                    [attr.asdict(e, recurse=False) for e in registry_entries(entities.entities)])
 
         def plan():
             d, e = snapshot()
@@ -118,8 +121,8 @@ async def async_cleanup_registry(hass, entry, program, app):
         # attrs' recursive serializer handles nested registry alias records.
         saved = {"entry_id": entry.entry_id, "program_sha256": digest(raw),
                  "remove_entities": proposed[0], "remove_devices": proposed[1],
-                 "entities": [attr.asdict(entities.entities[key]) for key in proposed[0]],
-                 "devices": [attr.asdict(devices.devices[key]) for key in proposed[1]]}
+                 "entities": [attr.asdict(entities.async_get(key)) for key in proposed[0]],
+                 "devices": [attr.asdict(devices.async_get(key)) for key in proposed[1]]}
         backup = await hass.async_add_executor_job(
             write_backup, hass.config.path("loxone_registry_backups", entry.entry_id), saved)
         _, current = await hass.async_add_executor_job(client.current)
@@ -128,7 +131,7 @@ async def async_cleanup_registry(hass, entry, program, app):
         for entity_id in proposed[0]:
             entities.async_remove(entity_id)
         for device_id in proposed[1]:
-            devices.async_update_device(device_id, remove_config_entry_id=entry.entry_id)
+            devices.async_remove_device(device_id)
         _LOGGER.info("Removed %s deleted Loxone entities and %s devices; registry backup: %s",
                      len(proposed[0]), len(proposed[1]), backup)
     except Exception as err:

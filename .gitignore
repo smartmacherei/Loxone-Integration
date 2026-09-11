@@ -19,3 +19,6 @@ loxone_backups/
 
 # Local access credentials; never commit
 /ZUGAENGE.local.md
+
+# Customer diagnostics (emails, logs, program archives); never commit
+/diag/

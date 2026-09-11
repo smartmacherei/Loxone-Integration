@@ -17,9 +17,15 @@ behavior and the limitations of read-only special values.
 | Auto-discover physical terminals | On | Add eligible terminals outside the visualization |
 | Automatically set up real-time UDP | On | Back up and configure the logger program automatically |
 | UDP port | `55555` | Receive logger packets; `0` disables UDP and automatic program changes |
-| Generate scenes | On | Create scenes from supported controls |
-| Scene generation delay | 3 seconds | Delay scene creation |
+| Maximum number of real-time signals | `500` | Upper bound for logger references; terminals beyond it keep 30-second polling |
 | LightControllerV2 subcontrols | Off | Enable individual light-controller channels by default |
+
+Lighting moods are always available as effects of the light entity. The scene options
+of earlier versions were removed in 1.5.0.
+
+Once configured, the periodic check (every 60 seconds) only reads the Miniserver's
+program directory listing. The program archive itself is downloaded again only after
+Loxone Config saved a new one, so an idle installation causes no repeated downloads.
 
 Automatic setup requires a complete current program ZIP, permission to read/upload
 and activate the program, local FTP/FTPS on port 21, an IPv4 route to the Miniserver,

@@ -4,6 +4,38 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.5.0] - 2026-09-11
+
+- Einrichtungsdialog aufgeräumt: oben die Zugangsdaten, darunter die zwei Wege.
+  Weg 1 (HA → Loxone) ist immer aktiv und bündelt Erkennung, Lichtkreise und
+  Raumzuordnung. Weg 2 (Loxone → HA) ist die optionale UDP-Echtzeit mit Port und
+  neuer Höchstzahl der Signale (Vorgabe 500, einstellbar 1–10000). Klemmen über
+  der Grenze bleiben bei der 30-Sekunden-Abfrage; die Grenze schützt Miniserver,
+  Netzwerk und HA bei sehr großen Anlagen. Diagnose zeigt Grenze und Anzahl.
+- Szenen-Optionen entfernt. Lichtstimmungen bleiben als Effekte der Licht-Entität
+  verfügbar (`light.turn_on` mit `effect`). Erzeugte Szenen-Entitäten werden beim
+  Update aus dem Register entfernt (Konfigurationsversion 4).
+- Weniger Miniserver-Traffic: Die 60-Sekunden-Prüfung liest nur noch das
+  Verzeichnislisting; das Programm wird erst nach einem neuen Speichern aus
+  Loxone Config erneut heruntergeladen. Bisher wurde das komplette Archiv jede
+  Minute geladen, beim Tester 1,5 MB pro Minute über zwei Stunden. Ein
+  gleichbleibender Fehler wird nur einmal als Warnung und danach im Debug-Log
+  protokolliert.
+- Zustandsupdates gehen über den internen Dispatcher statt über das Bus-Ereignis
+  `loxone_event`. Damit verschwinden die Recorder-Warnungen „Event data exceed
+  maximum size“ und die Datenbank wächst nicht mehr mit jedem Loxone-Wert.
+  `loxone_event` wird nicht mehr ausgelöst; Automationen auf Entitätszustände
+  umstellen. `loxone_send` und die Dienste sind unverändert.
+- Home Assistant 2026.9: Registry-Zugriffe ohne die veraltete Mapping-API. Die
+  Bereinigung gelöschter Geräte versteht `config_entry_id` und schützt Eltern von
+  Child-Geräten; behebt „Loxone registry cleanup skipped (KeyError)“. Veraltete
+  Konstante für ppm ersetzt.
+- Gateway/Client-Anlagen: Ein Archiv mit mehreren Programmdateien wird weiterhin
+  unverändert gelassen (`ARCHIVE_MULTIPLE_PROGRAMS`), jetzt ohne minütlichen
+  Download. Alle übrigen Funktionen (WebSocket, Abfrage) laufen normal.
+- README: Haftungsausschluss für die automatische Programmänderung, die zwei
+  Wege im Einrichtungsdialog, aktualisierte Grenzen und Einstellungen.
+
 ## [1.4.6] - 2026-09-10
 
 - „Diagnosedaten herunterladen“ enthält bei aktiver automatischer UDP-Einrichtung
