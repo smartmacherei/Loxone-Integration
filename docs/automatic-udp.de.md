@@ -40,7 +40,8 @@ automatische Programmänderungen. Bereits angelegte Logger bleiben beim Ausschal
 Die Integration prüft das aktuelle Programm alle 60 Sekunden. Fehlende Referenzen
 werden für geeignete entdeckte Klemmen ergänzt. Passende vorhandene Logger werden
 weiterverwendet. Eigene Objekte haben feste Kennungen; ihre Seite heißt
-**HA UDP (smartmacherei)**. Dort keine eigene Kundenlogik ergänzen.
+**HA UDP** (Anlagen aus früheren Versionen behalten den Seitennamen **HA UDP (smartmacherei)**,
+bis die Seite neu aufgebaut wird). Dort keine eigene Kundenlogik ergänzen.
 
 **Die Einrichtung ändert das Miniserver-Programm und startet seine Logik kurz neu.**
 Das kann auch nach einem neuen Upload aus Loxone Config geschehen. Während der

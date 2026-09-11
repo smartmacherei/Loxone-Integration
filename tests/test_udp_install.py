@@ -130,9 +130,20 @@ def test_legacy_matching_logger_reused():
     ids = [el.get("U") for el in root.iter("C") if el.get("Title") == program.TITLE]
     for i, value in enumerate(ids):
         xml = xml.replace(value.encode(), f"18f7cbc0-aaaa-{i:04x}-ffffa13734b4be2f".encode())
-    xml = xml.replace(program.TITLE.encode(), b"HA UDP")
+    xml = xml.replace(program.TITLE.encode(), b"Manueller Logger")
     legacy = archive(xml)
     assert program.prepare(legacy, TARGET, {U})[0] == legacy
+
+
+def test_previous_release_page_title_is_still_recognised():
+    changed, _ = program.prepare(archive(), TARGET, {U})
+    _, xml = program.unpack(changed)
+    older = archive(xml.replace(program.TITLE.encode(), b"HA UDP (smartmacherei)"))
+    # Same managed UUIDs, old title: accepted as ours and left untouched.
+    assert program.prepare(older, TARGET, {U})[0] == older
+    renamed = archive(xml.replace(program.TITLE.encode(), b"Kundenseite"))
+    with pytest.raises(ValueError):
+        program.prepare(renamed, TARGET, {U})
 
 
 def test_owned_page_with_user_logic_is_not_deleted():

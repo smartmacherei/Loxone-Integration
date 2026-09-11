@@ -4,6 +4,13 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.6.3] - 2026-09-11
+
+- Die von der Integration angelegte Seite und der Logger im Miniserver-Programm
+  heißen jetzt „HA UDP". Bestehende Anlagen mit dem Namen „HA UDP (smartmacherei)"
+  werden weiter erkannt und nicht angefasst; der neue Name kommt erst, wenn die
+  Seite ohnehin neu aufgebaut wird, etwa nach einer Programmänderung.
+
 ## [1.6.2] - 2026-09-11
 
 - In Home Assistant deaktivierte Entitäten werden nicht mehr abgefragt. Die Auswahl,

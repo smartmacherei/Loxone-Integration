@@ -43,7 +43,8 @@ loggers already written to the Miniserver.
 When enabled, the integration reads the current complete program ZIP. It creates
 references only for discovered terminals with usable signal sources. Matching manual
 loggers are reused. Objects owned by this integration use deterministic identifiers;
-its own page is called **HA UDP (smartmacherei)**. Do not add customer logic to that page.
+its own page is called **HA UDP** (installations from earlier releases keep the page name
+**HA UDP (smartmacherei)** until the page is rebuilt). Do not add customer logic to that page.
 Existing application logic, permissions and other archive files are preserved.
 
 ## Backup is mandatory

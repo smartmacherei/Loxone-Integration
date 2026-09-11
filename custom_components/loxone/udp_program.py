@@ -20,7 +20,9 @@ import zlib
 
 from .udp_errors import coded_error, mark
 
-TITLE = "HA UDP (smartmacherei)"
+TITLE = "HA UDP"
+# Pages and loggers written by releases up to 1.6.2 keep working untouched.
+LEGACY_TITLES = {"HA UDP (smartmacherei)"}
 MAX_SIZE = 64 * 1024 * 1024
 
 
@@ -191,7 +193,8 @@ def patch_xml(xml: bytes, target: str, selected: set[str]) -> tuple[bytes, dict]
     objects = list(root.iter("C"))
     owned = {page_id: "Page", logger_id: "Logger"}
     for el in objects:
-        if el.get("U") in owned and (el.get("Type") != owned[el.get("U")] or el.get("Title") != TITLE):
+        if el.get("U") in owned and (el.get("Type") != owned[el.get("U")]
+                                     or (el.get("Title") != TITLE and el.get("Title") not in LEGACY_TITLES)):
             raise ValueError("Managed object was modified; refusing to overwrite it")
     owned_page = next((el for el in objects if el.get("U") == page_id), None)
     owned_children = set(owned_page.iter()) if owned_page is not None else set()
