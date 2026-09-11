@@ -25,11 +25,11 @@ German and English screenshots from the demo installation.
 - **A verified project backup before changes.** Keep the complete original program
   and a project file that can be opened in Loxone Config.
 
-**Current release: 1.5.0.** Project backup, automatic upload/restart, UDP heartbeat reception and
+**Current release: 1.6.0.** Project backup, automatic upload/restart, UDP heartbeat reception and
 integration reload were verified on the demo installation. Physical device
 transitions and restoration from backup still require acceptance testing.
-Gateway/Client installations (several Miniservers, several program files in one
-archive) are detected and left unchanged; automatic UDP setup for them is not yet supported.
+Gateway/Client installations: all Miniservers are discovered and read; automatic UDP setup
+for them is not yet supported and leaves the programs unchanged.
 
 ## Install with HACS
 
@@ -56,9 +56,10 @@ For new installations, the setup form offers automatic real-time configuration f
 eligible discovered terminals. Existing installations keep their current behavior
 until you explicitly enable the option.
 
-The number of real-time signals is limited (default 500, adjustable in the form) so a
-very large installation cannot flood the Miniserver, the network or Home Assistant.
-Terminals above the limit keep the 30-second polling. Once configured, the integration
+The number of additionally discovered terminals is limited (default 500, adjustable in
+the form). Terminals beyond the limit are not created, so a very large installation, for
+example a Gateway/Client system with many Miniservers, cannot flood the Miniservers, the
+network or Home Assistant with entities, polling and loggers. Once configured, the integration
 only reads the Miniserver's program directory listing every 60 seconds; the program
 itself is downloaded again only after Loxone Config saved a new one.
 
@@ -90,9 +91,11 @@ native controls, read-only states, special formats and the tested project covera
   Loxone program also controls those outputs; disable unwanted entities or discovery.
 - The integration does not automatically discover a changed Miniserver IP address.
   Use a stable address or update the host option.
-- Gateway/Client installations: the program archive of a Gateway contains one program
-  per Miniserver. Automatic UDP setup stops before any change with the error code
-  `ARCHIVE_MULTIPLE_PROGRAMS`. Everything else (WebSocket, polling) works as usual.
+- Gateway/Client installations: discovery reads the full project, so terminals of all
+  Miniservers are found and grouped by their Miniserver; terminals of a client are polled
+  at that client. Automatic UDP setup still stops before any change with the error code
+  `ARCHIVE_MULTIPLE_PROGRAMS`, because loggers would have to be written into several
+  programs at once. WebSocket, commands and rooms work through the gateway as usual.
 - State updates reach the entities through an internal dispatcher. The former bus
   event `loxone_event` is no longer fired, which keeps the recorder database small.
   Automations should use entity states; `loxone_send` for commands is unchanged.

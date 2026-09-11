@@ -17,7 +17,7 @@ behavior and the limitations of read-only special values.
 | Auto-discover physical terminals | On | Add eligible terminals outside the visualization |
 | Automatically set up real-time UDP | On | Back up and configure the logger program automatically |
 | UDP port | `55555` | Receive logger packets; `0` disables UDP and automatic program changes |
-| Maximum number of real-time signals | `500` | Upper bound for logger references; terminals beyond it keep 30-second polling |
+| Maximum number of additionally discovered terminals | `500` | One bound for discovered entities, their polling and logger references, in program order |
 | LightControllerV2 subcontrols | Off | Enable individual light-controller channels by default |
 
 Lighting moods are always available as effects of the light entity. The scene options

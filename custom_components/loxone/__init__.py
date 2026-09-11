@@ -347,6 +347,7 @@ async def _async_setup_entry(hass, config_entry):
 
     advance(hass, config_entry, "topology_discovery")
     _program = None
+    _servers = []
     from .transport import SignalRouter, StateUpdate
     # Dispatcher instead of a bus event: the recorder would otherwise store
     # every Loxone value (and warn about oversized snapshots).
@@ -367,7 +368,8 @@ async def _async_setup_entry(hass, config_entry):
 
         from . import helpers as _lox_helpers
         from .topology import (async_fetch_program, async_fetch_values,
-                               build_device_map, enumerate_discoverable)
+                               build_device_map, client_hosts,
+                               enumerate_discoverable, miniservers)
 
         _program = await async_fetch_program(
             async_get_clientsession(hass),
@@ -378,6 +380,19 @@ async def _async_setup_entry(hass, config_entry):
         )
         if _program:
             _router.configure(_program, int(config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT)))
+            # Gateway/Client: the full project lists every Miniserver. Client
+            # terminals are polled at the client itself; the gateway only knows
+            # foreign terminals its own program uses.
+            _servers = await hass.async_add_executor_job(miniservers, _program)
+            hass.data.setdefault(DOMAIN + "_topology", {})[config_entry.entry_id] = {
+                "miniservers": [{k: m[k] for k in ("name", "role", "index", "host", "port")} for m in _servers],
+                "client_terminals": 0,
+            }
+            config_entry.async_on_unload(
+                lambda: hass.data.get(DOMAIN + "_topology", {}).pop(config_entry.entry_id, None))
+            if len(_servers) > 1:
+                _LOGGER.info("Loxone Gateway/Client: %s Miniserver im Projekt (%s)", len(_servers),
+                             ", ".join(f"{m['name']} [{m['role']}]" for m in _servers))
             _lox_helpers.device_map = build_device_map(_program)
             _LOGGER.info(
                 "Loxone-Topologie: %s Entities auf %s physische Geraete gemappt",
@@ -411,6 +426,15 @@ async def _async_setup_entry(hass, config_entry):
                     _new = enumerate_discoverable(
                         _program, _loxconfig, _lox_helpers.device_map
                     )
+                    # One limit for entities, polling and UDP loggers: program
+                    # order is stable, so UdpSetup.select picks the same subset.
+                    _limit = int(config_entry.options.get(CONF_UDP_MAX_SIGNALS) or DEFAULT_UDP_MAX_SIGNALS)
+                    if len(_new) > _limit:
+                        _LOGGER.warning(
+                            "Loxone Auto-Discovery: %s Klemmen gefunden, Grenze %s; nur die ersten %s "
+                            "werden angelegt (Option udp_max_signals erhoehen, falls gewuenscht)",
+                            len(_new), _limit, _limit)
+                        _new = _new[:_limit]
                     _router.configure(_program, int(config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT)),
                                       _loxconfig, [_u for _u, _c in _new])
                     for _u, _ctrl in _new:
@@ -423,6 +447,11 @@ async def _async_setup_entry(hass, config_entry):
                     # Initialwerte per HTTP holen (WS pusht Konfig-Analogwerte nicht)
                     if _new:
                         _raw_uuids = {_u for _u, _c in _new if _c.get("auto_raw")}
+                        _hosts = await hass.async_add_executor_job(
+                            client_hosts, _program, [_u for _u, _c in _new])
+                        hass.data[DOMAIN + "_topology"][config_entry.entry_id]["client_terminals"] = len(_hosts)
+                        if _hosts:
+                            _LOGGER.info("Loxone Gateway/Client: %s Klemmen werden direkt am Client abgefragt", len(_hosts))
                         _lox_helpers.initial_values = await async_fetch_values(
                             async_get_clientsession(hass),
                             config_entry.options.get(CONF_HOST),
@@ -432,6 +461,7 @@ async def _async_setup_entry(hass, config_entry):
                             [_u for _u, _c in _new],
                             _raw_uuids,
                             http_scales=_router.http_scales,
+                            hosts=_hosts,
                         )
                         _LOGGER.info(
                             "Loxone Auto-Discovery: %s Initialwerte via HTTP geholt",
@@ -458,6 +488,7 @@ async def _async_setup_entry(hass, config_entry):
                                     _session, _opts.get(CONF_HOST), _opts.get(CONF_PORT),
                                     _opts.get(CONF_USERNAME), _opts.get(CONF_PASSWORD),
                                     _router.due(_uuids), _raw_uuids, _router.attempted, _router.http_scales,
+                                    hosts=_hosts,
                                 )
                                 if not _poll_discovered.closed:
                                     _router.receive("poll", values, snapshot)
@@ -497,7 +528,10 @@ async def _async_setup_entry(hass, config_entry):
             _udp_transport, _udp_proto = await async_start_udp_push(
                 hass.loop, _udp_port, lambda values: _router.receive("udp", values),
                 known=list(coordinator.miniserver.lox_config.json.get("controls", {})) + list(_router.udp_signals),
-                source_host=config_entry.options.get(CONF_HOST), dedupe=False,
+                # Every Miniserver of a Gateway/Client system sends from its own address.
+                source_host=[config_entry.options.get(CONF_HOST)]
+                + [m["host"] for m in _servers if m["role"] != "single" and m["host"]],
+                dedupe=False,
             )
         except OSError:
             _LOGGER.warning("Loxone UDP port %s unavailable; automatic program changes disabled", _udp_port)

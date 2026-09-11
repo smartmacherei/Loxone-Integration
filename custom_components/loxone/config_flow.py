@@ -172,6 +172,10 @@ def _form_schema(auto_udp_default):
             vol.Required(
                 CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
             ): BooleanSelector(),
+            # One limit for discovered entities, their polling and UDP loggers.
+            vol.Optional(CONF_UDP_MAX_SIGNALS, default=DEFAULT_UDP_MAX_SIGNALS): NumberSelector(
+                NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=1, max=10000)
+            ),
             vol.Required(
                 CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, default=False
             ): BooleanSelector(),
@@ -181,9 +185,6 @@ def _form_schema(auto_udp_default):
             # UDP-Port fuer die Logger-Datagramme des Miniservers (0 = aus).
             vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
                 NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
-            ),
-            vol.Optional(CONF_UDP_MAX_SIGNALS, default=DEFAULT_UDP_MAX_SIGNALS): NumberSelector(
-                NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=1, max=10000)
             ),
         }
     )

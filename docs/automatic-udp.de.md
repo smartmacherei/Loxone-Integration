@@ -14,7 +14,7 @@ ein UDP-Logger im Miniserver-Programm eingerichtet.
 | Physische Klemmen automatisch entdecken | Ein | Geeignete Klemmen außerhalb der Visualisierung ergänzen |
 | UDP-Echtzeit automatisch einrichten | Ein | Programm sichern und Logger automatisch einrichten |
 | UDP-Port | `55555` | `0` deaktiviert UDP und automatische Programmänderungen |
-| Höchstzahl der Echtzeit-Signale | `500` | Obergrenze für Logger-Referenzen; Klemmen darüber bleiben bei der 30-Sekunden-Abfrage |
+| Höchstzahl zusätzlich erkannter Klemmen | `500` | Eine Grenze für erkannte Entitäten, ihre Abfrage und Logger-Referenzen, in Programmreihenfolge |
 | LightControllerV2-Unterkanäle | Aus | Einzelne Lichtkanäle standardmäßig aktivieren |
 
 Lichtstimmungen sind immer als Effekte der Licht-Entität verfügbar. Die Szenen-Optionen

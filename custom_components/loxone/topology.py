@@ -148,17 +148,123 @@ def _newest_program_file(listing: str) -> str | None:
     return best
 
 
-def _loxcc_from_zip(data: bytes) -> bytes | None:
-    """sps0.LoxCC aus einem sps_*.zip-Programmpaket holen."""
+def program_from_zip(data: bytes) -> bytes | None:
+    """Programm-XML aus einem sps_*.zip-Programmpaket.
+
+    Einzelanlage: eine sps0.LoxCC. Gateway/Client-Verbund: je Miniserver eine
+    spsN.LoxCC plus sps.Loxone, das Gesamtprojekt mit allen Miniservern. Nur das
+    Gesamtprojekt kennt alle Klemmen; die erste LoxCC waere ein zufaelliger
+    Miniserver. Fehlt sps.Loxone, werden die Teilprogramme zusammengefuehrt.
+    """
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            for name in zf.namelist():
-                if name.lower().endswith(".loxcc") and name.lower().startswith("sps"):
-                    return zf.read(name)
-        _LOGGER.warning("Kein sps*.LoxCC im Programm-ZIP")
+            names = zf.namelist()
+            full = next((n for n in names if n.lower() == "sps.loxone"), None)
+            if full:
+                return zf.read(full)
+            parts = sorted(n for n in names if re.fullmatch(r"sps\d*\.loxcc", n.lower()))
+            if not parts:
+                _LOGGER.warning("Kein sps*.LoxCC im Programm-ZIP")
+                return None
+            programs = [decode_loxcc(zf.read(n)) for n in parts]
     except Exception as err:  # noqa: BLE001 - best effort
         _LOGGER.warning("Programm-ZIP nicht lesbar: %s", err)
-    return None
+        return None
+    if any(p is None for p in programs):
+        return None
+    return programs[0] if len(programs) == 1 else _merge_programs(programs)
+
+
+def _merge_programs(programs: list[bytes]) -> bytes | None:
+    """Teilprogramme eines Verbunds zu einem Dokument: globale Objekte einmal,
+    LoxLIVE (Miniserver samt Klemmen) und Program je Teil."""
+    try:
+        base = ET.fromstring(programs[0])
+        document = next(el for el in base.iter("C") if el.get("Type") == "Document")
+        known = {el.get("U") for el in base.iter("C") if el.get("U")}
+        for raw in programs[1:]:
+            other = next(el for el in ET.fromstring(raw).iter("C") if el.get("Type") == "Document")
+            for child in list(other):
+                if child.get("Type") in ("LoxLIVE", "Program") and child.get("U") not in known:
+                    document.append(child)
+                    known.update(el.get("U") for el in child.iter("C") if el.get("U"))
+    except (ET.ParseError, StopIteration) as err:
+        _LOGGER.warning("Teilprogramme nicht zusammenfuehrbar: %s", err)
+        return None
+    return ET.tostring(base, encoding="utf-8", xml_declaration=True)
+
+
+def miniservers(program_xml: bytes) -> list[dict]:
+    """Ein Eintrag je LoxLIVE: Rolle (single/gateway/client), Index, Adresse.
+
+    Gateway und Clients erkennt man an den Objekten Gateway (mit SLAVE-Eintraegen
+    je Client) und GatewayClient (ProgType = Index der spsN.LoxCC).
+    """
+    try:
+        root = ET.fromstring(program_xml)
+    except ET.ParseError:
+        return []
+    slaves = {}
+    for gateway in root.iter("C"):
+        if gateway.get("Type") == "Gateway":
+            for slave in gateway.findall("SLAVE"):
+                slaves[(slave.get("uuid") or "").lower()] = slave
+    result = []
+    for live in root.iter("C"):
+        if live.get("Type") != "LoxLIVE":
+            continue
+        uuid = live.get("U", "")
+        types = {el.get("Type") for el in live.iter("C")}
+        slave = slaves.get(uuid.lower())
+        client = next((el for el in live.iter("C") if el.get("Type") == "GatewayClient"), None)
+        role, index = "single", 0
+        if "Gateway" in types:
+            role = "gateway"
+        elif client is not None or slave is not None:
+            role = "client"
+            raw_index = (client.get("ProgType") if client is not None else None) or (slave.get("Type") if slave is not None else None) or "0"
+            index = int(raw_index) if str(raw_index).isdigit() else 0
+        host = (slave.get("IP") if slave is not None and slave.get("IP") else live.get("IntAddr", "")) or ""
+        raw_port = (slave.get("Port") if slave is not None and slave.get("Port") else live.get("ExP")) or "80"
+        result.append({"uuid": uuid, "name": live.get("Title", ""), "serial": live.get("Serial", ""),
+                       "role": role, "index": index, "host": host,
+                       "port": int(raw_port) if str(raw_port).isdigit() else 80})
+    return result
+
+
+def terminal_owner(program_xml: bytes) -> dict[str, str]:
+    """control_uuid(lower) -> UUID des LoxLIVE (Miniserver), unter dem die Klemme haengt."""
+    owner: dict[str, str] = {}
+    try:
+        root = ET.fromstring(program_xml)
+    except ET.ParseError:
+        return owner
+    for live in root.iter("C"):
+        if live.get("Type") == "LoxLIVE":
+            for el in live.iter("C"):
+                if el.get("U"):
+                    owner[el.get("U").lower()] = live.get("U", "")
+    return owner
+
+
+def client_hosts(program_xml: bytes, uuids) -> dict[str, tuple[str, int]]:
+    """uuid -> (host, port) fuer Klemmen, die an einem Client-Miniserver haengen.
+
+    Das Gateway kennt Werte fremder Klemmen nur, wenn sein eigenes Programm sie
+    nutzt; der Client selbst liefert sie immer (gleiches Subnetz, gleiche
+    Zugangsdaten). Klemmen des Gateways oder einer Einzelanlage fehlen hier und
+    werden ueber die konfigurierte Adresse abgefragt.
+    """
+    servers = {m["uuid"].lower(): m for m in miniservers(program_xml)}
+    if not any(m["role"] == "client" for m in servers.values()):
+        return {}
+    owner = terminal_owner(program_xml)
+    hosts = {}
+    for uuid in uuids:
+        server = servers.get(owner.get(str(uuid).lower(), "").lower())
+        if server and server["role"] == "client" and server["host"]:
+            hosts[uuid] = (server["host"], server["port"])
+    return hosts
 
 
 # --- Voll-Auto-Discovery: physische Klemmen ohne Visu-Haekchen -----------------
@@ -362,15 +468,17 @@ def _numeric_value(raw):
         return None
 
 
-async def async_fetch_values(session, host, port, username, password, uuids, raw_uuids=(), on_attempt=None, http_scales=None) -> dict:
+async def async_fetch_values(session, host, port, username, password, uuids, raw_uuids=(), on_attempt=None, http_scales=None, hosts=None) -> dict:
     """Aktuelle Werte einzelner UUIDs per HTTP holen (/jdev/sps/io/<uuid>).
 
     Fallback fuer auto-entdeckte Klemmen, deren Wert der Miniserver nicht ueber
     den WebSocket-Stream pusht (z.B. Konfig-Analogwerte). Best-effort.
+    ``hosts`` (uuid -> (host, port)) leitet Klemmen eines Client-Miniservers an
+    dessen eigene Adresse; alle anderen gehen an host:port.
     """
     import aiohttp
 
-    base = "http://{}:{}".format(host, port)
+    hosts = hosts or {}
     auth = aiohttp.BasicAuth(str(username), str(password))
     timeout = aiohttp.ClientTimeout(total=8)
     import asyncio
@@ -383,6 +491,8 @@ async def async_fetch_values(session, host, port, username, password, uuids, raw
             async with semaphore:
                 if on_attempt:
                     on_attempt(u)
+                target_host, target_port = hosts.get(u, (host, port))
+                base = "http://{}:{}".format(target_host, target_port)
                 async with session.get(base + "/jdev/sps/io/" + u, auth=auth, timeout=timeout) as resp:
                     if resp.status != 200:
                         return
@@ -431,9 +541,7 @@ async def async_fetch_program(session, host, port, username, password) -> bytes 
                 return None
             data = await resp.read()
         if fname.endswith(".zip"):
-            data = _loxcc_from_zip(data)
-            if data is None:
-                return None
+            return program_from_zip(data)
     except Exception as err:  # noqa: BLE001 - best effort
         _LOGGER.warning("Programm-Download fehlgeschlagen: %s", err)
         return None

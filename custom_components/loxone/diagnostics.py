@@ -37,6 +37,7 @@ async def async_get_config_entry_diagnostics(
             "manual_entity_overrides": len(area_mapping.owned.get("overridden_entities", [])),
         } if area_mapping else None,
         "udp_setup": dict(manager.status) if manager else {"state": "disabled"},
+        "topology": hass.data.get(DOMAIN + "_topology", {}).get(config_entry.entry_id),
         "transport": router.diagnostics() if router else None,
         "udp_receiver": {
             "packets": receiver.packets,

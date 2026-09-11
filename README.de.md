@@ -26,12 +26,11 @@ Geräteansichten auf Deutsch und Englisch aus der Demo-Installation.
 - **Geprüfte Projektsicherung vor Änderungen.** Vollständiges Originalprogramm und
   eine Projektdatei zum Öffnen in Loxone Config aufbewahren.
 
-**Aktuelle Veröffentlichung: 1.5.0.** Projektsicherung, automatischer Upload/Neustart, UDP-
+**Aktuelle Veröffentlichung: 1.6.0.** Projektsicherung, automatischer Upload/Neustart, UDP-
 Lebenszeichen und erneutes Laden wurden am Demokoffer geprüft. Physische
 Zustandswechsel und Wiederherstellung aus der Sicherung müssen noch abgenommen werden.
-Gateway/Client-Anlagen (mehrere Miniserver, mehrere Programmdateien in einem Archiv)
-werden erkannt und unverändert gelassen; die automatische UDP-Einrichtung unterstützt
-sie noch nicht.
+Gateway/Client-Anlagen: Alle Miniserver werden erkannt und gelesen; die automatische
+UDP-Einrichtung unterstützt sie noch nicht und lässt die Programme unverändert.
 
 ## Installation mit HACS
 
@@ -58,9 +57,10 @@ Bei neuen Installationen bietet das Formular die automatische Echtzeiteinrichtun
 für geeignete entdeckte Klemmen an. Bestehende Installationen behalten ihr Verhalten,
 bis du die Option ausdrücklich einschaltest.
 
-Die Zahl der Echtzeit-Signale ist begrenzt (Vorgabe 500, im Formular einstellbar),
-damit eine sehr große Anlage weder Miniserver noch Netzwerk noch Home Assistant
-überlastet. Klemmen über der Grenze bleiben bei der 30-Sekunden-Abfrage. Nach der
+Die Zahl zusätzlich erkannter Klemmen ist begrenzt (Vorgabe 500, im Formular
+einstellbar). Klemmen über der Grenze werden nicht angelegt, damit eine sehr große Anlage,
+etwa ein Gateway/Client-Verbund mit vielen Miniservern, weder Miniserver noch Netzwerk noch
+Home Assistant mit Entitäten, Abfragen und Loggern überlastet. Nach der
 Einrichtung liest die Integration alle 60 Sekunden nur das Verzeichnislisting des
 Miniserver-Programms; das Programm selbst wird erst nach einem neuen Speichern aus
 Loxone Config erneut heruntergeladen.
@@ -93,9 +93,11 @@ Bedienfunktionen, lesende Zustände und Sonderformate mit dem aktuellen Prüfsta
   diese ebenfalls steuert, die gewünschten Entities prüfen oder Discovery abschalten.
 - Die Miniserver-IP wird nicht automatisch nachgeführt. Eine stabile Adresse nutzen
   oder die Host-Einstellung anpassen.
-- Gateway/Client-Anlagen: Das Programmarchiv eines Gateways enthält je Miniserver ein
-  Programm. Die automatische UDP-Einrichtung bricht vor jeder Änderung mit dem
-  Fehlercode `ARCHIVE_MULTIPLE_PROGRAMS` ab. Alles andere (WebSocket, Abfrage) läuft normal.
+- Gateway/Client-Anlagen: Die Erkennung liest das Gesamtprojekt, findet die Klemmen aller
+  Miniserver und gruppiert sie je Miniserver; Klemmen eines Clients werden direkt am
+  Client abgefragt. Die automatische UDP-Einrichtung bricht weiterhin vor jeder Änderung
+  mit dem Fehlercode `ARCHIVE_MULTIPLE_PROGRAMS` ab, weil Logger in mehrere Programme
+  zugleich geschrieben werden müssten. WebSocket, Befehle und Räume laufen über das Gateway.
 - Zustandsupdates erreichen die Entitäten über einen internen Dispatcher. Das frühere
   Bus-Ereignis `loxone_event` wird nicht mehr ausgelöst; das hält die Recorder-Datenbank
   klein. Automationen sollten Entitätszustände nutzen; `loxone_send` für Befehle bleibt.

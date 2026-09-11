@@ -4,6 +4,25 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.6.0] - 2026-09-11
+
+- Gateway/Client-Verbünde: Die Erkennung liest jetzt das Gesamtprojekt `sps.Loxone`
+  aus dem Programmarchiv statt der ersten Programmdatei, die je nach Archiv ein
+  zufälliger Miniserver war. Klemmen aller Miniserver werden gefunden und je
+  Miniserver gruppiert; Klemmen eines Clients werden direkt am Client abgefragt
+  (gleiche Zugangsdaten, Adresse aus dem Projekt). Der UDP-Empfänger akzeptiert
+  Pakete von allen Miniserver-Adressen. Fehlt `sps.Loxone`, werden die
+  Teilprogramme zusammengeführt. An einem Verbund mit vier Miniservern stieg die
+  Zahl erkennbarer Klemmen von 306 auf 1942.
+- Die Höchstzahl (Vorgabe 500) gilt jetzt für die zusätzlich erkannten Klemmen
+  insgesamt: Entitäten, Abfrage und UDP-Logger, in Programmreihenfolge. Die Option
+  steht im Formular unter Weg 1; der Schlüssel bleibt, gespeicherte Werte gelten
+  weiter. Wird die Grenze erreicht, meldet das Protokoll die gefundene Anzahl.
+- Diagnose-Download enthält die Miniserver des Projekts (Name, Rolle, Adresse) und
+  die Zahl der direkt am Client abgefragten Klemmen.
+- Die automatische UDP-Einrichtung bleibt für Verbünde gesperrt
+  (`ARCHIVE_MULTIPLE_PROGRAMS`); die Vorarbeit dazu ist im Loxone-Skill dokumentiert.
+
 ## [1.5.0] - 2026-09-11
 
 - Die Integration heißt jetzt schlicht „Loxone“ (Manifest, HACS, Dialogtitel).
