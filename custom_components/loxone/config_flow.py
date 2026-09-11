@@ -1,5 +1,5 @@
 """
-Config Flow for Loxone (smartmacherei)
+Config Flow for Loxone
 
 For more details about this component, please refer to the documentation at
 https://github.com/smartmacherei/Loxone-Integration
@@ -222,4 +222,4 @@ class LoxoneFlowHandler(SchemaConfigFlowHandler, domain=DOMAIN):
 
     def async_config_entry_title(self, options: Mapping[str, Any]) -> str:
         """Return config entry title."""
-        return "Loxone (smartmacherei)"
+        return "Loxone"

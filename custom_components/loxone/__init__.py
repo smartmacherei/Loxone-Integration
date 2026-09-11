@@ -273,6 +273,10 @@ async def _async_setup_entry(hass, config_entry):
 
     if not config_entry.options:
         await async_set_options(hass, config_entry)
+    # 1.5.0 dropped the vendor suffix from the integration name. Runs before the
+    # update listener is registered, so it does not trigger a reload.
+    if config_entry.title == "Loxone (smartmacherei)":
+        hass.config_entries.async_update_entry(config_entry, title="Loxone")
 
     coordinator = LoxoneCoordinator(hass, config_entry)
     host = config_entry.options.get(CONF_HOST)

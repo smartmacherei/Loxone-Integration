@@ -6,6 +6,9 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [1.5.0] - 2026-09-11
 
+- Die Integration heißt jetzt schlicht „Loxone“ (Manifest, HACS, Dialogtitel).
+  Bestehende Einträge werden beim Start umbenannt. Die Seite im Miniserver-Programm
+  behält den Namen „HA UDP (smartmacherei)“, damit eingerichtete Anlagen erkannt bleiben.
 - Einrichtungsdialog aufgeräumt: oben die Zugangsdaten, darunter die zwei Wege.
   Weg 1 (HA → Loxone) ist immer aktiv und bündelt Erkennung, Lichtkreise und
   Raumzuordnung. Weg 2 (Loxone → HA) ist die optionale UDP-Echtzeit mit Port und

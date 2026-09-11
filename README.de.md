@@ -37,7 +37,7 @@ sie noch nicht.
 
 1. HACS → Menü → **Benutzerdefinierte Repositories**.
 2. `https://github.com/smartmacherei/Loxone-Integration` als **Integration** hinzufügen.
-3. **Loxone (smartmacherei)** herunterladen und Home Assistant neu starten.
+3. **Loxone** herunterladen und Home Assistant neu starten.
 4. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Loxone**.
 5. Adresse, HTTP-Port und Zugangsdaten des Miniservers eingeben. Die Vorgabe ist
    `80`. Falls der Miniserver einen anderen HTTP-Port nutzt, diesen ausdrücklich eintragen.

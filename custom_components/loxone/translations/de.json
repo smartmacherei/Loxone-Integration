@@ -59,7 +59,7 @@
           "udp_max_signals": "Weg 2 (Loxone → HA): Höchstzahl der Echtzeit-Signale"
         },
         "description": "Verbinde den Miniserver. Darunter stehen die zwei Wege. Weg 1 (HA → Loxone) ist immer aktiv: Home Assistant liest Bausteine und Klemmen vom Miniserver; die Optionen dazu bestimmen nur, was angelegt wird. Weg 2 (Loxone → HA) ist optional: Der Miniserver sendet Echtzeitwerte per UDP an Home Assistant; dafür wird sein Programm geändert. Bereits gespeicherte Einstellungen werden hier angezeigt.",
-        "title": "Loxone (smartmacherei)",
+        "title": "Loxone",
         "data_description": {
           "username": "Benutzer, mit dem sich Home Assistant am Miniserver anmeldet.",
           "password": "Passwort dieses Miniserver-Benutzers.",

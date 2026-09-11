@@ -35,7 +35,7 @@ archive) are detected and left unchanged; automatic UDP setup for them is not ye
 
 1. In HACS, open **Custom repositories** from the menu.
 2. Add `https://github.com/smartmacherei/Loxone-Integration` as an **Integration**.
-3. Download **Loxone (smartmacherei)** and restart Home Assistant.
+3. Download **Loxone** and restart Home Assistant.
 4. Open **Settings → Devices & services → Add integration → Loxone**.
 5. Enter the Miniserver address, HTTP port, username and password. The form defaults
    to `80`. If your Miniserver uses another HTTP port, enter that port explicitly.
