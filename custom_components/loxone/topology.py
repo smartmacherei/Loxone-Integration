@@ -307,6 +307,10 @@ for _type in ("VoltageOut", "DaliActor", "DaliSwitch", "DaliGroup", "LoxDMXactor
               "EIBactor", "EIBextactor", "SchuecoActor", "SchuecoAactor",
               "Lox232actor", "Lox485actor", "ApiActor"):
     _READ_TERMINALS[_type] = ("InfoOnlyAnalog", True)
+# Geraetediagnose ohne Gegenstueck in einem Smart-Home-Standard: Online-Status,
+# Schutzabschaltungen, interne Temperaturen. Werden deaktiviert angelegt und
+# damit nicht abgefragt, bis jemand sie in HA einschaltet.
+_DIAGNOSTIC_TERMINALS = {"Online", "OvertempShutdown", "UndervoltShutdown", "SysTemp"}
 _TEXT_TERMINALS = {"TreeTextActor", "AirTextActor", "EIBtextsensor", "EIBtextactor"}
 for _type in _TEXT_TERMINALS:
     _READ_TERMINALS[_type] = ("RawTerminal", False)
@@ -437,6 +441,10 @@ def enumerate_discoverable(
             "auto_raw": raw_terminal,
             "auto_terminal_type": el.get("Type"),
             "auto_format": raw_format,
+            # Diagnostic category for device internals and battery; internals and
+            # raw formats start disabled so nobody polls what nobody asked for.
+            "auto_diagnostic": el.get("Type") in _DIAGNOSTIC_TERMINALS or raw_terminal or device_class == "battery",
+            "auto_enabled_default": not (el.get("Type") in _DIAGNOSTIC_TERMINALS or raw_terminal),
         }
         if is_analog and not raw_terminal:
             ctrl["details"] = {"format": _lox_format(unit, precision)}
@@ -446,6 +454,17 @@ def enumerate_discoverable(
             ctrl["states"] = {"active": u}
         out.append((u, ctrl))
     return out
+
+
+def pollable_terminals(uuids, registry, default_off):
+    """Terminals worth an HTTP request: their entity is enabled in HA.
+
+    ``registry`` maps unique_id -> disabled_by (None = enabled) for entities HA
+    already knows; ``default_off`` holds terminals created disabled. A terminal
+    unknown to the registry is polled unless it starts disabled.
+    """
+    return [u for u in uuids
+            if ((registry[u] is None) if u in registry else (u not in default_off))]
 
 
 def _numeric_value(raw):

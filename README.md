@@ -61,7 +61,10 @@ additionally discovered terminals become entities, are polled and get UDP logger
 also bounds signals from Home Assistant into Loxone. Polling itself is capped at 200 requests
 per 30 seconds and two concurrent requests per Miniserver, so a very large installation, for
 example a Gateway/Client system with many Miniservers, is polled in rotation instead of
-flooding the Miniservers or the network. Once configured, the integration
+flooding the Miniservers or the network. Entities you disable in Home Assistant are not
+polled at all, and device internals (online state, protective shutdowns, internal
+temperature, raw formats) are created disabled, so the Miniserver only answers for what
+you actually use. Once configured, the integration
 only reads the Miniserver's program directory listing every 60 seconds; the program
 itself is downloaded again only after Loxone Config saved a new one.
 

@@ -115,8 +115,10 @@ class SignalRouter:
             if fallback:
                 self.receive("ws", fallback)
         now = self.clock()
+        # A signal with a live push path (UDP heartbeat or open WebSocket) only
+        # gets a half-hourly sanity read; the heartbeat reports path loss itself.
         eligible = [key for key in keys if now - self.polled_at.get(key.lower(), -1e9) >= (
-            300 if self.last.get(key.lower()) is not None and (
+            1800 if self.last.get(key.lower()) is not None and (
                 (key.lower() in self.udp_signals and self.udp_healthy)
                 or (self.websocket_connected and key.lower() in self.ws_at)) else 30)]
         ordered = sorted(eligible, key=lambda key: self.attempted_at.get(key.lower(), -1e9))

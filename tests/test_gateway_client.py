@@ -130,3 +130,22 @@ def test_udp_receiver_accepts_every_miniserver_address():
             transport.close()
 
     assert asyncio.run(run()) == {"127.0.0.1", "127.0.0.2"}
+
+
+def test_device_internals_start_disabled_and_disabled_entities_are_not_polled(monkeypatch):
+    monkeypatch.setattr(top, "classify_terminal", lambda name, *args: "battery" if "Batt" in name else None)
+    xml = b'''<Root><C Type="LoxLIVE" U="ms" Title="Solo">
+      <C Type="DigitalIn" U="contact" Title="Kontakt"><Display Unit="&lt;v&gt;"/></C>
+      <C Type="Online" U="online" Title="Online"><Display Unit="&lt;v&gt;"/></C>
+      <C Type="SysTemp" U="temp" Title="Temperatur"><Display Unit="&lt;v.1&gt;&#176;"/></C>
+      <C Type="TreeAsensor" U="batt" Title="Batt"><Display Unit="&lt;v&gt;%"/></C>
+      <C Type="TreeSensor" U="raw" Title="Taster"><Display Unit="&lt;v.i&gt;"/></C></C></Root>'''
+    found = dict(top.enumerate_discoverable(xml, {}))
+    assert found["contact"]["auto_enabled_default"] and not found["contact"]["auto_diagnostic"]
+    assert not found["online"]["auto_enabled_default"] and found["online"]["auto_diagnostic"]
+    assert not found["temp"]["auto_enabled_default"] and found["temp"]["auto_diagnostic"]
+    assert found["batt"]["auto_enabled_default"] and found["batt"]["auto_diagnostic"]
+    assert not found["raw"]["auto_enabled_default"] and found["raw"]["auto_diagnostic"]
+    default_off = {u for u, c in found.items() if not c["auto_enabled_default"]}
+    registry = {"contact": "user", "online": None, "batt": None}  # user disabled one, enabled a diagnostic
+    assert top.pollable_terminals(list(found), registry, default_off) == ["online", "batt"]

@@ -62,7 +62,10 @@ zusätzlich erkannte Klemmen werden zu Entitäten, abgefragt und mit UDP-Loggern
 später begrenzt sie auch Signale von Home Assistant nach Loxone. Die Abfrage selbst ist auf
 200 Anfragen je 30 Sekunden und zwei gleichzeitige je Miniserver gedeckelt, damit eine sehr
 große Anlage, etwa ein Gateway/Client-Verbund mit vielen Miniservern, im Umlauf abgefragt
-wird statt Miniserver oder Netzwerk zu überlasten. Nach der
+wird statt Miniserver oder Netzwerk zu überlasten. In Home Assistant deaktivierte
+Entitäten werden gar nicht abgefragt, und Geräteinterna (Online-Status,
+Schutzabschaltungen, interne Temperatur, Rohformate) werden deaktiviert angelegt. Der
+Miniserver antwortet so nur für das, was du wirklich nutzt. Nach der
 Einrichtung liest die Integration alle 60 Sekunden nur das Verzeichnislisting des
 Miniserver-Programms; das Programm selbst wird erst nach einem neuen Speichern aus
 Loxone Config erneut heruntergeladen.

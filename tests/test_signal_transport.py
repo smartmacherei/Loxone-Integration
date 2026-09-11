@@ -35,7 +35,10 @@ def test_unchanged_value_does_not_trigger_failure_with_heartbeat():
     assert events == [{U: 1}]
     clock[0] = 300
     r.receive("udp", {H: 0})
-    assert r.due([U]) == [U]  # periodic verification even on a healthy stream
+    assert r.due([U]) == []  # a healthy stream is not re-read every few minutes
+    clock[0] = 1800
+    r.receive("udp", {H: 0})
+    assert r.due([U]) == [U]  # half-hourly verification even on a healthy stream
 
 
 def test_heartbeat_loss_falls_back_then_recovers():

@@ -36,11 +36,14 @@ Zusätzlich werden gleichwertige Zustände anhand eindeutiger Programmverbindung
 zugeordnet, einschließlich des Ziel-Leistungskanals der unterstützten Tree-/Air-
 Wallbox. Namen reichen nicht aus; invertierte, skalierte oder mehrdeutige Zuordnungen
 werden abgelehnt. Direkt erkannte Klemmen erhalten Startwerte und nötigenfalls
-Abfragen alle 30 Sekunden; bei gesundem UDP-Kanal alle fünf Minuten eine
+Abfragen alle 30 Sekunden, begrenzt auf 200 Anfragen je Zyklus und zwei gleichzeitige je
+Miniserver (große Anlagen im Umlauf); bei gesundem UDP-Kanal alle 30 Minuten eine
 Kontrollabfrage. Das Lebenszeichen läuft nach fünf Sekunden ab; der nächste
 Abfragezyklus übernimmt, bei Bedarf mit dem gespeicherten WebSocket-Zustand.
 Unveränderte Einzelwerte dürfen still bleiben. Bei bestehender WebSocket-Verbindung
-reichen ebenfalls Kontrollabfragen alle fünf Minuten. Fehlen alle nutzbaren Wege
+reichen ebenfalls Kontrollabfragen alle 30 Minuten. In Home Assistant deaktivierte
+Entitäten werden nicht abgefragt; Geräteinterna (Online-Status, Schutzabschaltungen,
+interne Temperatur, Rohformate) werden deaktiviert angelegt. Fehlen alle nutzbaren Wege
 und frische Werte seit 90 Sekunden, markiert der nächste abgeschlossene Abfragezyklus
 die direkt erkannten Klemmen unbekannt beziehungsweise unverfügbar.
 

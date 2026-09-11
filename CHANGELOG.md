@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.6.2] - 2026-09-11
+
+- In Home Assistant deaktivierte Entitäten werden nicht mehr abgefragt. Die Auswahl,
+  was der Miniserver beantworten muss, liegt damit beim Nutzer: Entität abschalten,
+  Abfrage entfällt ab dem nächsten Zyklus; wieder einschalten, Abfrage läuft wieder.
+- Geräteinterna werden als Diagnose deaktiviert angelegt: Online-Status je Gerät,
+  Übertemperatur- und Unterspannungsabschaltung, interne Temperaturen und
+  Rohformate. Sie belegen weder Entität noch Abfrage, bis jemand sie einschaltet.
+  Batteriewerte bleiben aktiv, aber in der Diagnose-Kategorie. Bestehende
+  Entitäten werden nicht verändert; die Vorgabe gilt nur für neu angelegte. Im
+  Verbund des Testers betrifft das rund 340 von 1942 erkannten Klemmen.
+- Kontrollabfrage bei gesundem UDP- oder WebSocket-Weg alle 30 statt 5 Minuten;
+  den Ausfall des Weges meldet das Lebenszeichen ohnehin.
+
 ## [1.6.1] - 2026-09-11
 
 - Die Höchstzahl gilt ausdrücklich für alle Wege und steht jetzt oben im Formular:

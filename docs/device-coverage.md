@@ -41,11 +41,14 @@ WebSocket is next when it provides that UUID or an equivalent state proven by
 explicit project wiring. Transparent references and the supported Tree/Air Wallbox
 target-power API channel can provide this mapping. Inverted, scaled or ambiguous
 aliases are rejected. Names are never used to equate signals. Direct-discovery HTTP values
-provide initial state and fallback, normally every 30 seconds. Healthy UDP signals
-receive a verification query every five minutes. Heartbeat expiry is five seconds;
-the next scheduled polling cycle supplies fallback values. A silent, unchanged
-signal does not by itself indicate failure. Quiet WebSocket states remain healthy
-while connected; verification is every five minutes. Cached WebSocket values can
+provide initial state and fallback, normally every 30 seconds, bounded to 200 requests
+per cycle and two concurrent requests per Miniserver (large installations are polled in
+rotation). Healthy UDP signals receive a verification query every 30 minutes. Heartbeat
+expiry is five seconds; the next scheduled polling cycle supplies fallback values. A
+silent, unchanged signal does not by itself indicate failure. Quiet WebSocket states
+remain healthy while connected; verification is every 30 minutes. Entities that are
+disabled in Home Assistant are not polled; device internals (online state, protective
+shutdowns, internal temperature, raw formats) are created disabled. Cached WebSocket values can
 take over on the next poll cycle after UDP loss. Direct-terminal values become
 unknown/unavailable after 90 seconds without a usable source or fresh read, checked
 at the end of each polling cycle.

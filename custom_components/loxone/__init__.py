@@ -20,7 +20,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_PORT,
                                  CONF_USERNAME, EVENT_COMPONENT_LOADED,
                                  EVENT_HOMEASSISTANT_STARTED,
-                                 EVENT_HOMEASSISTANT_STOP, Platform)
+                                 EVENT_HOMEASSISTANT_STOP, EntityCategory,
+                                 Platform)
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers import area_registry as ar
@@ -373,7 +374,8 @@ async def _async_setup_entry(hass, config_entry):
         from . import helpers as _lox_helpers
         from .topology import (async_fetch_program, async_fetch_values,
                                build_device_map, client_hosts,
-                               enumerate_discoverable, miniservers)
+                               enumerate_discoverable, miniservers,
+                               pollable_terminals)
 
         _program = await async_fetch_program(
             async_get_clientsession(hass),
@@ -451,6 +453,16 @@ async def _async_setup_entry(hass, config_entry):
                     # Initialwerte per HTTP holen (WS pusht Konfig-Analogwerte nicht)
                     if _new:
                         _raw_uuids = {_u for _u, _c in _new if _c.get("auto_raw")}
+                        # Disabled entities cost the Miniserver nothing: neither
+                        # the ones a user switched off nor the diagnostics that
+                        # start disabled. Re-read each cycle so changes apply live.
+                        _default_off = {_u for _u, _c in _new if _c.get("auto_enabled_default") is False}
+                        _registry = er.async_get(hass)
+
+                        def _pollable(uuids):
+                            known = {e.unique_id: e.disabled_by for e in
+                                     er.async_entries_for_config_entry(_registry, config_entry.entry_id)}
+                            return pollable_terminals(uuids, known, _default_off)
                         _hosts = await hass.async_add_executor_job(
                             client_hosts, _program, [_u for _u, _c in _new])
                         hass.data[DOMAIN + "_topology"][config_entry.entry_id]["client_terminals"] = len(_hosts)
@@ -462,7 +474,7 @@ async def _async_setup_entry(hass, config_entry):
                             config_entry.options.get(CONF_PORT),
                             config_entry.options.get(CONF_USERNAME),
                             config_entry.options.get(CONF_PASSWORD),
-                            [_u for _u, _c in _new],
+                            _pollable([_u for _u, _c in _new]),
                             _raw_uuids,
                             http_scales=_router.http_scales,
                             hosts=_hosts,
@@ -492,16 +504,17 @@ async def _async_setup_entry(hass, config_entry):
                             _connection = getattr(coordinator.api, "connection", None)
                             _router.websocket_state(getattr(getattr(_connection, "state", None), "name", "") == "OPEN")
                             snapshot = dict(_router.revision)
+                            active = _pollable(_uuids)
                             try:
                                 values = await async_fetch_values(
                                     _session, _opts.get(CONF_HOST), _opts.get(CONF_PORT),
                                     _opts.get(CONF_USERNAME), _opts.get(CONF_PASSWORD),
-                                    _router.due(_uuids, DISCOVERY_POLL_BATCH), _raw_uuids, _router.attempted, _router.http_scales,
+                                    _router.due(active, DISCOVERY_POLL_BATCH), _raw_uuids, _router.attempted, _router.http_scales,
                                     hosts=_hosts,
                                 )
                                 if not _poll_discovered.closed:
                                     _router.receive("poll", values, snapshot)
-                                    _router.expire(_uuids, max_age=_max_age)
+                                    _router.expire(active, max_age=_max_age)
                             finally:
                                 _poll_discovered.running = False
                         _poll_discovered.running = False
@@ -514,9 +527,10 @@ async def _async_setup_entry(hass, config_entry):
                             )
                         )
                         _LOGGER.info(
-                            "Loxone Auto-Discovery: %s Klemmen werden per HTTP nachgezogen, "
-                            "hoechstens %s je %ss, jede Klemme etwa alle %ss (WS pusht sie nicht)",
-                            len(_poll_uuids), DISCOVERY_POLL_BATCH,
+                            "Loxone Auto-Discovery: %s Klemmen werden per HTTP nachgezogen "
+                            "(%s davon als Diagnose deaktiviert angelegt, deaktivierte werden nicht "
+                            "abgefragt), hoechstens %s je %ss, jede Klemme etwa alle %ss",
+                            len(_poll_uuids), len(_default_off), DISCOVERY_POLL_BATCH,
                             DISCOVERY_POLL_INTERVAL.total_seconds(), _period,
                         )
 
@@ -961,6 +975,14 @@ class LoxoneEntity(Entity):
                     sys.exit(-1)
 
         self.listener = None
+
+        # Discovered device internals (online state, protective shutdowns,
+        # internal temperature, raw formats) are diagnostics and start disabled:
+        # no entity and no polling until someone enables them in HA.
+        if kwargs.get("auto_diagnostic"):
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        if kwargs.get("auto_enabled_default") is False:
+            self._attr_entity_registry_enabled_default = False
 
         # Initialize base extra state attributes with common Loxone fields
         self._attr_extra_state_attributes = {
