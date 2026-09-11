@@ -194,3 +194,46 @@ def test_expiry_window_follows_rotation_period():
     clock[0] = 700
     r.expire([U], max_age=600)
     assert events[-1] == {U: None}
+
+
+GW, CL = "10000000-0000-0000-ffff000000000001", "20000000-0000-0000-ffff000000000002"
+GW_IN, CL_IN = "10000000-0000-0001-ffff000000000001", "20000000-0000-0001-ffff000000000002"
+
+
+def gateway_router():
+    xml = (f'<Root><C Type="Second" U="{H}"/>'
+           f'<C Type="LoxLIVE" U="{GW}"><C Type="Logger" U="lg" Address="/dev/udp/1.2.3.4/55555"/></C>'
+           f'<C Type="LoxLIVE" U="{CL}"><C Type="Logger" U="lc" Address="/dev/udp/1.2.3.4/55555"/></C>'
+           f'<LoggerMailer RefLogger="lg" On="{GW_IN};&lt;v&gt;" Off="{GW_IN};&lt;v&gt;"/>'
+           f'<LoggerMailer RefLogger="lg" On="{GW};&lt;v&gt;" Off="{GW};&lt;v&gt;"/>'
+           f'<LoggerMailer RefLogger="lc" On="{CL_IN};&lt;v&gt;" Off="{CL_IN};&lt;v&gt;"/>'
+           f'<LoggerMailer RefLogger="lc" On="{CL};&lt;v&gt;" Off="{CL};&lt;v&gt;"/></Root>')
+    clock, events = [0], []
+    r = transport.SignalRouter(events.append, lambda: clock[0])
+    r.configure(xml, 55555)
+    return r, clock, events
+
+
+def test_gateway_inventory_keys_heartbeats_by_miniserver():
+    r, _, _ = gateway_router()
+    assert r.heartbeat is None and r.heartbeats == {GW, CL}
+    assert r.owners == {GW_IN: GW, GW: GW, CL_IN: CL, CL: CL}
+    assert r.udp_signals == {GW_IN, GW, CL_IN, CL}
+
+
+def test_client_heartbeat_loss_only_falls_back_for_that_client():
+    r, clock, events = gateway_router()
+    r.receive("udp", {GW: 1, CL: 1, GW_IN: 1, CL_IN: 1})
+    r.receive("poll", {GW_IN: 1, CL_IN: 1})
+    assert events == [{GW_IN: 1, CL_IN: 1}]
+    assert r.udp_healthy and r.udp_live(GW_IN) and r.udp_live(CL_IN)
+    for second in range(1, 10):  # the client stops sending, the gateway keeps going
+        clock[0] = second
+        r.receive("udp", {GW: second})
+    assert r.udp_live(GW_IN) and not r.udp_live(CL_IN) and r.udp_healthy
+    clock[0] = 40
+    r.receive("udp", {GW: 40})
+    assert r.due([GW_IN, CL_IN]) == [CL_IN]  # only the client terminal is polled
+    r.expire([GW_IN, CL_IN], max_age=30)
+    assert events[-1] == {CL_IN: None}
+    assert r.diagnostics()["miniserver_heartbeats"] == {GW: True, CL: False}

@@ -149,3 +149,11 @@ def test_device_internals_start_disabled_and_disabled_entities_are_not_polled(mo
     default_off = {u for u, c in found.items() if not c["auto_enabled_default"]}
     registry = {"contact": "user", "online": None, "batt": None}  # user disabled one, enabled a diagnostic
     assert top.pollable_terminals(list(found), registry, default_off) == ["online", "batt"]
+
+
+def test_rotation_over_miniservers_keeps_program_order_within_each():
+    found = [(f"g{i}", {}) for i in range(4)] + [("c0", {}), ("c1", {}), ("x0", {})]
+    owner = {f"g{i}": GW for i in range(4)} | {"c0": CL, "c1": CL}
+    rotated = [u for u, _ in top.interleave_by_miniserver(found, owner)]
+    assert rotated == ["g0", "c0", "x0", "g1", "c1", "g2", "g3"]
+    assert top.interleave_by_miniserver(found, {}) == found  # a single Miniserver keeps program order

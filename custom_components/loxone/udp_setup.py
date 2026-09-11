@@ -14,12 +14,16 @@ from homeassistant.components import persistent_notification
 from homeassistant.helpers.event import async_track_time_interval
 
 from .const import DOMAIN
-from .topology import enumerate_discoverable
+from .topology import enumerate_discoverable, interleave_by_miniserver, terminal_owner
 from .udp_install import ProgramClient, install
 from .udp_errors import details, failure, notification, restore_failure, utc_now
 from .udp_program import digest
 
 _LOGGER = logging.getLogger(__name__)
+
+# Beta for Gateway/Client systems: a small, predictable number of logger
+# references per Miniserver, so the first field test stays easy to judge.
+GATEWAY_SIGNALS_PER_MINISERVER = 5
 
 
 class UdpSetup:
@@ -35,6 +39,8 @@ class UdpSetup:
         # Upper bound for logger references, so a very large installation cannot
         # flood the Miniserver, the network or HA. Terminals beyond it keep polling.
         self.limit = int(options.get("udp_max_signals") or 500)
+        # Gateway/Client archives are only touched with the explicit beta option.
+        self.gateway_beta = bool(options.get("udp_gateway_beta", False))
         self.stop = threading.Event()
         self.task = None
         self.initial_sha = digest(program) if program else None
@@ -51,13 +57,30 @@ class UdpSetup:
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
             controls = json.loads(archive.read("LoxAPP3.json"))
         # Program order is stable, so repeated checks select the same terminals.
-        found = [u for u, _ in enumerate_discoverable(xml, controls)]
+        discovered = enumerate_discoverable(xml, controls)
+        owner = terminal_owner(xml) if self.gateway_beta else {}
+        if self.gateway_beta:
+            # Same rotation as entity discovery, so both pick the same subset.
+            discovered = interleave_by_miniserver(discovered, owner)
+        found = [u for u, _ in discovered]
         self.signals_discovered = len(found)
         if len(found) > self.limit:
             _LOGGER.warning("Loxone UDP: %s discovered terminals exceed the limit of %s; only the "
                             "first %s receive real-time updates (option udp_max_signals)",
                             len(found), self.limit, self.limit)
             found = found[:self.limit]
+        if self.gateway_beta:
+            # Per Miniserver only the first few terminals that start enabled in
+            # HA; device internals that start disabled get no logger reference.
+            enabled = {u for u, control in discovered if control.get("auto_enabled_default") is not False}
+            count, picked = {}, []
+            for u in found:
+                live = owner.get(u.lower())
+                if not live or u not in enabled or count.get(live, 0) >= GATEWAY_SIGNALS_PER_MINISERVER:
+                    continue
+                count[live] = count.get(live, 0) + 1
+                picked.append(u)
+            found = picked
         return set(found)
 
     def start(self):
@@ -110,7 +133,8 @@ class UdpSetup:
 
         try:
             result = await self.hass.async_add_executor_job(
-                install, self.client, self.directory, self.port, self.select, self.stop, progress
+                install, self.client, self.directory, self.port, self.select, self.stop, progress,
+                self.gateway_beta,
             )
             active = False
             self.status.update(result)
@@ -177,7 +201,9 @@ class UdpSetup:
             self.notify(message)
         finally:
             active = False
-            self.status.update(signal_limit=self.limit, signals_discovered=self.signals_discovered)
+            self.status.update(signal_limit=self.limit, signals_discovered=self.signals_discovered,
+                               gateway_beta=self.gateway_beta,
+                               signals_per_miniserver=GATEWAY_SIGNALS_PER_MINISERVER if self.gateway_beta else None)
             listing = getattr(self.client, "last_listing", None)
             self.listing_sha = digest(listing) if listing else None
 

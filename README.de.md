@@ -30,7 +30,9 @@ Geräteansichten auf Deutsch und Englisch aus der Demo-Installation.
 Lebenszeichen und erneutes Laden wurden am Demokoffer geprüft. Physische
 Zustandswechsel und Wiederherstellung aus der Sicherung müssen noch abgenommen werden.
 Gateway/Client-Anlagen: Alle Miniserver werden erkannt und gelesen; die automatische
-UDP-Einrichtung unterstützt sie noch nicht und lässt die Programme unverändert.
+UDP-Einrichtung lässt die Programme unverändert, solange die Beta-Option
+„UDP auch im Gateway/Client-Verbund einrichten“ nicht eingeschaltet ist
+(Vorabversion 1.7.0b1, siehe unten).
 
 ## Installation mit HACS
 
@@ -100,9 +102,17 @@ Bedienfunktionen, lesende Zustände und Sonderformate mit dem aktuellen Prüfsta
   oder die Host-Einstellung anpassen.
 - Gateway/Client-Anlagen: Die Erkennung liest das Gesamtprojekt, findet die Klemmen aller
   Miniserver und gruppiert sie je Miniserver; Klemmen eines Clients werden direkt am
-  Client abgefragt. Die automatische UDP-Einrichtung bricht weiterhin vor jeder Änderung
-  mit dem Fehlercode `ARCHIVE_MULTIPLE_PROGRAMS` ab, weil Logger in mehrere Programme
-  zugleich geschrieben werden müssten. WebSocket, Befehle und Räume laufen über das Gateway.
+  Client abgefragt. Die automatische UDP-Einrichtung bricht ohne die Beta-Option vor jeder
+  Änderung mit dem Fehlercode `ARCHIVE_MULTIPLE_PROGRAMS` ab. WebSocket, Befehle und
+  Räume laufen über das Gateway.
+- Beta (1.7.0b1): Mit der Option „UDP auch im Gateway/Client-Verbund einrichten“ bekommt
+  jeder Miniserver in seinem eigenen Programm einen eigenen Logger und eine Seite „HA UDP“,
+  begrenzt auf 5 Klemmen je Miniserver, die in HA eingeschaltet starten, plus ein
+  Lebenszeichen je Miniserver. Gesamtprojekt und alle Teilprogramme werden gleich geändert;
+  das Archiv wird nur auf das Gateway gespielt, das die Teilprogramme nach dem Neustart an
+  die Clients verteilt. Programmformat 174 (Config 16.x) wird nur auf diesem Weg akzeptiert.
+  Noch nicht an echter Hardware geprüft; Sicherung kontrollieren, Nutzung auf eigene
+  Verantwortung.
 - Zustandsupdates erreichen die Entitäten über einen internen Dispatcher. Das frühere
   Bus-Ereignis `loxone_event` wird nicht mehr ausgelöst; das hält die Recorder-Datenbank
   klein. Automationen sollten Entitätszustände nutzen; `loxone_send` für Befehle bleibt.

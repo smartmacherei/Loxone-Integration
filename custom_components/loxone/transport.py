@@ -5,18 +5,36 @@ import time
 import xml.etree.ElementTree as ET
 
 
-def logger_inventory(xml, port):
+def _inventory(xml, port):
     root = ET.fromstring(xml)
     loggers = {e.get("U") for e in root.iter("C") if e.get("Type") == "Logger"
                and e.get("Address", "").startswith("/dev/udp/")
                and e.get("Address", "").endswith("/" + str(port))}
     seconds = {e.get("U", "").lower() for e in root.iter("C") if e.get("Type") == "Second"}
-    signals = set()
+    # Gateway/Client: a logger sits under the LoxLIVE of the Miniserver that
+    # sends it, and that Miniserver's heartbeat is keyed by the LoxLIVE UUID.
+    lives, logger_live = set(), {}
+    for live in root.iter("C"):
+        if live.get("Type") == "LoxLIVE" and live.get("U"):
+            lives.add(live.get("U").lower())
+            for e in live.iter("C"):
+                if e.get("U") in loggers:
+                    logger_live[e.get("U")] = live.get("U").lower()
+    signals, owners = set(), {}
     for e in root.iter("LoggerMailer"):
         on, off = e.get("On", ""), e.get("Off", "")
         if e.get("RefLogger") in loggers and on == off and ";<v" in on:
-            signals.add(on.split(";", 1)[0].lower())
-    return signals, next(iter(seconds & signals), None)
+            key = on.split(";", 1)[0].lower()
+            signals.add(key)
+            if e.get("RefLogger") in logger_live:
+                owners[key] = logger_live[e.get("RefLogger")]
+    heartbeats = lives & signals
+    return signals, next(iter(seconds & signals), None), owners, heartbeats
+
+
+def logger_inventory(xml, port):
+    signals, heartbeat, _, _ = _inventory(xml, port)
+    return signals, heartbeat
 
 
 class StateUpdate:
@@ -38,6 +56,11 @@ class SignalRouter:
         self.udp_signals = set()
         self.heartbeat = None
         self.heartbeat_at = None
+        # Gateway/Client: one heartbeat per Miniserver, keyed by LoxLIVE UUID;
+        # a signal is live only while the Miniserver that sends it is.
+        self.heartbeats = set()
+        self.heartbeat_seen = {}
+        self.owners = {}
         self.ws_at = {}
         self.ws_values = {}
         self.polled_at = {}
@@ -51,7 +74,7 @@ class SignalRouter:
         self.seen_at = {}
 
     def configure(self, xml, port, config=None, terminals=()):
-        self.udp_signals, self.heartbeat = logger_inventory(xml, port)
+        self.udp_signals, self.heartbeat, self.owners, self.heartbeats = _inventory(xml, port)
         if config is not None:
             from .signal_bindings import SignalBindings
             bindings = SignalBindings(xml, config)
@@ -66,7 +89,17 @@ class SignalRouter:
 
     @property
     def udp_healthy(self):
-        return self.heartbeat_at is not None and self.clock() - self.heartbeat_at < 5
+        now = self.clock()
+        return ((self.heartbeat_at is not None and now - self.heartbeat_at < 5)
+                or any(now - at < 5 for at in self.heartbeat_seen.values()))
+
+    def udp_live(self, key):
+        """UDP is trusted for ``key`` while the Miniserver sending it is alive."""
+        live = self.owners.get(key)
+        if live in self.heartbeats:
+            at = self.heartbeat_seen.get(live)
+            return at is not None and self.clock() - at < 5
+        return self.udp_healthy
 
     def receive(self, source, values, snapshot=None):
         now, accepted = self.clock(), {}
@@ -82,6 +115,9 @@ class SignalRouter:
             if source == "udp" and key == self.heartbeat:
                 self.heartbeat_at = now
                 continue
+            if source == "udp" and key in self.heartbeats:
+                self.heartbeat_seen[key] = now
+                continue
             if source == "poll":
                 self.polled_at[key] = now
                 # An in-flight HTTP reply must not undo a newer push event.
@@ -90,7 +126,7 @@ class SignalRouter:
             if source == "ws":
                 self.ws_at[key] = now
                 self.ws_values[key] = value
-                if key in self.udp_signals and self.udp_healthy:
+                if key in self.udp_signals and self.udp_live(key):
                     continue
             self.revision[key] = self.revision.get(key, 0) + 1
             self.seen_at[key] = now
@@ -119,7 +155,7 @@ class SignalRouter:
         # gets a half-hourly sanity read; the heartbeat reports path loss itself.
         eligible = [key for key in keys if now - self.polled_at.get(key.lower(), -1e9) >= (
             1800 if self.last.get(key.lower()) is not None and (
-                (key.lower() in self.udp_signals and self.udp_healthy)
+                (key.lower() in self.udp_signals and self.udp_live(key.lower()))
                 or (self.websocket_connected and key.lower() in self.ws_at)) else 30)]
         ordered = sorted(eligible, key=lambda key: self.attempted_at.get(key.lower(), -1e9))
         return ordered[:limit] if limit else ordered
@@ -141,7 +177,7 @@ class SignalRouter:
         now = self.clock()
         for original in keys:
             key = original.lower()
-            if key in self.udp_signals and self.udp_healthy:
+            if key in self.udp_signals and self.udp_live(key):
                 continue
             if self.websocket_connected and key in self.ws_at:
                 continue
@@ -154,8 +190,11 @@ class SignalRouter:
 
     def diagnostics(self):
         from collections import Counter
-        return {"heartbeat_configured": self.heartbeat is not None,
+        now = self.clock()
+        return {"heartbeat_configured": self.heartbeat is not None or bool(self.heartbeats),
                 "udp_healthy": self.udp_healthy,
+                "miniserver_heartbeats": {live: (live in self.heartbeat_seen and now - self.heartbeat_seen[live] < 5)
+                                          for live in sorted(self.heartbeats)},
                 "configured_udp_signals": len(self.udp_signals),
                 "websocket_aliases": sum(map(len, self.aliases.values())),
                 "sources": dict(Counter(self.sources.values()))}

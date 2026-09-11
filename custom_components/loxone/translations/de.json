@@ -17,7 +17,8 @@
           "edit_room_mapping": "Weg 1 (HA → Loxone): Loxone-Räume HA-Bereichen zuordnen",
           "auto_configure_udp": "Weg 2 (Loxone → HA): Echtzeitwerte per UDP automatisch einrichten",
           "udp_port": "Weg 2 (Loxone → HA): UDP-Empfangsport in Home Assistant",
-          "udp_max_signals": "Höchstzahl zusätzlicher Signale (gilt für alle Wege)"
+          "udp_max_signals": "Höchstzahl zusätzlicher Signale (gilt für alle Wege)",
+          "udp_gateway_beta": "Beta: UDP auch im Gateway/Client-Verbund einrichten"
         },
         "data_description": {
           "username": "Benutzer, mit dem sich Home Assistant am Miniserver anmeldet.",
@@ -29,7 +30,8 @@
           "edit_room_mapping": "Öffnet nach dem Bestätigen einen weiteren Dialog. Dort ordnest du z. B. den Loxone-Raum „Wohnen“ deinem vorhandenen HA-Bereich „Wohnzimmer“ zu. Bestehende manuelle Zuordnungen bleiben erhalten.",
           "auto_configure_udp": "Der Miniserver meldet Änderungen der zusätzlich erkannten Ein- und Ausgänge sofort an HA. Dafür wird das Miniserver-Programm gesichert und geändert; die Miniserver-Logik startet kurz neu. Nutzung auf eigene Verantwortung, siehe Haftungsausschluss in der Dokumentation. Ausgeschaltet: Werte kommen alle 30 Sekunden per Abfrage, oder du richtest den UDP-Logger manuell ein.",
           "udp_port": "Port für die Echtzeitwerte vom Miniserver. Normalerweise 55555 lassen. 0 schaltet den UDP-Empfang aus. Bei manueller Einrichtung muss im Miniserver derselbe Zielport stehen.",
-          "udp_max_signals": "Eine Grenze für alle Wege: so viele zusätzlich erkannte Klemmen werden als Entitäten angelegt, per Abfrage nachgezogen und per UDP in Echtzeit übertragen; künftig gilt sie auch für Signale von Home Assistant nach Loxone. Reihenfolge wie im Programm. Die Abfrage ist zusätzlich auf 200 Anfragen je 30 Sekunden und zwei gleichzeitige je Miniserver begrenzt; große Anlagen werden im Umlauf abgefragt. Wird die Grenze erreicht, steht ein Hinweis im Protokoll."
+          "udp_max_signals": "Eine Grenze für alle Wege: so viele zusätzlich erkannte Klemmen werden als Entitäten angelegt, per Abfrage nachgezogen und per UDP in Echtzeit übertragen; künftig gilt sie auch für Signale von Home Assistant nach Loxone. Reihenfolge wie im Programm. Die Abfrage ist zusätzlich auf 200 Anfragen je 30 Sekunden und zwei gleichzeitige je Miniserver begrenzt; große Anlagen werden im Umlauf abgefragt. Wird die Grenze erreicht, steht ein Hinweis im Protokoll.",
+          "udp_gateway_beta": "Nur für Anlagen mit Gateway und Clients, und nur zum Testen. Das Archiv des Gateways enthält ein Programm je Miniserver; jedes bekommt einen eigenen UDP-Logger mit höchstens 5 Klemmen und einem eigenen Lebenszeichen. Das geänderte Archiv wird nur auf das Gateway gespielt, das die Teilprogramme nach dem Neustart selbst an die Clients verteilt. Ausgeschaltet: Verbund-Archive bleiben wie bisher unverändert. Sicherung vorher prüfen, Nutzung auf eigene Verantwortung."
         }
       },
       "room_mapping": {
@@ -56,7 +58,8 @@
           "edit_room_mapping": "Weg 1 (HA → Loxone): Loxone-Räume HA-Bereichen zuordnen",
           "auto_configure_udp": "Weg 2 (Loxone → HA): Echtzeitwerte per UDP automatisch einrichten",
           "udp_port": "Weg 2 (Loxone → HA): UDP-Empfangsport in Home Assistant",
-          "udp_max_signals": "Höchstzahl zusätzlicher Signale (gilt für alle Wege)"
+          "udp_max_signals": "Höchstzahl zusätzlicher Signale (gilt für alle Wege)",
+          "udp_gateway_beta": "Beta: UDP auch im Gateway/Client-Verbund einrichten"
         },
         "description": "Verbinde den Miniserver. Darunter stehen die zwei Wege. Weg 1 (HA → Loxone) ist immer aktiv: Home Assistant liest Bausteine und Klemmen vom Miniserver; die Optionen dazu bestimmen nur, was angelegt wird. Weg 2 (Loxone → HA) ist optional: Der Miniserver sendet Echtzeitwerte per UDP an Home Assistant; dafür wird sein Programm geändert. Bereits gespeicherte Einstellungen werden hier angezeigt.",
         "title": "Loxone",
@@ -70,7 +73,8 @@
           "edit_room_mapping": "Öffnet nach dem Bestätigen einen weiteren Dialog. Dort ordnest du z. B. den Loxone-Raum „Wohnen“ deinem vorhandenen HA-Bereich „Wohnzimmer“ zu. Bestehende manuelle Zuordnungen bleiben erhalten.",
           "auto_configure_udp": "Der Miniserver meldet Änderungen der zusätzlich erkannten Ein- und Ausgänge sofort an HA. Dafür wird das Miniserver-Programm gesichert und geändert; die Miniserver-Logik startet kurz neu. Nutzung auf eigene Verantwortung, siehe Haftungsausschluss in der Dokumentation. Ausgeschaltet: Werte kommen alle 30 Sekunden per Abfrage, oder du richtest den UDP-Logger manuell ein.",
           "udp_port": "Port für die Echtzeitwerte vom Miniserver. Normalerweise 55555 lassen. 0 schaltet den UDP-Empfang aus. Bei manueller Einrichtung muss im Miniserver derselbe Zielport stehen.",
-          "udp_max_signals": "Eine Grenze für alle Wege: so viele zusätzlich erkannte Klemmen werden als Entitäten angelegt, per Abfrage nachgezogen und per UDP in Echtzeit übertragen; künftig gilt sie auch für Signale von Home Assistant nach Loxone. Reihenfolge wie im Programm. Die Abfrage ist zusätzlich auf 200 Anfragen je 30 Sekunden und zwei gleichzeitige je Miniserver begrenzt; große Anlagen werden im Umlauf abgefragt. Wird die Grenze erreicht, steht ein Hinweis im Protokoll."
+          "udp_max_signals": "Eine Grenze für alle Wege: so viele zusätzlich erkannte Klemmen werden als Entitäten angelegt, per Abfrage nachgezogen und per UDP in Echtzeit übertragen; künftig gilt sie auch für Signale von Home Assistant nach Loxone. Reihenfolge wie im Programm. Die Abfrage ist zusätzlich auf 200 Anfragen je 30 Sekunden und zwei gleichzeitige je Miniserver begrenzt; große Anlagen werden im Umlauf abgefragt. Wird die Grenze erreicht, steht ein Hinweis im Protokoll.",
+          "udp_gateway_beta": "Nur für Anlagen mit Gateway und Clients, und nur zum Testen. Das Archiv des Gateways enthält ein Programm je Miniserver; jedes bekommt einen eigenen UDP-Logger mit höchstens 5 Klemmen und einem eigenen Lebenszeichen. Das geänderte Archiv wird nur auf das Gateway gespielt, das die Teilprogramme nach dem Neustart selbst an die Clients verteilt. Ausgeschaltet: Verbund-Archive bleiben wie bisher unverändert. Sicherung vorher prüfen, Nutzung auf eigene Verantwortung."
         }
       },
       "room_mapping": {

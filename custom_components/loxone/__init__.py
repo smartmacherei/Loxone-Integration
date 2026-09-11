@@ -37,7 +37,7 @@ from homeassistant.setup import async_setup_component
 
 from .const import (ATTR_AREA_CREATE, ATTR_CODE, ATTR_COMMAND, ATTR_DEVICE,
                     ATTR_UUID, ATTR_VALUE, CONF_AUTO_DISCOVERY,
-                    CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, CONF_UDP_MAX_SIGNALS,
+                    CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN, CONF_UDP_GATEWAY_BETA, CONF_UDP_MAX_SIGNALS,
                     CONF_UDP_PORT, DEFAULT, DEFAULT_AUTO_DISCOVERY,
                     DEFAULT_PORT, DEFAULT_UDP_MAX_SIGNALS, DEFAULT_UDP_PORT,
                     DOMAIN, DOMAIN_DEVICES, ERROR_VALUE, LOXONE_PLATFORMS,
@@ -214,6 +214,7 @@ async def async_set_options(hass, config_entry):
         CONF_UDP_PORT: options_in.pop(CONF_UDP_PORT, DEFAULT_UDP_PORT),
         "auto_configure_udp": options_in.pop("auto_configure_udp", False),
         CONF_UDP_MAX_SIGNALS: options_in.pop(CONF_UDP_MAX_SIGNALS, DEFAULT_UDP_MAX_SIGNALS),
+        CONF_UDP_GATEWAY_BETA: options_in.pop(CONF_UDP_GATEWAY_BETA, False),
     }
     hass.config_entries.async_update_entry(
         config_entry, data=config_entry.data, options=options
@@ -374,8 +375,8 @@ async def _async_setup_entry(hass, config_entry):
         from . import helpers as _lox_helpers
         from .topology import (async_fetch_program, async_fetch_values,
                                build_device_map, client_hosts,
-                               enumerate_discoverable, miniservers,
-                               pollable_terminals)
+                               enumerate_discoverable, interleave_by_miniserver,
+                               miniservers, pollable_terminals, terminal_owner)
 
         _program = await async_fetch_program(
             async_get_clientsession(hass),
@@ -432,6 +433,11 @@ async def _async_setup_entry(hass, config_entry):
                     _new = enumerate_discoverable(
                         _program, _loxconfig, _lox_helpers.device_map
                     )
+                    # Gateway/Client beta: rotate through the Miniservers so the
+                    # limit below cannot starve the clients.
+                    if config_entry.options.get(CONF_UDP_GATEWAY_BETA) and len(_servers) > 1:
+                        _new = interleave_by_miniserver(
+                            _new, await hass.async_add_executor_job(terminal_owner, _program))
                     # One limit for entities, polling and UDP loggers: program
                     # order is stable, so UdpSetup.select picks the same subset.
                     _limit = int(config_entry.options.get(CONF_UDP_MAX_SIGNALS) or DEFAULT_UDP_MAX_SIGNALS)

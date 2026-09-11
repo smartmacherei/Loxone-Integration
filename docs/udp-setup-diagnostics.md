@@ -105,7 +105,8 @@ Ab Version 1.4.5 unterscheidet die Archivprüfung folgende Fehler:
 | --- | --- |
 | `ARCHIVE_INVALID_ZIP` | Die heruntergeladene Datei lässt sich nicht als ZIP öffnen. |
 | `ARCHIVE_PROGRAM_MISSING` | Keine erwartete sps-Programmdatei gefunden. |
-| `ARCHIVE_MULTIPLE_PROGRAMS` | Mehrere sps-Programmdateien gefunden; automatische Auswahl nicht unterstützt. |
+| `ARCHIVE_MULTIPLE_PROGRAMS` | Mehrere sps-Programmdateien gefunden (Gateway/Client-Verbund); ohne die Beta-Option bleibt das Programm unverändert. |
+| `ARCHIVE_PROJECT_MISSING` | Verbund-Archiv ohne Gesamtprojekt `sps.Loxone`; die Programme können nicht konsistent geändert werden. |
 | `ARCHIVE_DUPLICATE_ENTRIES` | Dateieinträge kommen mehrfach vor. |
 | `ARCHIVE_REQUIRED_FILES_MISSING` | Von der Sicherheitsprüfung geforderte Begleitdateien fehlen. |
 | `ARCHIVE_SIZE_LIMIT` | Entpackte Gesamtgröße überschreitet 64 MiB. |

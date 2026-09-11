@@ -24,7 +24,7 @@ from homeassistant.helpers.selector import (AreaSelector, BooleanSelector,
                                             TextSelectorType)
 
 from .const import (CONF_AUTO_CONFIGURE_UDP, CONF_AUTO_DISCOVERY, CONF_LIGHTCONTROLLER_SUBCONTROLS_GEN,
-                    CONF_UDP_MAX_SIGNALS, CONF_UDP_PORT,
+                    CONF_UDP_GATEWAY_BETA, CONF_UDP_MAX_SIGNALS, CONF_UDP_PORT,
                     DEFAULT_AUTO_DISCOVERY, DEFAULT_IP,
                     DEFAULT_PORT, DEFAULT_UDP_MAX_SIGNALS, DEFAULT_UDP_PORT, DOMAIN)
 from .area_mapping import CONF_ROOM_MAPPING
@@ -187,6 +187,8 @@ def _form_schema(auto_udp_default):
             vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
                 NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
             ),
+            # Beta: Gateway/Client archives, deliberately off until enabled.
+            vol.Optional(CONF_UDP_GATEWAY_BETA, default=False): BooleanSelector(),
         }
     )
 

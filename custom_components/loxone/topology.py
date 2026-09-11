@@ -247,6 +247,27 @@ def terminal_owner(program_xml: bytes) -> dict[str, str]:
     return owner
 
 
+def interleave_by_miniserver(found, owner: dict[str, str]) -> list:
+    """Reihum über die Miniserver, innerhalb eines Miniservers in Programmreihenfolge.
+
+    So kann eine globale Höchstzahl die Clients eines Gateway/Client-Verbunds nicht
+    aushungern, wenn das Gateway allein schon mehr Klemmen hat als die Grenze.
+    """
+    from collections import deque
+    groups: dict[str, deque] = {}
+    for item in found:
+        groups.setdefault(owner.get(item[0].lower(), ""), deque()).append(item)
+    if len(groups) < 2:
+        return list(found)
+    result, queues = [], list(groups.values())
+    while queues:
+        for queue in list(queues):
+            result.append(queue.popleft())
+            if not queue:
+                queues.remove(queue)
+    return result
+
+
 def client_hosts(program_xml: bytes, uuids) -> dict[str, tuple[str, int]]:
     """uuid -> (host, port) fuer Klemmen, die an einem Client-Miniserver haengen.
 

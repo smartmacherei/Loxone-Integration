@@ -37,7 +37,7 @@ def collect(manager):
     trace = SetupTrace()
     token = TRACE.set(trace)
     try:
-        unpack(raw)
+        unpack(raw, bool(getattr(manager, "gateway_beta", False)))
     except Exception as error:
         result["validation"] = failure(trace.step, error)
     else:

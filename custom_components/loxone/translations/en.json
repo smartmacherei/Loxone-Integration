@@ -17,7 +17,8 @@
           "edit_room_mapping": "Way 1 (HA → Loxone): Assign Loxone rooms to HA areas",
           "auto_configure_udp": "Way 2 (Loxone → HA): Set up real-time values over UDP automatically",
           "udp_port": "Way 2 (Loxone → HA): UDP receiving port in Home Assistant",
-          "udp_max_signals": "Maximum number of additional signals (applies to every way)"
+          "udp_max_signals": "Maximum number of additional signals (applies to every way)",
+          "udp_gateway_beta": "Beta: Set up UDP in a Gateway/Client system too"
         },
         "data_description": {
           "username": "User Home Assistant uses to sign in to the Miniserver.",
@@ -29,7 +30,8 @@
           "edit_room_mapping": "Opens another dialog after you confirm this form. Match a Loxone room to an existing Home Assistant area. Existing manual assignments are preserved.",
           "auto_configure_udp": "The Miniserver reports changes of the additionally discovered inputs and outputs to HA immediately. This backs up and changes the Miniserver program and briefly restarts its logic. Use at your own risk, see the disclaimer in the documentation. When off, values are polled every 30 seconds, or you configure the UDP logger manually.",
           "udp_port": "Usually leave at 55555. Set to 0 to disable UDP reception. For manual setup, use the same destination port on the Miniserver.",
-          "udp_max_signals": "One limit for every way: this many additionally discovered terminals are created as entities, kept current by polling and transmitted in real time over UDP; later it also applies to signals from Home Assistant into Loxone. Program order. Polling is additionally bounded to 200 requests per 30 seconds and two concurrent requests per Miniserver; large installations are polled in rotation. A log message tells you when the limit is reached."
+          "udp_max_signals": "One limit for every way: this many additionally discovered terminals are created as entities, kept current by polling and transmitted in real time over UDP; later it also applies to signals from Home Assistant into Loxone. Program order. Polling is additionally bounded to 200 requests per 30 seconds and two concurrent requests per Miniserver; large installations are polled in rotation. A log message tells you when the limit is reached.",
+          "udp_gateway_beta": "Only for installations with a gateway and clients, and only for testing. The gateway archive holds one program per Miniserver; each gets its own UDP logger with at most 5 terminals and its own heartbeat. The changed archive is uploaded to the gateway only, which distributes the partial programs to the clients itself after the restart. When off, Gateway/Client archives stay unchanged as before. Check the backup first; use at your own risk."
         }
       },
       "room_mapping": {
@@ -56,7 +58,8 @@
           "edit_room_mapping": "Way 1 (HA → Loxone): Assign Loxone rooms to HA areas",
           "auto_configure_udp": "Way 2 (Loxone → HA): Set up real-time values over UDP automatically",
           "udp_port": "Way 2 (Loxone → HA): UDP receiving port in Home Assistant",
-          "udp_max_signals": "Maximum number of additional signals (applies to every way)"
+          "udp_max_signals": "Maximum number of additional signals (applies to every way)",
+          "udp_gateway_beta": "Beta: Set up UDP in a Gateway/Client system too"
         },
         "description": "Connect your Miniserver. Below the connection data are the two ways. Way 1 (HA → Loxone) is always active: Home Assistant reads controls and terminals from the Miniserver; its options only decide what gets created. Way 2 (Loxone → HA) is optional: the Miniserver pushes real-time values to Home Assistant over UDP, which changes its program. Previously saved settings are shown here.",
         "title": "Loxone",
@@ -70,7 +73,8 @@
           "edit_room_mapping": "Opens another dialog after you confirm this form. Match a Loxone room to an existing Home Assistant area. Existing manual assignments are preserved.",
           "auto_configure_udp": "The Miniserver reports changes of the additionally discovered inputs and outputs to HA immediately. This backs up and changes the Miniserver program and briefly restarts its logic. Use at your own risk, see the disclaimer in the documentation. When off, values are polled every 30 seconds, or you configure the UDP logger manually.",
           "udp_port": "Usually leave at 55555. Set to 0 to disable UDP reception. For manual setup, use the same destination port on the Miniserver.",
-          "udp_max_signals": "One limit for every way: this many additionally discovered terminals are created as entities, kept current by polling and transmitted in real time over UDP; later it also applies to signals from Home Assistant into Loxone. Program order. Polling is additionally bounded to 200 requests per 30 seconds and two concurrent requests per Miniserver; large installations are polled in rotation. A log message tells you when the limit is reached."
+          "udp_max_signals": "One limit for every way: this many additionally discovered terminals are created as entities, kept current by polling and transmitted in real time over UDP; later it also applies to signals from Home Assistant into Loxone. Program order. Polling is additionally bounded to 200 requests per 30 seconds and two concurrent requests per Miniserver; large installations are polled in rotation. A log message tells you when the limit is reached.",
+          "udp_gateway_beta": "Only for installations with a gateway and clients, and only for testing. The gateway archive holds one program per Miniserver; each gets its own UDP logger with at most 5 terminals and its own heartbeat. The changed archive is uploaded to the gateway only, which distributes the partial programs to the clients itself after the restart. When off, Gateway/Client archives stay unchanged as before. Check the backup first; use at your own risk."
         }
       },
       "room_mapping": {

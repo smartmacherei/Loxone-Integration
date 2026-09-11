@@ -16,6 +16,7 @@ ein UDP-Logger im Miniserver-Programm eingerichtet.
 | UDP-Port | `55555` | `0` deaktiviert UDP und automatische Programmänderungen |
 | Höchstzahl zusätzlicher Signale | `500` | Eine Grenze für alle Wege: erkannte Entitäten, ihre Abfrage, Logger-Referenzen und künftig Signale nach Loxone; Programmreihenfolge. Die Abfrage ist zusätzlich auf 200 Anfragen je 30 s und 2 gleichzeitige je Miniserver begrenzt |
 | LightControllerV2-Unterkanäle | Aus | Einzelne Lichtkanäle standardmäßig aktivieren |
+| Beta: UDP auch im Gateway/Client-Verbund | Aus | Verbund-Archive (ein Programm je Miniserver) ebenfalls einrichten: je Miniserver eigener Logger, eigene Seite, höchstens 5 Klemmen, eigenes Lebenszeichen. Upload nur auf das Gateway, das verteilt an die Clients. Ausgeschaltet bleiben Verbund-Archive unverändert |
 
 Lichtstimmungen sind immer als Effekte der Licht-Entität verfügbar. Die Szenen-Optionen
 früherer Versionen wurden in 1.5.0 entfernt.

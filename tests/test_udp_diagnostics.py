@@ -31,7 +31,7 @@ def reporting(monkeypatch):
         "homeassistant.config_entries": NS(ConfigEntry=object),
         "homeassistant.core": NS(HomeAssistant=object),
         PACKAGE + ".const": NS(DOMAIN="loxone"),
-            PACKAGE + ".topology": NS(enumerate_discoverable=lambda *args: []),
+            PACKAGE + ".topology": module("topology"),  # stdlib only; discovery is stubbed per test
             PACKAGE + ".connection_diagnostics": NS(KEY="loxone_connection_diagnostics", live_status=lambda *args: {}, diagnostics=empty_diagnostics),
             PACKAGE + ".startup_trace": NS(diagnostics=empty_diagnostics),
     }.items():
@@ -393,6 +393,25 @@ def test_signal_limit_keeps_program_order(reporting, tmp_path, monkeypatch, capl
     assert "udp_max_signals" in caplog.text
     setup.limit = 7
     assert setup.select(archive(), b"<Loxone/>") == set(uuids)
+
+
+def test_gateway_beta_caps_five_enabled_terminals_per_miniserver(reporting, tmp_path, monkeypatch):
+    setup = manager(reporting, tmp_path)
+    del setup.select
+    setup.gateway_beta = True
+    gateway = [f"10000000-0000-0000-ffff0000000000{i:02x}" for i in range(8)]
+    client = [f"20000000-0000-0000-ffff0000000000{i:02x}" for i in range(3)]
+    owner = {u: "gw" for u in gateway} | {u: "cl" for u in client}
+    found = [(u, {"auto_enabled_default": i != 1}) for i, u in enumerate(gateway)] + [(u, {}) for u in client]
+    monkeypatch.setattr(reporting.setup, "enumerate_discoverable", lambda xml, controls: found)
+    monkeypatch.setattr(reporting.setup, "terminal_owner", lambda xml: owner)
+    selected = setup.select(archive(), b"<Loxone/>")
+    # gateway[1] starts disabled in HA and is skipped; five others of the gateway, all three of the client.
+    assert selected == {gateway[0], gateway[2], gateway[3], gateway[4], gateway[5]} | set(client)
+    assert setup.signals_discovered == 11
+    # The global limit comes first, applied to the rotation over the Miniservers.
+    setup.limit = 4  # rotation: g0 c0 g1 c1; g1 starts disabled
+    assert setup.select(archive(), b"<Loxone/>") == {gateway[0], client[0], client[1]}
 
 
 def test_timeout_description_does_not_invent_firewall_cause(tmp_path):

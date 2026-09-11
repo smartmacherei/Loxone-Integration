@@ -109,7 +109,7 @@ def _write_journal(path: Path, value: dict):
             os.close(descriptor)
 
 
-def install(client, directory, udp_port, select, stop: threading.Event, progress=None):
+def install(client, directory, udp_port, select, stop: threading.Event, progress=None, gateway=False):
     with _LOCKS_GUARD:
         lock = _LOCKS.setdefault(directory, threading.Lock())
     if not lock.acquire(blocking=False):
@@ -117,7 +117,7 @@ def install(client, directory, udp_port, select, stop: threading.Event, progress
     trace = SetupTrace(progress)
     token = TRACE.set(trace)
     try:
-        return _install(client, directory, udp_port, select, stop)
+        return _install(client, directory, udp_port, select, stop, gateway)
     except Exception as error:
         data = failure(trace.step, error)
         error.udp_failure = data
@@ -145,25 +145,27 @@ def install(client, directory, udp_port, select, stop: threading.Event, progress
         lock.release()
 
 
-def _install(client, directory, udp_port, select, stop: threading.Event):
+def _install(client, directory, udp_port, select, stop: threading.Event, gateway=False):
     """At most one activation attempt per source archive and UDP destination.
 
     A failed/uncertain activation stays blocked across HA restarts. A new program
     has a new hash and is evaluated again. No automatic rollback/restart loop.
+    ``gateway`` admits Gateway/Client archives (beta): the whole archive is
+    uploaded to the gateway, which distributes the partial programs itself.
     """
     mark("program_download")
     name, original = client.current()
     TRACE.get().source_program = original
-    _, xml = unpack(original)
+    _, xml = unpack(original, gateway)
     mark("udp_destination")
     target = client.destination(udp_port)
     mark("program_prepare")
-    candidate, report = prepare(original, target, select(original, xml))
+    candidate, report = prepare(original, target, select(original, xml), gateway)
     report.update(source_sha256=digest(original), xml_sha256=digest(xml))
     if candidate == original:
         return dict(report, state="configured")
     mark("backup_write")
-    backup_path = backup(directory, name, original)
+    backup_path = backup(directory, name, original, gateway)
     trace = TRACE.get()
     trace.backup = backup_path
     mark("activation_verify")
@@ -184,7 +186,7 @@ def _install(client, directory, udp_port, select, stop: threading.Event):
                     activation_error=restore_failure(journal.get("activation_error")))
     if stop.is_set():
         return dict(report, state="stopped", backup=backup_path, backup_verified=True)
-    _, expected_xml = unpack(candidate)
+    _, expected_xml = unpack(candidate, gateway)
     journal = {"attempt": attempt, "backup": backup_path,
                "expected_xml_sha256": digest(expected_xml), "state": "pending"}
     mark("backup_write")

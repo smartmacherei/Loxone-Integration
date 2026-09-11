@@ -107,3 +107,7 @@ CONF_AUTO_CONFIGURE_UDP = "auto_configure_udp"
 # the limit keep the 30-second polling. User-adjustable in the setup form.
 CONF_UDP_MAX_SIGNALS = "udp_max_signals"
 DEFAULT_UDP_MAX_SIGNALS = 500
+
+# Beta: automatic UDP setup also for Gateway/Client archives (one program per
+# Miniserver). Off by default, so installing the beta alone changes nothing.
+CONF_UDP_GATEWAY_BETA = "udp_gateway_beta"

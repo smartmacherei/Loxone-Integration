@@ -90,8 +90,16 @@ def encode(xml: bytes) -> bytes:
     return struct.pack("<4I", 0xAABBCCEE, len(block), n, zlib.crc32(xml) & 0xFFFFFFFF) + block
 
 
-def unpack(raw: bytes) -> tuple[str, bytes]:
-    """Require a complete, intact program ZIP, never assemble from older files."""
+PROJECT = "sps.Loxone"
+
+
+def unpack(raw: bytes, gateway: bool = False) -> tuple[str, bytes]:
+    """Require a complete, intact program ZIP, never assemble from older files.
+
+    A Gateway/Client archive holds one program per Miniserver plus the full
+    project ``sps.Loxone``. It is accepted only with ``gateway`` (the beta
+    option); the returned XML is then the full project.
+    """
     mark("archive_check")
     try:
         archive = zipfile.ZipFile(io.BytesIO(raw))
@@ -99,29 +107,44 @@ def unpack(raw: bytes) -> tuple[str, bytes]:
         raise coded_error("ARCHIVE_INVALID_ZIP", "Invalid program ZIP", ValueError) from None
     with archive:
         names = archive.namelist()
-        members = [n for n in names if re.fullmatch(r"sps\d*\.LoxCC", n, re.I)]
+        members = sorted(n for n in names if re.fullmatch(r"sps\d*\.LoxCC", n, re.I))
+        required = {"LoxAPP3.json", "permissions.bin", "Emergency.LoxCC", "Music.json"}
         def reject(code, message):
             error = coded_error(code, message, ValueError)
             error.archive_details = {"entry_count": len(names), "program_file_count": len(members),
-                "missing_required_files": sorted({"LoxAPP3.json", "permissions.bin", "Emergency.LoxCC", "Music.json"} - set(names))}
+                "missing_required_files": sorted((required | ({PROJECT} if len(members) > 1 else set())) - set(names))}
             raise error
         if len(names) != len(set(names)):
             reject("ARCHIVE_DUPLICATE_ENTRIES", "Ambiguous program ZIP: duplicate entries")
         if not members:
             reject("ARCHIVE_PROGRAM_MISSING", "Ambiguous program ZIP: missing program file")
-        if len(members) > 1:
+        if len(members) > 1 and not gateway:
             reject("ARCHIVE_MULTIPLE_PROGRAMS", "Ambiguous program ZIP: multiple program files")
-        if not {"LoxAPP3.json", "permissions.bin", "Emergency.LoxCC", "Music.json"} <= set(names):
+        if len(members) > 1 and PROJECT not in names:
+            reject("ARCHIVE_PROJECT_MISSING", "Gateway archive without full project")
+        if not required <= set(names):
             reject("ARCHIVE_REQUIRED_FILES_MISSING", "Incomplete program ZIP; save the project with Loxone Config first")
         if sum(info.file_size for info in archive.infolist()) > MAX_SIZE:
             reject("ARCHIVE_SIZE_LIMIT", "Program ZIP exceeds size limit")
         if archive.testzip():
             reject("ARCHIVE_CHECKSUM_MISMATCH", "Program ZIP checksum mismatch")
-        data = archive.read(members[0])
         mark("program_format")
-        xml = decode(data)
-        ET.fromstring(xml)
-        return members[0], xml
+        if len(members) == 1:
+            xml = decode(archive.read(members[0]))
+            ET.fromstring(xml)
+            return members[0], xml
+        for member in members:
+            ET.fromstring(decode(archive.read(member)))
+        project = archive.read(PROJECT)
+        ET.fromstring(project)
+        return PROJECT, project
+
+
+def program_members(raw: bytes) -> dict[str, bytes]:
+    """Decoded XML of every program file in the archive, keyed by member name."""
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        return {name: decode(archive.read(name)) for name in sorted(archive.namelist())
+                if re.fullmatch(r"sps\d*\.LoxCC", name, re.I)}
 
 
 def newest_archive(listing: str) -> str:
@@ -157,8 +180,14 @@ def _append(text: str, object_id: str, fragment: str) -> str:
     return text[:close] + fragment + "\n" + text[close:]
 
 
-def patch_xml(xml: bytes, target: str, selected: set[str]) -> tuple[bytes, dict]:
-    """Add missing references; only replace deterministic, integration-owned objects."""
+def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False) -> tuple[bytes, dict]:
+    """Add missing references; only replace deterministic, integration-owned objects.
+
+    ``gateway``: the XML is a Gateway/Client full project or one of its partial
+    programs. Every Program object then gets its own logger and page, limited to
+    terminals of the Miniserver it runs on (``Program/@Ref`` -> ``LoxLIVE``);
+    object identities include the Program UUID so project and partials agree.
+    """
     mark("program_prepare")
     try:
         from .signal_bindings import SignalBindings
@@ -168,9 +197,23 @@ def patch_xml(xml: bytes, target: str, selected: set[str]) -> tuple[bytes, dict]
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         SignalBindings = module.SignalBindings
-    bindings = SignalBindings(xml)
     mark("program_format")
     root = ET.fromstring(xml)
+    # Config writes a foreign terminal that is used on several pages of a
+    # partial program as one Memory proxy per page, all carrying the terminal's
+    # UUID. Only that duplicate is tolerated, and only on the gateway path.
+    proxies = set()
+    if gateway:
+        from collections import Counter
+        counts = Counter(e.get("U").lower() for e in root.iter() if e.tag in {"C", "Co"} and e.get("U"))
+        for value, n in counts.items():
+            if n < 2:
+                continue
+            copies = [e for e in root.iter("C") if e.get("U", "").lower() == value]
+            if len(copies) != n or any(e.get("Type") != "Memory" or e.get("Tp") is None for e in copies):
+                raise ValueError("Duplicate UUID in source program")
+            proxies.add(value)
+    bindings = SignalBindings(xml, proxies=proxies)
     documents = [el for el in root.iter("C") if el.get("Type") == "Document"]
     if len(documents) != 1:
         raise ValueError("Expected one Document")
@@ -179,143 +222,195 @@ def patch_xml(xml: bytes, target: str, selected: set[str]) -> tuple[bytes, dict]
     if not re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{16}", doc_id):
         raise ValueError("Unsupported Document UUID")
     programs = [el for el in root.iter("C") if el.get("Type") == "Program"]
-    version = programs[0].get("V") if len(programs) == 1 else None
-    if version not in {"175", "178"}:
+    # Format 174 (older Config) is only admitted on the gateway beta path.
+    allowed = {"175", "178"} | ({"174"} if gateway else set())
+    if gateway:
+        scopes = programs
+        unsupported = not scopes or any(p.get("V") not in allowed or not p.get("Ref") for p in scopes)
+    else:
+        scopes = programs
+        unsupported = len(programs) != 1 or programs[0].get("V") not in allowed
+    if unsupported:
         raise coded_error("PROGRAM_FORMAT_UNSUPPORTED", "Program format has not been validated for automatic editing", ValueError)
 
     mark("program_prepare")
-
-    def uid(label):
-        value = uuid.uuid5(uuid.NAMESPACE_URL, doc_id + "/smartmacherei/udp/" + label).hex
-        return f"{value[:8]}-{value[8:12]}-{value[12:16]}-{doc_id[-16:]}"
-
-    page_id, logger_id = uid("page"), uid("logger")
     objects = list(root.iter("C"))
-    owned = {page_id: "Page", logger_id: "Logger"}
+    lives = {el.get("U"): el for el in objects if el.get("Type") == "LoxLIVE" and el.get("U")}
+    owner = {}
+    for live_u, live in lives.items():
+        for el in live.iter("C"):
+            if el.get("U"):
+                owner[el.get("U").lower()] = live_u
+
+    def make_uid(program_u):
+        def uid(label):
+            scope = f"{program_u}/" if gateway else ""
+            value = uuid.uuid5(uuid.NAMESPACE_URL, doc_id + "/smartmacherei/udp/" + scope + label).hex
+            return f"{value[:8]}-{value[8:12]}-{value[12:16]}-{doc_id[-16:]}"
+        return uid
+
+    scope_ids = {}
+    for program in scopes:
+        uid = make_uid(program.get("U"))
+        scope_ids[program] = (uid, uid("page"), uid("logger"))
+    managed_pages = {page_id for _, page_id, _ in scope_ids.values()}
+    managed_children = set()
     for el in objects:
-        if el.get("U") in owned and (el.get("Type") != owned[el.get("U")]
-                                     or (el.get("Title") != TITLE and el.get("Title") not in LEGACY_TITLES)):
-            raise ValueError("Managed object was modified; refusing to overwrite it")
-    owned_page = next((el for el in objects if el.get("U") == page_id), None)
-    owned_children = set(owned_page.iter()) if owned_page is not None else set()
+        if el.get("U") in managed_pages:
+            managed_children |= set(el.iter())
     loggers = {el.get("U"): el.get("Address") for el in objects if el.get("Type") == "Logger"}
     # An existing manually configured logger is usable if its destination matches.
     # Broadcast loggers also work on the local segment.
     port = target.rsplit("/", 1)[1]
     addresses = {target, f"/dev/udp/255.255.255.255/{port}"}
-    existing = set()
-    for el in objects:
-        if el in owned_children or el.get("Type") != "OutputRefLM":
-            continue
-        lm, source = el.find("LoggerMailer"), el.find("Co[@K='AI']/In")
-        if lm is None or source is None:
-            continue
-        if lm.get("RefLogger") == logger_id:
-            raise ValueError("External reference to managed logger")
-        if loggers.get(lm.get("RefLogger")) in addresses and lm.get("MinimumTime", "0") == "0":
-            existing.add((lm.get("On"), lm.get("Off"), source.get("Input")))
-
     selected = {value.lower() for value in selected}
     # Reuse Config's existing system-second output as a one-second heartbeat.
     # No guessed function-block template or visualization change is necessary.
+    # In a Gateway/Client project every Miniserver runs that same object and
+    # sends it from its own address, which is what the receiver keys on.
     heartbeat = next((el for el in objects if el.get("Type") == "Second"
                       and el.find("Co[@K='Q']") is not None), None)
-    terminals, skipped = [], []
-    for el in objects:
-        terminal = el.get("U", "")
-        is_heartbeat = el is heartbeat
-        if terminal.lower() not in selected and not is_heartbeat:
-            continue
-        display = el.find("Display")
-        unit = "<v>" if is_heartbeat or el.get("Type") == "ModbusSensor" else display.get("Unit", "") if display is not None else ""
-        if not re.fullmatch(r"<v(?:\.\d+)?>.*", unit):
-            skipped.append(terminal)
-            continue
-        connectors = {co.get("K"): co for co in el.findall("Co")}
-        precision_match = re.match(r"<v\.(\d+)>", unit)
-        analog = ("AQ" in connectors or precision_match is not None
-                  or unit != "<v>" or el.get("Type") in {"TreeAactor", "LoxAIRAactor"})
-        source = bindings.source(terminal)
-        if not source:
-            skipped.append(terminal)
-            continue
-        precision = min(12, max(2, int(precision_match[1]) if precision_match else 2))
-        message = terminal + (f";<v.{precision}>" if analog else ";<v>")
-        if (message, message, source) not in existing:
-            terminals.append((terminal, el.get("Title") or el.get("IName") or terminal, source, analog, message))
-
-    page = ET.Element("C", Type="Page", V=version, U=page_id, Title=TITLE, WF="16384")
-    logger = ET.Element("C", Type="Logger", V=version, U=logger_id, Title=TITLE,
-                        WF="16384", Address=target, MailSubjText="")
-    for i, (terminal, title, source, analog, message) in enumerate(terminals):
-        attrs = dict(Type="OutputRefLM", V=version, U=uid(terminal), Title=title,
-                     Px=str(1344 + i % 4 * 2688), Py=str(576 + i // 4 * 384),
-                     Px2=str(3456 + i % 4 * 2688), Py2=str(768 + i // 4 * 384),
-                     Cl="0,0,0", Nio="2", Ref=logger_id, WF="147456")
-        if analog:
-            attrs["Analog"] = "true"
-        ref = ET.SubElement(page, "C", attrs)
-        tail = uuid.uuid5(uuid.NAMESPACE_URL, doc_id + terminal).hex[-12:]
-        inp = uid(terminal + "/AI")[:19] + "00ff" + tail
-        out = uid(terminal + "/AQ")[:19] + "01ff" + tail
-        co = ET.SubElement(ref, "Co", K="AI", Nc="1", U=inp)
-        ET.SubElement(co, "In", Input=source)
-        ET.SubElement(ref, "Co", K="AQ", U=out)
-        ET.SubElement(ref, "LoggerMailer", RefLogger=logger_id, On=message, Off=message)
-
-    def canonical(el):
-        if el is None:
-            return None
-        # Config may rewrite flags and placement; compare only functional fields.
-        if el.get("Type") == "Logger":
-            return el.get("Address")
-        refs = []
-        for ref in el.findall("C"):
-            lm, co = ref.find("LoggerMailer"), ref.find("Co[@K='AI']/In")
-            if ref.get("Type") != "OutputRefLM" or lm is None:
-                raise ValueError("Unmanaged content on the managed UDP page")
-            if co is None:
-                # Config disconnects logger inputs when their source device is
-                # deleted. Only discard references provably generated by us for
-                # a terminal that no longer exists; user content stays protected.
-                message = lm.get("On", "")
-                match = re.fullmatch(r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{16});<v(?:\.\d+)?>", message)
-                if (match is None or lm.get("Off") != message
-                        or ref.get("U") != uid(match[1])
-                        or ref.get("Ref") != logger_id
-                        or lm.get("RefLogger") != logger_id
-                        or ref.find("Co[@K='AI']") is None
-                        or any(obj.get("U", "").lower() == match[1] for obj in objects)
-                        or any(child.tag not in {"Co", "LoggerMailer"} for child in ref)
-                        or len(list(ref.iter("C"))) != 1):
-                    raise ValueError("Unmanaged content on the managed UDP page")
-                refs.append((ref.get("U"), "disconnected"))
-                continue
-            refs.append((ref.get("U"), ref.get("Ref"), ref.get("Analog", "false"),
-                         lm.get("RefLogger"), lm.get("On"), lm.get("Off"),
-                         lm.get("MinimumTime", "0"), co.get("Input")))
-        return sorted(refs)
-
-    old_logger = next((el for el in objects if el.get("U") == logger_id), None)
-    report = {"selected": len(selected), "managed": len(terminals), "unsupported": len(skipped),
-              "heartbeat": heartbeat is not None}
-    if (not terminals and owned_page is None and old_logger is None) or (
-        canonical(owned_page) == canonical(page) and canonical(old_logger) == canonical(logger)
-    ):
-        return xml, report
-    if owned_page is not None:
-        canonical(owned_page)  # Refuse to remove user-added function blocks.
     text = xml.decode("utf-8")
-    for object_id in owned:
-        if any(el.get("U") == object_id for el in objects):
-            start, end = _span(text, object_id)
-            text = text[:start] + text[end:]
-    if terminals:
-        for type_, fragment in (("LoggerOutCaption", logger), ("Program", page)):
-            parents = [el for el in objects if el.get("Type") == type_]
-            if len(parents) != 1 or not parents[0].get("U"):
-                raise ValueError("Ambiguous or missing " + type_)
-            text = _append(text, parents[0].get("U"), ET.tostring(fragment, encoding="unicode"))
+    report = {"selected": len(selected), "managed": 0, "unsupported": 0, "heartbeat": heartbeat is not None,
+              "scopes": {}}
+    changed = False
+
+    for program in scopes:
+        version = program.get("V")
+        live_u = program.get("Ref") if gateway else None
+        uid, page_id, logger_id = scope_ids[program]
+        owned = {page_id: "Page", logger_id: "Logger"}
+        for el in objects:
+            if el.get("U") in owned and (el.get("Type") != owned[el.get("U")]
+                                         or (el.get("Title") != TITLE and el.get("Title") not in LEGACY_TITLES)):
+                raise ValueError("Managed object was modified; refusing to overwrite it")
+        owned_page = next((el for el in objects if el.get("U") == page_id), None)
+        existing = set()
+        for el in objects:
+            if el in managed_children or el.get("Type") != "OutputRefLM":
+                continue
+            lm, source = el.find("LoggerMailer"), el.find("Co[@K='AI']/In")
+            if lm is None or source is None:
+                continue
+            if lm.get("RefLogger") == logger_id:
+                raise ValueError("External reference to managed logger")
+            if loggers.get(lm.get("RefLogger")) in addresses and lm.get("MinimumTime", "0") == "0":
+                existing.add((lm.get("On"), lm.get("Off"), source.get("Input")))
+
+        terminals, skipped, scoped = [], [], set()
+        for el in objects:
+            terminal = el.get("U", "")
+            is_heartbeat = el is heartbeat
+            if terminal.lower() not in selected and not is_heartbeat:
+                continue
+            if gateway and not is_heartbeat and owner.get(terminal.lower()) != live_u:
+                continue
+            if not is_heartbeat:
+                scoped.add(terminal.lower())
+            display = el.find("Display")
+            unit = "<v>" if is_heartbeat or el.get("Type") == "ModbusSensor" else display.get("Unit", "") if display is not None else ""
+            if not re.fullmatch(r"<v(?:\.\d+)?>.*", unit):
+                skipped.append(terminal)
+                continue
+            connectors = {co.get("K"): co for co in el.findall("Co")}
+            precision_match = re.match(r"<v\.(\d+)>", unit)
+            analog = ("AQ" in connectors or precision_match is not None
+                      or unit != "<v>" or el.get("Type") in {"TreeAactor", "LoxAIRAactor"})
+            source = bindings.source(terminal)
+            if not source:
+                skipped.append(terminal)
+                continue
+            precision = min(12, max(2, int(precision_match[1]) if precision_match else 2))
+            # Gateway/Client: every Miniserver runs the same Second object, so
+            # its heartbeat is sent under the Miniserver (LoxLIVE) UUID instead.
+            key = live_u if gateway and is_heartbeat else terminal
+            message = key + (f";<v.{precision}>" if analog else ";<v>")
+            if (message, message, source) not in existing:
+                terminals.append((key, el.get("Title") or el.get("IName") or terminal, source, analog, message))
+        report["scopes"][program.get("U")] = sorted(scoped)
+
+        page = ET.Element("C", Type="Page", V=version, U=page_id, Title=TITLE, WF="16384")
+        logger = ET.Element("C", Type="Logger", V=version, U=logger_id, Title=TITLE,
+                            WF="16384", Address=target, MailSubjText="")
+        for i, (terminal, title, source, analog, message) in enumerate(terminals):
+            attrs = dict(Type="OutputRefLM", V=version, U=uid(terminal), Title=title,
+                         Px=str(1344 + i % 4 * 2688), Py=str(576 + i // 4 * 384),
+                         Px2=str(3456 + i % 4 * 2688), Py2=str(768 + i // 4 * 384),
+                         Cl="0,0,0", Nio="2", Ref=logger_id, WF="147456")
+            if analog:
+                attrs["Analog"] = "true"
+            ref = ET.SubElement(page, "C", attrs)
+            tail = uuid.uuid5(uuid.NAMESPACE_URL, doc_id + terminal).hex[-12:]
+            inp = uid(terminal + "/AI")[:19] + "00ff" + tail
+            out = uid(terminal + "/AQ")[:19] + "01ff" + tail
+            co = ET.SubElement(ref, "Co", K="AI", Nc="1", U=inp)
+            ET.SubElement(co, "In", Input=source)
+            ET.SubElement(ref, "Co", K="AQ", U=out)
+            ET.SubElement(ref, "LoggerMailer", RefLogger=logger_id, On=message, Off=message)
+
+        def canonical(el, uid=uid, logger_id=logger_id):
+            if el is None:
+                return None
+            # Config may rewrite flags and placement; compare only functional fields.
+            if el.get("Type") == "Logger":
+                return el.get("Address")
+            refs = []
+            for ref in el.findall("C"):
+                lm, co = ref.find("LoggerMailer"), ref.find("Co[@K='AI']/In")
+                if ref.get("Type") != "OutputRefLM" or lm is None:
+                    raise ValueError("Unmanaged content on the managed UDP page")
+                if co is None:
+                    # Config disconnects logger inputs when their source device is
+                    # deleted. Only discard references provably generated by us for
+                    # a terminal that no longer exists; user content stays protected.
+                    message = lm.get("On", "")
+                    match = re.fullmatch(r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{16});<v(?:\.\d+)?>", message)
+                    if (match is None or lm.get("Off") != message
+                            or ref.get("U") != uid(match[1])
+                            or ref.get("Ref") != logger_id
+                            or lm.get("RefLogger") != logger_id
+                            or ref.find("Co[@K='AI']") is None
+                            or any(obj.get("U", "").lower() == match[1] for obj in objects)
+                            or any(child.tag not in {"Co", "LoggerMailer"} for child in ref)
+                            or len(list(ref.iter("C"))) != 1):
+                        raise ValueError("Unmanaged content on the managed UDP page")
+                    refs.append((ref.get("U"), "disconnected"))
+                    continue
+                refs.append((ref.get("U"), ref.get("Ref"), ref.get("Analog", "false"),
+                             lm.get("RefLogger"), lm.get("On"), lm.get("Off"),
+                             lm.get("MinimumTime", "0"), co.get("Input")))
+            return sorted(refs)
+
+        old_logger = next((el for el in objects if el.get("U") == logger_id), None)
+        report["managed"] += len(terminals)
+        report["unsupported"] += len(skipped)
+        if (not terminals and owned_page is None and old_logger is None) or (
+            canonical(owned_page) == canonical(page) and canonical(old_logger) == canonical(logger)
+        ):
+            continue
+        if owned_page is not None:
+            canonical(owned_page)  # Refuse to remove user-added function blocks.
+        for object_id in owned:
+            if any(el.get("U") == object_id for el in objects):
+                start, end = _span(text, object_id)
+                text = text[:start] + text[end:]
+        if terminals:
+            if gateway:
+                live = lives.get(live_u)
+                caption = next((el for el in live.iter("C") if el.get("Type") == "LoggerOutCaption"), None) if live is not None else None
+                parents = {"LoggerOutCaption": caption, "Program": program}
+            else:
+                found = {type_: [el for el in objects if el.get("Type") == type_] for type_ in ("LoggerOutCaption", "Program")}
+                parents = {type_: (items[0] if len(items) == 1 else None) for type_, items in found.items()}
+            for type_, fragment in (("LoggerOutCaption", logger), ("Program", page)):
+                parent = parents[type_]
+                if parent is None or not parent.get("U"):
+                    raise ValueError("Ambiguous or missing " + type_)
+                text = _append(text, parent.get("U"), ET.tostring(fragment, encoding="unicode"))
+        changed = True
+
+    if not changed:
+        return xml, report
     date = dt.datetime.now().replace(microsecond=0)
     date_s = int((dt.datetime.now(dt.timezone.utc) - dt.datetime(2009, 1, 1, tzinfo=dt.timezone.utc)).total_seconds())
     start, _ = _span(text, doc_id)
@@ -332,44 +427,71 @@ def patch_xml(xml: bytes, target: str, selected: set[str]) -> tuple[bytes, dict]
     ids = [el.get("U").lower() for el in ET.fromstring(result).iter()
            if el.get("U") and (el.tag in {"C", "Co"} or re.fullmatch(
                r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{16}", el.get("U")))]
-    if len(ids) != len(set(ids)):
+    if len(ids) != len(set(ids)) and {value for value in ids if ids.count(value) > 1} - proxies:
         raise ValueError("Duplicate UUID in patched program")
     return result, report
 
 
-def prepare(raw: bytes, target: str, selected: set[str]) -> tuple[bytes, dict]:
-    member, xml = unpack(raw)
-    updated, report = patch_xml(xml, target, selected)
-    if updated == xml:
+def _stamp_structure(content: bytes, date: str) -> bytes:
+    content, count = re.subn(rb'("lastModified"\s*:\s*")[^"]*"',
+        lambda m: m.group(1) + date.encode() + b'"', content, count=1)
+    if count != 1:
+        raise ValueError("Missing LoxAPP3 lastModified")
+    json.loads(content)
+    return content
+
+
+def prepare(raw: bytes, target: str, selected: set[str], gateway: bool = False) -> tuple[bytes, dict]:
+    member, xml = unpack(raw, gateway)
+    if member != PROJECT:
+        updated, report = patch_xml(xml, target, selected)
+        parts = {}
+    else:
+        # Gateway/Client: the full project decides which terminals belong to which
+        # Miniserver; every partial program then gets the same deterministic
+        # objects, so Config and the Miniservers agree.
+        updated, report = patch_xml(xml, target, selected, gateway=True)
+        parts = {}
+        for name, partial in program_members(raw).items():
+            programs = [el.get("U") for el in ET.fromstring(partial).iter("C") if el.get("Type") == "Program"]
+            if len(programs) != 1 or programs[0] not in report["scopes"]:
+                raise ValueError("Partial program " + name + " does not match the project")
+            patched, _ = patch_xml(partial, target, set(report["scopes"][programs[0]]), gateway=True)
+            if patched != partial:
+                parts[name] = patched
+    if updated == xml and not parts:
         return raw, report
-    document = next(el for el in ET.fromstring(updated).iter("C") if el.get("Type") == "Document")
+    stamped = updated if updated != xml else next(iter(parts.values()))
+    document = next(el for el in ET.fromstring(stamped).iter("C") if el.get("Type") == "Document")
+    date = document.get("Date")
     buf = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(raw)) as original, zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as output:
         output.comment = original.comment
         for info in original.infolist():
             content = original.read(info.filename)
-            if info.filename == member:
-                content = encode(updated)
+            if info.filename == member and updated != xml:
+                content = updated if member == PROJECT else encode(updated)
+            elif info.filename in parts:
+                content = encode(parts[info.filename])
             elif info.filename == "LoxAPP3.json":
-                content, count = re.subn(rb'("lastModified"\s*:\s*")[^"]*"',
-                    lambda m: m.group(1) + document.get("Date").encode() + b'"', content, count=1)
-                if count != 1:
-                    raise ValueError("Missing LoxAPP3 lastModified")
-                json.loads(content)
+                content = _stamp_structure(content, date)
+            elif member == PROJECT and re.fullmatch(r"LoxAPP3_\d+\.LoxCC", info.filename, re.I):
+                content = encode(_stamp_structure(decode(content), date))
             output.writestr(info, content)
     result = buf.getvalue()
-    unpack(result)
+    unpack(result, gateway)
     mark("program_prepare")
     return result, report
 
 
-def backup(directory: str, source: str, raw: bytes) -> str:
+def backup(directory: str, source: str, raw: bytes, gateway: bool = False) -> str:
     """Durably save and read back the FULL original archive before any upload.
 
     Content-addressed filenames never overwrite another project version. Backups
     contain credentials and are deliberately outside the web-accessible www path.
+    For a Gateway/Client archive the openable project is the full ``sps.Loxone``.
     """
-    _, xml = unpack(raw)
+    _, xml = unpack(raw, gateway)
     mark("backup_write")
     folder = Path(directory)
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)

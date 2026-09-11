@@ -4,6 +4,23 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.7.0b1] - 2026-09-11 (Vorabversion)
+
+- Beta: UDP-Einrichtung auch im Gateway/Client-Verbund, nur mit der neuen Option
+  „Beta: UDP auch im Gateway/Client-Verbund einrichten“ (Vorgabe aus). Ohne die Option
+  bleibt alles wie in 1.6.x: Verbund-Archive werden nicht angefasst.
+- Mit der Option bekommt jeder Miniserver in seinem eigenen Programm einen eigenen Logger
+  und eine Seite „HA UDP“, dazu ein eigenes Lebenszeichen, das unter der Miniserver-UUID
+  gesendet wird. Fällt ein Client aus, wechseln nur dessen Klemmen auf Abfrage.
+- Gesamtprojekt und alle Teilprogramme werden gleich geändert; das Archiv wird nur auf
+  das Gateway gespielt, das die Teilprogramme nach dem Neustart an die Clients verteilt.
+- Begrenzung für den ersten Feldtest: höchstens 5 Klemmen je Miniserver, nur solche, die
+  in HA eingeschaltet starten. Die globale Höchstzahl gilt weiterhin zuerst.
+- Programmformat 174 (Config 16.x) wird nur auf diesem Beta-Weg akzeptiert.
+- Neuer Fehlercode `ARCHIVE_PROJECT_MISSING`; `ARCHIVE_MULTIPLE_PROGRAMS` verweist auf
+  die Beta-Option. Diagnose zeigt je Miniserver, ob sein Lebenszeichen ankommt.
+- Noch nicht an echter Hardware geprüft.
+
 ## [1.6.3] - 2026-09-11
 
 - Die von der Integration angelegte Seite und der Logger im Miniserver-Programm

@@ -28,7 +28,8 @@ REASONS = {
     "ARCHIVE_INVALID_ZIP": ("Die heruntergeladene Datei ist kein lesbares ZIP-Archiv.", "The downloaded file is not a readable ZIP archive."),
     "ARCHIVE_DUPLICATE_ENTRIES": ("Das ZIP enthält mehrfach vorhandene Dateieinträge; eine sichere Zuordnung ist nicht möglich.", "The ZIP contains duplicate file entries; safe selection is not possible."),
     "ARCHIVE_PROGRAM_MISSING": ("Im ZIP wurde keine erwartete sps-Programmdatei gefunden.", "The ZIP contains no expected sps program file."),
-    "ARCHIVE_MULTIPLE_PROGRAMS": ("Das ZIP enthält mehrere sps-Programmdateien. Die automatische Einrichtung unterstützt hier nur genau eine; eine Master-/Client-Zuordnung ist nicht bestätigt.", "The ZIP contains multiple sps program files. Automatic setup currently requires exactly one; master/client ownership is unconfirmed."),
+    "ARCHIVE_MULTIPLE_PROGRAMS": ("Das ZIP enthält mehrere sps-Programmdateien (Gateway/Client-Verbund). Die automatische Einrichtung ist dafür nur mit der Beta-Option „UDP auch im Gateway/Client-Verbund“ freigegeben; ohne sie bleibt das Programm unverändert.", "The ZIP contains multiple sps program files (Gateway/Client system). Automatic setup is only enabled for it with the beta option “UDP also in a Gateway/Client system”; without it the program stays unchanged."),
+    "ARCHIVE_PROJECT_MISSING": ("Das Verbund-Archiv enthält kein Gesamtprojekt sps.Loxone; ohne Gesamtprojekt lassen sich die Programme nicht konsistent ändern.", "The gateway archive lacks the full project sps.Loxone; without it the programs cannot be changed consistently."),
     "ARCHIVE_REQUIRED_FILES_MISSING": ("Im ZIP fehlen Begleitdateien, die unsere Sicherheitsprüfung voraussetzt. Das beweist kein beschädigtes Kundenprojekt; der Archivaufbau kann abweichen.", "The ZIP lacks companion files required by our safety check. This does not prove project corruption; the archive layout may differ."),
     "ARCHIVE_SIZE_LIMIT": ("Die entpackte Gesamtgröße überschreitet das Sicherheitslimit von 64 MiB.", "The total uncompressed size exceeds the 64 MiB safety limit."),
     "ARCHIVE_CHECKSUM_MISMATCH": ("Die ZIP-Integritätsprüfung meldet einen beschädigten Dateieintrag.", "The ZIP integrity check reports a corrupt file entry."),
@@ -104,7 +105,7 @@ def safe_archive_details(value):
               if type(value.get(k)) is int and 0 <= value[k] <= 1000000}
     missing = value.get("missing_required_files")
     if isinstance(missing, list):
-        result["missing_required_files"] = sorted({n for n in missing if isinstance(n, str) and n in {"LoxAPP3.json", "permissions.bin", "Emergency.LoxCC", "Music.json"}})
+        result["missing_required_files"] = sorted({n for n in missing if isinstance(n, str) and n in {"LoxAPP3.json", "permissions.bin", "Emergency.LoxCC", "Music.json", "sps.Loxone"}})
     return result
 
 

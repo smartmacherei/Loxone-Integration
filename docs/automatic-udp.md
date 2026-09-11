@@ -19,6 +19,7 @@ behavior and the limitations of read-only special values.
 | UDP port | `55555` | Receive logger packets; `0` disables UDP and automatic program changes |
 | Maximum number of additional signals | `500` | One bound for every way: discovered entities, their polling, logger references and, later, signals into Loxone; program order. Polling itself is capped at 200 requests per 30 s and 2 concurrent per Miniserver |
 | LightControllerV2 subcontrols | Off | Enable individual light-controller channels by default |
+| Beta: Set up UDP in a Gateway/Client system too | Off | Also configure Gateway/Client archives (one program per Miniserver): own logger, own page, at most 5 terminals and an own heartbeat per Miniserver. Upload to the gateway only, which distributes to the clients. When off, Gateway/Client archives stay unchanged |
 
 Lighting moods are always available as effects of the light entity. The scene options
 of earlier versions were removed in 1.5.0.

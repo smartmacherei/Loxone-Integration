@@ -18,10 +18,12 @@ def controls_recursive(config):
 
 
 class SignalBindings:
-    def __init__(self, xml, config=None):
+    def __init__(self, xml, config=None, proxies=()):
         self.root = ET.fromstring(xml)
+        # ``proxies``: UUIDs Config itself duplicates in a Gateway/Client partial
+        # program (one Memory proxy per page for the same foreign terminal).
         identifiers = [e.get("U").lower() for e in self.root.iter()
-                       if e.tag in {"C", "Co"} and e.get("U")]
+                       if e.tag in {"C", "Co"} and e.get("U") and e.get("U").lower() not in proxies]
         if len(identifiers) != len(set(identifiers)):
             raise ValueError("Duplicate UUID in source program")
         self.parents = {c: p for p in self.root.iter() for c in p}

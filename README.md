@@ -29,7 +29,8 @@ German and English screenshots from the demo installation.
 integration reload were verified on the demo installation. Physical device
 transitions and restoration from backup still require acceptance testing.
 Gateway/Client installations: all Miniservers are discovered and read; automatic UDP setup
-for them is not yet supported and leaves the programs unchanged.
+for them leaves the programs unchanged unless the beta option
+"Set up UDP in a Gateway/Client system too" is enabled (pre-release 1.7.0b1, see below).
 
 ## Install with HACS
 
@@ -98,9 +99,16 @@ native controls, read-only states, special formats and the tested project covera
   Use a stable address or update the host option.
 - Gateway/Client installations: discovery reads the full project, so terminals of all
   Miniservers are found and grouped by their Miniserver; terminals of a client are polled
-  at that client. Automatic UDP setup still stops before any change with the error code
-  `ARCHIVE_MULTIPLE_PROGRAMS`, because loggers would have to be written into several
-  programs at once. WebSocket, commands and rooms work through the gateway as usual.
+  at that client. Automatic UDP setup stops before any change with the error code
+  `ARCHIVE_MULTIPLE_PROGRAMS` unless the beta option is enabled. WebSocket, commands and
+  rooms work through the gateway as usual.
+- Beta (1.7.0b1): with the option "Set up UDP in a Gateway/Client system too", every
+  Miniserver gets its own logger and page "HA UDP" in its own program, limited to 5
+  terminals per Miniserver that start enabled in HA, plus a heartbeat per Miniserver.
+  The full project and every partial program are changed consistently; the archive is
+  uploaded to the gateway only, which distributes the partial programs to the clients
+  after the restart. Program format 174 (Config 16.x) is accepted on this path only.
+  Not yet verified on real hardware; check the backup and use at your own risk.
 - State updates reach the entities through an internal dispatcher. The former bus
   event `loxone_event` is no longer fired, which keeps the recorder database small.
   Automations should use entity states; `loxone_send` for commands is unchanged.
