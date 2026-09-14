@@ -395,8 +395,11 @@ async def _async_setup_entry(hass, config_entry):
                 "miniservers": [{k: m[k] for k in ("name", "role", "index", "host", "port")} for m in _servers],
                 "client_terminals": 0,
             }
-            config_entry.async_on_unload(
-                lambda: hass.data.get(DOMAIN + "_topology", {}).pop(config_entry.entry_id, None))
+            def _remove_topology():
+                # No return value: HA runs a truthy hook result as a coroutine.
+                hass.data.get(DOMAIN + "_topology", {}).pop(config_entry.entry_id, None)
+
+            config_entry.async_on_unload(_remove_topology)
             if len(_servers) > 1:
                 _LOGGER.info("Loxone Gateway/Client: %s Miniserver im Projekt (%s)", len(_servers),
                              ", ".join(f"{m['name']} [{m['role']}]" for m in _servers))

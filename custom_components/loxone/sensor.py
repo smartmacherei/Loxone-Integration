@@ -6,6 +6,7 @@ https://github.com/JoDehli/PyLoxone
 """
 
 import logging
+import math
 import re
 from functools import cached_property
 from typing import Any
@@ -527,9 +528,18 @@ class LoxoneSensor(LoxoneEntity, SensorEntity):
         return None
 
     @property
+    def native_value(self):
+        """Loxone sends NaN for analog terminals without a value; HA rejects
+        NaN on a numeric sensor, so report it as no value."""
+        value = self._attr_native_value
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        return value
+
+    @property
     def available(self) -> bool:
         """Return entity availability."""
-        return self.state is not None
+        return self.native_value is not None
 
     def _get_lox_rounded_value(self, value):
         try:
