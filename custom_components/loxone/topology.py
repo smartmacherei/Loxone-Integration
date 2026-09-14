@@ -356,6 +356,21 @@ def _lox_format(unit: str, precision: int) -> str:
     return "%.{}f{}".format(precision, unit)
 
 
+_OPEN_WORDS = ("offen", "open", "auf")
+_CLOSED_WORDS = ("geschlossen", "closed", "shut", "zu")
+
+
+def text_polarity_inverted(text) -> bool:
+    """True when Loxone's status texts say value 1 means closed.
+
+    HA's door/window/opening classes mean on = open, so such a contact is
+    shown inverted, exactly as the Loxone visualization labels it.
+    """
+    on = str((text or {}).get("on") or "").strip().lower()
+    off = str((text or {}).get("off") or "").strip().lower()
+    return on in _CLOSED_WORDS and off in _OPEN_WORDS
+
+
 def classify_terminal(
     name: str,
     unit: str,
@@ -471,7 +486,8 @@ def enumerate_discoverable(
             ctrl["details"] = {"format": _lox_format(unit, precision)}
             ctrl["states"] = {"value": u}
         else:
-            ctrl["details"] = {"text": {"off": "Aus", "on": "Ein"}}
+            ctrl["details"] = {"text": {"off": (disp.get("Text0") if disp is not None else None) or "Aus",
+                                        "on": (disp.get("Text1") if disp is not None else None) or "Ein"}}
             ctrl["states"] = {"active": u}
         out.append((u, ctrl))
     return out

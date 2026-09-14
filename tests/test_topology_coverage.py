@@ -81,3 +81,23 @@ def test_http_wallbox_scaling_placeholders_and_server_error_codes(monkeypatch):
         list(replies), {'color', 'text'}, http_scales={'target': 0.001}))
     assert values.pop('target') == pytest.approx(14.296)
     assert values == {'tiny': 0.00125, 'text': 'hello'}
+
+
+def test_status_texts_decide_contact_polarity():
+    # Loxone: value 1 = "Geschlossen" for a door contact; HA's door class means on = open.
+    assert top.text_polarity_inverted({"off": "Offen", "on": "Geschlossen"})
+    assert top.text_polarity_inverted({"off": "open", "on": "closed"})
+    assert top.text_polarity_inverted({"off": "Auf", "on": "Zu"})
+    assert not top.text_polarity_inverted({"off": "Aus", "on": "Ein"})
+    assert not top.text_polarity_inverted({"off": "Geschlossen", "on": "Offen"})
+    assert not top.text_polarity_inverted({})
+
+
+def test_discovered_terminal_carries_its_status_texts(monkeypatch):
+    monkeypatch.setattr(top, "classify_terminal", lambda *args: None)
+    xml = b'''<Root><C Type="LoxLIVE" U="ms" Title="Test">
+      <C Type="DigitalIn" U="door" Title="Haustuere"><Display Unit="&lt;v&gt;" IxText="-2" Text0="Offen" Text1="Geschlossen"/></C>
+      <C Type="DigitalIn" U="plain" Title="I2"><Display Unit="&lt;v&gt;"/></C></C></Root>'''
+    found = dict(top.enumerate_discoverable(xml, {}))
+    assert found["door"]["details"]["text"] == {"off": "Offen", "on": "Geschlossen"}
+    assert found["plain"]["details"]["text"] == {"off": "Aus", "on": "Ein"}

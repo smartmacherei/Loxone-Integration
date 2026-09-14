@@ -64,6 +64,10 @@ NAME_DEVICE_CLASS_MAP: tuple[tuple[tuple[str, ...], BinarySensorDeviceClass], ..
 )
 
 
+_OPENING_CLASSES = {BinarySensorDeviceClass.DOOR, BinarySensorDeviceClass.WINDOW,
+                    BinarySensorDeviceClass.OPENING, BinarySensorDeviceClass.GARAGE_DOOR}
+
+
 def device_class_from_name(name: str) -> BinarySensorDeviceClass | None:
     """Erste passende device_class anhand von Schluesselwoertern im Namen."""
     name_l = (name or "").lower()
@@ -191,6 +195,7 @@ class LoxoneDigitalSensor(LoxoneEntity, BinarySensorEntity):
         self._on_state = STATE_ON
         self._off_state = STATE_OFF
         self._attr_available = True
+        self._inverted = False
         if self.type in LOXONE_DEVICE_CLASS_MAP:
             self._attr_device_class = LOXONE_DEVICE_CLASS_MAP[self.type]
         else:
@@ -201,6 +206,11 @@ class LoxoneDigitalSensor(LoxoneEntity, BinarySensorEntity):
             self._attr_device_class = _device_class_from_auto(
                 getattr(self, "auto_device_class", None)
             ) or device_class_from_name(self.name)
+        # A contact whose Loxone texts say 1 = "Geschlossen" is shown as HA
+        # expects it for opening classes: on = open, so the labels agree.
+        if self._attr_device_class in _OPENING_CLASSES:
+            from .topology import text_polarity_inverted
+            self._inverted = text_polarity_inverted(kwargs.get("details", {}).get("text"))
 
         if self._from_loxone_config:
             self._attr_device_info = get_or_create_device(
@@ -257,7 +267,7 @@ class LoxoneDigitalSensor(LoxoneEntity, BinarySensorEntity):
         """Return true if sensor is on."""
         if self._state == STATE_UNKNOWN:
             return None
-        return self._state == self._on_state
+        return (self._state == self._on_state) != self._inverted
 
 
 class LoxoneCustomBinarySensor(LoxoneEntity, BinarySensorEntity):

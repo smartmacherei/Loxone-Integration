@@ -6,6 +6,10 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+- Tür-, Fenster- und Toröffnungskontakte übernehmen die Statustexte aus Loxone: Steht dort
+  1 = „Geschlossen“ und 0 = „Offen“ (auch „closed/open“, „zu/auf“), zeigt HA die Entität
+  jetzt passend zur Klasse, also „geschlossen“ bei Wert 1. Erkannte Klemmen bringen ihre
+  Statustexte aus Config mit; ohne Texte bleibt alles wie bisher.
 - Weg 3, HA → Loxone: Entitäten mit dem Label „loxone“ werden per Knopf „HA-Werte ins
   Programm übernehmen“ als virtueller UDP-Eingang „HA Werte“ (Port 55556) mit einem
   Befehl je Wert ins Programm des Gateways bzw. des einzigen Miniservers geschrieben;
