@@ -402,16 +402,30 @@ def test_gateway_beta_caps_five_enabled_terminals_per_miniserver(reporting, tmp_
     gateway = [f"10000000-0000-0000-ffff0000000000{i:02x}" for i in range(8)]
     client = [f"20000000-0000-0000-ffff0000000000{i:02x}" for i in range(3)]
     owner = {u: "gw" for u in gateway} | {u: "cl" for u in client}
-    found = [(u, {"auto_enabled_default": i != 1}) for i, u in enumerate(gateway)] + [(u, {}) for u in client]
+    found = [(u, {"auto_diagnostic": i == 1}) for i, u in enumerate(gateway)] + [(u, {}) for u in client]
     monkeypatch.setattr(reporting.setup, "enumerate_discoverable", lambda xml, controls: found)
     monkeypatch.setattr(reporting.setup, "terminal_owner", lambda xml: owner)
     selected = setup.select(archive(), b"<Loxone/>")
-    # gateway[1] starts disabled in HA and is skipped; five others of the gateway, all three of the client.
+    # gateway[1] is a battery level and takes no slot; five others of the gateway, all three of the client.
     assert selected == {gateway[0], gateway[2], gateway[3], gateway[4], gateway[5]} | set(client)
     assert setup.signals_discovered == 11
     # The global limit comes first, applied to the rotation over the Miniservers.
-    setup.limit = 4  # rotation: g0 c0 g1 c1; g1 starts disabled
-    assert setup.select(archive(), b"<Loxone/>") == {gateway[0], client[0], client[1]}
+    setup.limit = 4  # rotation: g0 c0 g2 c1; g1 never competes
+    assert setup.select(archive(), b"<Loxone/>") == {gateway[0], client[0], gateway[2], client[1]}
+
+
+def test_diagnostic_terminals_never_take_a_udp_slot(reporting, tmp_path, monkeypatch):
+    setup = manager(reporting, tmp_path)
+    del setup.select
+    uuids = [f"18f7cbc0-017a-4c94-ffffa13734b4be{i:02x}" for i in range(4)]
+    found = [(uuids[0], {}), (uuids[1], {"auto_diagnostic": True, "auto_device_class": "battery"}),
+             (uuids[2], {"auto_diagnostic": True, "auto_enabled_default": False}), (uuids[3], {})]
+    monkeypatch.setattr(reporting.setup, "enumerate_discoverable", lambda xml, controls: found)
+    setup.limit = 2
+    # Battery and device internals are read slowly over HTTP instead; the
+    # limit applies to the terminals that remain.
+    assert setup.select(archive(), b"<Loxone/>") == {uuids[0], uuids[3]}
+    assert setup.signals_discovered == 4
 
 
 def test_timeout_description_does_not_invent_firewall_cause(tmp_path):

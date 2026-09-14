@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+- Batterie und Geräteinterna (Online-Status, Schutzabschaltungen, Systemtemperatur)
+  belegen keinen UDP-Platz mehr, auch nicht einen der 5 je Miniserver im
+  Gateway/Client-Verbund. Die Plätze bleiben für Taster und Kontakte. Bestehende
+  Einrichtungen ändern sich erst, wenn Loxone Config das nächste Mal speichert.
+- Diese Klemmen werden, sobald in HA aktiviert, alle 4 Stunden per HTTP gelesen statt
+  alle 30 Sekunden, und verfallen nicht als „nicht verfügbar“. Der Startwert kommt
+  weiter beim Setup.
+
 ## [1.7.0b2] - 2026-09-14 (Vorabversion)
 
 - Das Neuladen der Integration nach dem Speichern der Optionen schlug seit 1.6.0 fehl

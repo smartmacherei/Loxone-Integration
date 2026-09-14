@@ -104,7 +104,8 @@ native controls, read-only states, special formats and the tested project covera
   rooms work through the gateway as usual.
 - Beta (1.7.0b1): with the option "Set up UDP in a Gateway/Client system too", every
   Miniserver gets its own logger and page "HA UDP" in its own program, limited to 5
-  terminals per Miniserver that start enabled in HA, plus a heartbeat per Miniserver.
+  terminals per Miniserver, plus a heartbeat per Miniserver. Battery levels and device
+  internals never take a slot; they are read over HTTP every 4 hours instead.
   The full project and every partial program are changed consistently; the archive is
   uploaded to the gateway only, which distributes the partial programs to the clients
   after the restart. Program format 174 (Config 16.x) is accepted on this path only.

@@ -466,6 +466,10 @@ async def _async_setup_entry(hass, config_entry):
                         # the ones a user switched off nor the diagnostics that
                         # start disabled. Re-read each cycle so changes apply live.
                         _default_off = {_u for _u, _c in _new if _c.get("auto_enabled_default") is False}
+                        # Battery and device internals are read every few hours and
+                        # never expire; unknown formats keep the normal rate.
+                        _router.slow = {_u.lower() for _u, _c in _new
+                                        if _c.get("auto_diagnostic") and not _c.get("auto_raw")}
                         _registry = er.async_get(hass)
 
                         def _pollable(uuids):

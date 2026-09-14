@@ -62,21 +62,21 @@ class UdpSetup:
         if self.gateway_beta:
             # Same rotation as entity discovery, so both pick the same subset.
             discovered = interleave_by_miniserver(discovered, owner)
-        found = [u for u, _ in discovered]
-        self.signals_discovered = len(found)
+        self.signals_discovered = len(discovered)
+        # Battery levels and device internals never take a real-time slot; the
+        # SignalRouter reads them slowly over HTTP instead.
+        found = [u for u, control in discovered if not control.get("auto_diagnostic")]
         if len(found) > self.limit:
             _LOGGER.warning("Loxone UDP: %s discovered terminals exceed the limit of %s; only the "
                             "first %s receive real-time updates (option udp_max_signals)",
                             len(found), self.limit, self.limit)
             found = found[:self.limit]
         if self.gateway_beta:
-            # Per Miniserver only the first few terminals that start enabled in
-            # HA; device internals that start disabled get no logger reference.
-            enabled = {u for u, control in discovered if control.get("auto_enabled_default") is not False}
+            # Per Miniserver only the first few remaining terminals.
             count, picked = {}, []
             for u in found:
                 live = owner.get(u.lower())
-                if not live or u not in enabled or count.get(live, 0) >= GATEWAY_SIGNALS_PER_MINISERVER:
+                if not live or count.get(live, 0) >= GATEWAY_SIGNALS_PER_MINISERVER:
                     continue
                 count[live] = count.get(live, 0) + 1
                 picked.append(u)

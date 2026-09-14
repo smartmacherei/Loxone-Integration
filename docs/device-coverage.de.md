@@ -43,7 +43,9 @@ Abfragezyklus übernimmt, bei Bedarf mit dem gespeicherten WebSocket-Zustand.
 Unveränderte Einzelwerte dürfen still bleiben. Bei bestehender WebSocket-Verbindung
 reichen ebenfalls Kontrollabfragen alle 30 Minuten. In Home Assistant deaktivierte
 Entitäten werden nicht abgefragt; Geräteinterna (Online-Status, Schutzabschaltungen,
-interne Temperatur, Rohformate) werden deaktiviert angelegt. Fehlen alle nutzbaren Wege
+interne Temperatur, Rohformate) werden deaktiviert angelegt. Batterie und Geräteinterna
+bekommen keine UDP-Logger-Referenz; einmal aktiviert werden sie alle 4 Stunden gelesen
+und verfallen nicht als „nicht verfügbar“. Fehlen alle nutzbaren Wege
 und frische Werte seit 90 Sekunden, markiert der nächste abgeschlossene Abfragezyklus
 die direkt erkannten Klemmen unbekannt beziehungsweise unverfügbar.
 

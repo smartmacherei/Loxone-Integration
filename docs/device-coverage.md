@@ -48,7 +48,9 @@ expiry is five seconds; the next scheduled polling cycle supplies fallback value
 silent, unchanged signal does not by itself indicate failure. Quiet WebSocket states
 remain healthy while connected; verification is every 30 minutes. Entities that are
 disabled in Home Assistant are not polled; device internals (online state, protective
-shutdowns, internal temperature, raw formats) are created disabled. Cached WebSocket values can
+shutdowns, internal temperature, raw formats) are created disabled. Battery levels and
+device internals get no UDP logger reference; once enabled they are read every 4 hours
+and never expire as unavailable. Cached WebSocket values can
 take over on the next poll cycle after UDP loss. Direct-terminal values become
 unknown/unavailable after 90 seconds without a usable source or fresh read, checked
 at the end of each polling cycle.

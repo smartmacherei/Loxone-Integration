@@ -49,11 +49,18 @@ class StateUpdate:
         self.data = data
 
 
+# Battery levels and device internals: Air devices report them rarely anyway,
+# and a warning in HA needs no minute resolution.
+SLOW_POLL_SECONDS = 4 * 3600
+
+
 class SignalRouter:
     """Heartbeat loss selects fallback, while unchanged signals stay healthy."""
     def __init__(self, emit, clock=time.monotonic):
         self.emit, self.clock = emit, clock
         self.udp_signals = set()
+        # Keys read every few hours and never expired; the value is a slow one.
+        self.slow = set()
         self.heartbeat = None
         self.heartbeat_at = None
         # Gateway/Client: one heartbeat per Miniserver, keyed by LoxLIVE UUID;
@@ -154,9 +161,10 @@ class SignalRouter:
         # A signal with a live push path (UDP heartbeat or open WebSocket) only
         # gets a half-hourly sanity read; the heartbeat reports path loss itself.
         eligible = [key for key in keys if now - self.polled_at.get(key.lower(), -1e9) >= (
-            1800 if self.last.get(key.lower()) is not None and (
-                (key.lower() in self.udp_signals and self.udp_live(key.lower()))
-                or (self.websocket_connected and key.lower() in self.ws_at)) else 30)]
+            30 if self.last.get(key.lower()) is None else
+            SLOW_POLL_SECONDS if key.lower() in self.slow else
+            1800 if ((key.lower() in self.udp_signals and self.udp_live(key.lower()))
+                     or (self.websocket_connected and key.lower() in self.ws_at)) else 30)]
         ordered = sorted(eligible, key=lambda key: self.attempted_at.get(key.lower(), -1e9))
         return ordered[:limit] if limit else ordered
 
@@ -177,7 +185,7 @@ class SignalRouter:
         now = self.clock()
         for original in keys:
             key = original.lower()
-            if key in self.udp_signals and self.udp_live(key):
+            if key in self.slow or (key in self.udp_signals and self.udp_live(key)):
                 continue
             if self.websocket_connected and key in self.ws_at:
                 continue

@@ -107,8 +107,9 @@ Bedienfunktionen, lesende Zustände und Sonderformate mit dem aktuellen Prüfsta
   Räume laufen über das Gateway.
 - Beta (1.7.0b1): Mit der Option „UDP auch im Gateway/Client-Verbund einrichten“ bekommt
   jeder Miniserver in seinem eigenen Programm einen eigenen Logger und eine Seite „HA UDP“,
-  begrenzt auf 5 Klemmen je Miniserver, die in HA eingeschaltet starten, plus ein
-  Lebenszeichen je Miniserver. Gesamtprojekt und alle Teilprogramme werden gleich geändert;
+  begrenzt auf 5 Klemmen je Miniserver, plus ein Lebenszeichen je Miniserver. Batterie
+  und Geräteinterna belegen keinen Platz; sie werden stattdessen alle 4 Stunden per HTTP
+  gelesen. Gesamtprojekt und alle Teilprogramme werden gleich geändert;
   das Archiv wird nur auf das Gateway gespielt, das die Teilprogramme nach dem Neustart an
   die Clients verteilt. Programmformat 174 (Config 16.x) wird nur auf diesem Weg akzeptiert.
   Noch nicht an echter Hardware geprüft; Sicherung kontrollieren, Nutzung auf eigene

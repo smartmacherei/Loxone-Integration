@@ -237,3 +237,16 @@ def test_client_heartbeat_loss_only_falls_back_for_that_client():
     r.expire([GW_IN, CL_IN], max_age=30)
     assert events[-1] == {CL_IN: None}
     assert r.diagnostics()["miniserver_heartbeats"] == {GW: True, CL: False}
+
+
+def test_slow_keys_poll_every_four_hours_and_never_expire():
+    r, clock, events = router()
+    r.slow = {U}
+    assert r.due([U]) == [U]  # never read: the first value still comes at once
+    r.receive("poll", {U: 87})
+    clock[0] = 1801
+    assert r.due([U]) == []
+    r.expire([U], max_age=90)
+    assert events == [{U: 87}]  # a battery level is not declared unavailable
+    clock[0] = 4 * 3600 + 1
+    assert r.due([U]) == [U]
