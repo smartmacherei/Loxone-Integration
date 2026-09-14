@@ -1,6 +1,6 @@
 # Loxone for Home Assistant — smartmacherei
 
-[Deutsch](README.de.md) · [Changelog](CHANGELOG.md) · [Support](https://github.com/smartmacherei/Loxone-Integration/issues)
+[Deutsch](README.de.md) · [Changelog](CHANGELOG.md) · [Support](https://github.com/smartmacherei/Loxone-Integration/issues) · [smartmacherei.at](https://smartmacherei.at/)
 
 **Real-time updates in Home Assistant, without adding extra controls to your Loxone visualization.**
 
@@ -217,7 +217,7 @@ For support, include integration, HA and Miniserver versions and the observed er
 
 ## Disclaimer
 
-This integration is an independent project by smartmacherei e.U. It is not affiliated
+This integration is an independent project by [smartmacherei e.U.](https://smartmacherei.at/) It is not affiliated
 with, endorsed by or supported by Loxone Electronics GmbH. "Loxone" and "Miniserver"
 are trademarks of their respective owners.
 

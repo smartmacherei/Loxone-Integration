@@ -1,6 +1,6 @@
 # Loxone für Home Assistant — smartmacherei
 
-[English](README.md) · [Änderungen](CHANGELOG.md) · [Support](https://github.com/smartmacherei/Loxone-Integration/issues)
+[English](README.md) · [Änderungen](CHANGELOG.md) · [Support](https://github.com/smartmacherei/Loxone-Integration/issues) · [smartmacherei.at](https://smartmacherei.at/)
 
 **Echtzeitwerte in Home Assistant, ohne zusätzliche Einträge in deiner Loxone-Visualisierung.**
 
@@ -222,7 +222,7 @@ Für Support Versionsnummern und Fehlerbild angeben.
 
 ## Haftungsausschluss
 
-Diese Integration ist ein unabhängiges Projekt der smartmacherei e.U. Sie steht in
+Diese Integration ist ein unabhängiges Projekt der [smartmacherei e.U.](https://smartmacherei.at/) Sie steht in
 keiner Verbindung zur Loxone Electronics GmbH und wird von dieser weder unterstützt
 noch freigegeben. „Loxone“ und „Miniserver“ sind Marken der jeweiligen Inhaber.
 
