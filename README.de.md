@@ -54,6 +54,34 @@ PyLoxone und dieser Fork verwenden dieselbe Domain `loxone`; nur eine Variante
 installieren. Ein vom Werkszustand abweichendes Passwort und Leseberechtigungen für
 das Programm sind erforderlich. HA muss den Miniserver im lokalen Netz erreichen können.
 
+## Bedienung in Home Assistant
+
+![Gerätekarte der Integration mit den beiden Knöpfen](docs/screenshots/1.7.0/integration-card-de.png)
+
+Die Gerätekarte der Integration findest du unter **Einstellungen → Geräte & Dienste → Loxone →
+Gerät „Loxone (smartmacherei)“**. Dort sind alle drei Wege sichtbar (Darstellung der Karte in
+Version 1.7.0):
+
+| Element | Was es tut |
+|---|---|
+| **UDP-Status** | Weg 2. Zeigt, ob Echtzeitwerte vom Miniserver ankommen („Empfängt UDP-Daten“). Die Einrichtung selbst schaltest du unter *Konfigurieren* ein. |
+| **HA → Loxone** | Weg 3. Zahl der Werte, die im Loxone-Programm als Eingänge stehen. Die Attribute `pending_add` und `pending_remove` zeigen, was ein Knopfdruck ändern würde. |
+| **Verbindung prüfen** | Prüft Webport, Anmeldung, FTP/TLS und UDP-Empfang. Keine Uploads, kein Neustart. Das Ergebnis kommt als Benachrichtigung. Bei Problemen immer zuerst drücken. |
+| **HA-Werte ins Programm übernehmen** | Weg 3. Schreibt alle Entitäten mit dem Label „loxone“ ins Programm des Miniservers (Sicherung, Upload, Neustart). Ohne Knopfdruck ändert sich am Programm nichts. |
+
+So bringst du einen Wert von Home Assistant nach Loxone:
+
+1. In HA der Entität (z. B. dem Thermostat) das Label **loxone** geben: Einstellungen → Geräte &
+   Dienste → Entitäten → Entität öffnen → Zahnrad → Labels.
+2. Auf der Gerätekarte zeigt „HA → Loxone“ im Attribut `pending_add` die neuen Werte.
+3. **HA-Werte ins Programm übernehmen** drücken. Der Miniserver startet kurz neu.
+4. In Loxone Config das Projekt **vom Miniserver laden**. Unter Peripherie → Virtuelle Eingänge
+   steht jetzt „HA Werte“ mit einem Befehl je Wert, z. B. „Thermostat 1 Ist-Temperatur“. Die
+   Befehle wie gewohnt auf die Seiten ziehen.
+5. Ab jetzt schickt HA jede Änderung sofort, alle Werte zusätzlich alle 5 Minuten.
+
+Details zu den Wertregeln stehen unter [HA → Loxone (Weg 3)](#ha--loxone-weg-3-label-und-knopf).
+
 ## Automatische Echtzeiteinrichtung (UDP)
 
 Bei neuen Installationen bietet das Formular die automatische Echtzeiteinrichtung

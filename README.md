@@ -52,6 +52,34 @@ This fork uses the same `loxone` domain as PyLoxone. Install only one of them.
 Use a non-default Miniserver password and an account allowed to read the program.
 Home Assistant must be able to reach the Miniserver on the local network.
 
+## Using it in Home Assistant
+
+![Integration device card with the two buttons](docs/screenshots/1.7.0/integration-card-en.png)
+
+The integration's device card lives under **Settings → Devices & services → Loxone → device
+"Loxone (smartmacherei)"**. All three ways are visible there (rendering of the card in
+version 1.7.0):
+
+| Element | What it does |
+|---|---|
+| **UDP status** | Way 2. Shows whether real-time values arrive from the Miniserver ("Receiving UDP data"). The setup itself is enabled under *Configure*. |
+| **HA → Loxone** | Way 3. Number of values that exist as inputs in the Loxone program. The attributes `pending_add` and `pending_remove` show what a button press would change. |
+| **Check connection** | Checks the web port, login, FTP/TLS and UDP reception. No uploads, no restart. The result arrives as a notification. Press it first whenever something looks wrong. |
+| **Apply HA values to program** | Way 3. Writes every entity labelled "loxone" into the Miniserver program (backup, upload, restart). Nothing changes without the button. |
+
+Getting a value from Home Assistant into Loxone:
+
+1. Give the entity (say, the thermostat) the label **loxone** in HA: Settings → Devices &
+   services → Entities → open the entity → gear → Labels.
+2. On the device card, "HA → Loxone" lists the new values in its `pending_add` attribute.
+3. Press **Apply HA values to program**. The Miniserver restarts briefly.
+4. In Loxone Config, load the project **from the Miniserver**. Under Periphery → Virtual inputs
+   you now find "HA Werte" with one command per value, e.g. "Thermostat 1 current temperature".
+   Drag the commands onto your pages as usual.
+5. From now on HA sends every change at once, plus all values every 5 minutes.
+
+The value rules are described under [HA → Loxone (way 3)](#ha--loxone-way-3-label-and-button).
+
 ## Automatic real-time setup (UDP)
 
 For new installations, the setup form offers automatic real-time configuration for
