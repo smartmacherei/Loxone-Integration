@@ -4,6 +4,13 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.7.3] - 2026-09-14
+
+- Gateway/Client: Die Client-Prüfung vor dem Upload war zu streng und meldete erreichbare Clients als
+  nicht erreichbar (`CLIENT_UNREACHABLE`, obwohl alle Clients liefen). Jetzt zählt jede HTTP-Antwort
+  des Clients, notfalls ein offener HTTPS-Port; nur keine Verbindung gilt als Ausfall. Der Status
+  landet im Protokoll.
+
 ## [1.7.2] - 2026-09-14
 
 - Weg 3: Beim erneuten Übernehmen bleiben vorhandene UDP-Befehle unverändert (Titel, Skalierung,

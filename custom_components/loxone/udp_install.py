@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ftplib
 import http.client
+import logging
 import io
 import json
 import os
@@ -16,6 +17,9 @@ from .udp_errors import TRACE, SetupTrace, coded_error, failure, mark, restore_f
 
 _LOCKS: dict[str, threading.Lock] = {}
 _LOCKS_GUARD = threading.Lock()
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class ActivationUncertainError(OSError):
@@ -55,15 +59,30 @@ class ProgramClient:
         return name, self.get("/dev/fsget/prog/" + name)
 
     def reachable(self, host, port):
-        """Answers the Miniserver at host:port at all? (no login required for this path)"""
-        conn = http.client.HTTPConnection(host, int(port), timeout=5, source_address=self.source_address)
+        """Does the Miniserver at host:port answer HTTP at all?
+
+        Any HTTP status counts: a redirect or a refused login still proves the
+        client is up. Only a failed connection or a timeout means unreachable.
+        """
+        import base64
+        auth = base64.b64encode(f"{self.username}:{self.password}".encode("latin-1")).decode()
+        conn = http.client.HTTPConnection(host, int(port), timeout=10, source_address=self.source_address)
         try:
-            conn.request("GET", "/jdev/cfg/api")
-            return conn.getresponse().status in (200, 401)
-        except OSError:
-            return False
+            conn.request("GET", "/jdev/cfg/api", headers={"Authorization": "Basic " + auth})
+            response = conn.getresponse()
+            response.read(4096)
+            _LOGGER.debug("Loxone client %s:%s answered HTTP %s", host, port, response.status)
+            return True
+        except (OSError, http.client.HTTPException) as err:
+            _LOGGER.info("Loxone client %s:%s does not answer HTTP: %s", host, port, type(err).__name__)
         finally:
             conn.close()
+        # Second chance: a Miniserver always listens for HTTPS; an open TCP port is proof enough.
+        try:
+            with socket.create_connection((host, 443), timeout=5, source_address=self.source_address):
+                return True
+        except OSError:
+            return False
 
     def destination(self, port):
         # TCP route selection to this Miniserver gives HA's reachable source IP.
