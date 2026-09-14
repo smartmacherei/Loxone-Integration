@@ -13,3 +13,7 @@ layout; not a live capture. Replace with a capture from the demo installation on
 Nachgestellte Darstellung aus Namen, Symbolen und Kategorien der Version 1.7.0 im Kartenlayout von
 Home Assistant, keine Live-Aufnahme. Sobald der Demokoffer 1.7.0 fährt, durch eine echte Aufnahme
 ersetzen.
+
+`light-moods-effects-de.png`: live capture from the demo installation (2026-09-10, HA 2026.9):
+the light entity of the lighting controller "Büro Demo" with its Loxone moods offered as effects.
+Echte Aufnahme vom Demokoffer.

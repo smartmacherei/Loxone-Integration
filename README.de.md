@@ -171,13 +171,27 @@ Bedienfunktionen, lesende Zustände und Sonderformate mit dem aktuellen Prüfsta
   gelesen. Gesamtprojekt und alle Teilprogramme werden gleich geändert;
   das Archiv wird nur auf das Gateway gespielt, das die Teilprogramme nach dem Neustart an
   die Clients verteilt. Programmformat 174 (Config 16.x) wird nur auf diesem Weg akzeptiert.
-  Noch nicht an echter Hardware geprüft; Sicherung kontrollieren, Nutzung auf eigene
-  Verantwortung.
+  An einer Anlage mit vier Miniservern mit 1.7.0b2 bestätigt; Sicherung trotzdem
+  kontrollieren, Nutzung auf eigene Verantwortung.
+- Weg 3 (HA → Loxone, 1.7.0): nur Zahlen, ein virtueller UDP-Eingang „HA Werte“ auf Port
+  55556 im Gateway (bzw. einzigen Miniserver), höchstens `udp_max_signals` Werte, und nur mit
+  eingeschaltetem Weg 2. Textzustände werden nicht exportiert. Das Programm ändert sich nur
+  beim Knopfdruck; danach in Loxone Config das Projekt vom Miniserver laden. Noch nicht an
+  echter Hardware geprüft.
+- Batterie und Geräteinterna werden alle 4 Stunden per HTTP gelesen und belegen nie einen
+  UDP-Platz. Bei Anlagen, die vor 1.7.0 eingerichtet wurden, fallen die Batterie-Logger beim
+  nächsten Speichern aus Loxone Config weg (ein Upload, ein Neustart).
+- Tür-, Fenster-, Öffnungs- und Garagentorkontakte folgen den Loxone-Statustexten: Heißt
+  Wert 1 dort „Geschlossen“/„closed“/„zu“, zeigt HA die Entität bei 1 geschlossen. Ohne
+  solche Texte gilt die Rohpolarität.
 - Zustandsupdates erreichen die Entitäten über einen internen Dispatcher. Das frühere
   Bus-Ereignis `loxone_event` wird nicht mehr ausgelöst; das hält die Recorder-Datenbank
   klein. Automationen sollten Entitätszustände nutzen; `loxone_send` für Befehle bleibt.
-- Lichtstimmungen stehen als Effekte der Licht-Entität bereit. Erzeugte Szenen-Entitäten
-  wurden in 1.5.0 entfernt; ihre Registereinträge werden automatisch bereinigt.
+- Lichtstimmungen stehen als Effekte der Licht-Entität bereit (unten eine Lichtsteuerung
+  vom Demokoffer mit ihren Stimmungen). Erzeugte Szenen-Entitäten wurden in 1.5.0
+  entfernt; ihre Registereinträge werden automatisch bereinigt.
+
+  ![Licht-Entität einer Loxone-Lichtsteuerung mit den Stimmungen als Effekte](docs/screenshots/1.7.0/light-moods-effects-de.png)
 
 Nach Installation einer neuen Integrationsversion Home Assistant neu starten.
 

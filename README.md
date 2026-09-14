@@ -168,12 +168,27 @@ native controls, read-only states, special formats and the tested project covera
   The full project and every partial program are changed consistently; the archive is
   uploaded to the gateway only, which distributes the partial programs to the clients
   after the restart. Program format 174 (Config 16.x) is accepted on this path only.
-  Not yet verified on real hardware; check the backup and use at your own risk.
+  Verified on a four-Miniserver installation with 1.7.0b2; still check the backup and
+  use at your own risk.
+- Way 3 (HA → Loxone, 1.7.0): numbers only, one virtual UDP input "HA Werte" on port 55556
+  in the gateway (or only) Miniserver, at most `udp_max_signals` values, and only with way 2
+  enabled. Text states are not exported. The program changes only on the button press, and
+  Loxone Config must load the project from the Miniserver afterwards. Not yet verified on
+  real hardware.
+- Battery levels and device internals are read every 4 hours over HTTP and never take a
+  UDP slot. On installations set up before 1.7.0 the battery logger references disappear
+  at the next save from Loxone Config (one upload, one restart).
+- Door, window, opening and garage contacts follow the Loxone status texts: if value 1 is
+  labelled "Geschlossen"/"closed"/"zu", HA shows the entity closed at 1. Without such texts
+  the raw polarity applies.
 - State updates reach the entities through an internal dispatcher. The former bus
   event `loxone_event` is no longer fired, which keeps the recorder database small.
   Automations should use entity states; `loxone_send` for commands is unchanged.
-- Lighting moods are available as effects of the light entity. Generated scene
-  entities were removed in 1.5.0; their registry entries are cleaned up automatically.
+- Lighting moods are available as effects of the light entity (below: a lighting
+  controller from the demo installation with its moods). Generated scene entities were
+  removed in 1.5.0; their registry entries are cleaned up automatically.
+
+  ![Light entity of a Loxone lighting controller with the moods as effects](docs/screenshots/1.7.0/light-moods-effects-de.png)
 
 Installing updated integration code requires restarting Home Assistant.
 
