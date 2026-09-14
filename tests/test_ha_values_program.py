@@ -37,6 +37,33 @@ def managed(xml):
                    for c in block.findall("C")]
 
 
+def test_analog_values_carry_the_analog_flag_and_missing_flag_triggers_a_rebuild():
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    block = managed(patched)[0]
+    flags = {c.get("Title"): c.get("Analog") for c in block.findall("C")}
+    assert flags == {"Tor": None, "Pool": "true"}  # digital command stays digital, number is analog
+    stripped = patched.replace(b' Analog="true"', b'')
+    rebuilt, report = values.patch_ha_values(stripped, ENTRIES)
+    assert report["ha_values_changed"] and b'Analog="true"' in rebuilt
+
+
+def test_input_recreated_by_config_with_new_uuids_is_adopted_not_duplicated():
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    block = managed(patched)[0]
+    # Config re-created the input and its commands with fresh UUIDs, kept our title and
+    # short names, and the user renamed one command.
+    foreign = patched
+    for el in [block] + block.findall("C") + [co for c in block.findall("C") for co in c.findall("Co")]:
+        foreign = foreign.replace(el.get("U").encode(), el.get("U")[:8].encode() + b"-dead-beef-" + el.get("U")[-16:].encode(), 1)
+    foreign = foreign.replace(b'Title="Pool"', b'Title="Pooltemperatur"')
+    assert managed(foreign)[0].get("U") != block.get("U")
+    rebuilt, report = values.patch_ha_values(foreign, ENTRIES)
+    assert report["ha_values_changed"]
+    new_block, commands = managed(rebuilt)
+    assert new_block.get("U") == block.get("U")  # back on our deterministic identity
+    assert [c[3] for c in commands] == ["Tor", "Pooltemperatur"] and rebuilt.count(b'IName="HAV1"') == 1
+
+
 def test_input_and_commands_are_created_under_the_caption():
     patched, report = values.patch_ha_values(SINGLE, ENTRIES)
     assert report == {"ha_values": 2, "ha_values_changed": True}

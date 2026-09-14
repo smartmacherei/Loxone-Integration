@@ -4,6 +4,15 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+- Weg 3: Zahlenwerte werden im Loxone-Programm als analoge UDP-Befehle angelegt (`Analog="true"`);
+  bisher legte Config sie als Digitaleingänge an. Bestehende Einträge ohne das Merkmal werden beim
+  nächsten Knopfdruck neu geschrieben.
+- Weg 3: Hat Loxone Config den Eingang „HA Werte“ mit neuen Kennungen neu angelegt (z. B. nach einer
+  Bearbeitung), übernimmt die Integration ihn anhand von Titel oder Kürzel statt mit
+  „PROGRAM_PREPARE_FAILED“ abzubrechen. Vom Anwender geänderte Befehlstitel bleiben erhalten.
+
 ## [1.7.0] - 2026-09-14
 
 - Die UDP-Einrichtung im Gateway/Client-Verbund ist keine Beta mehr: an einer Anlage mit

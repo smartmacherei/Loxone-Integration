@@ -62,13 +62,20 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
     input_id = uid("input")
     objects = list(root.iter("C"))
     existing = next((el for el in objects if el.get("U") == input_id), None)
-    if existing is not None and (existing.get("Type") != "VirtualUdpIn" or existing.get("IName") != INAME):
+    if existing is not None and existing.get("Type") != "VirtualUdpIn":
         raise ValueError("Managed object was modified; refusing to overwrite it")
-    desired = {(uid(e["key"]), e["key"] + "=\\v") for e in wanted}
+    if existing is None:
+        # Config may re-create the input with a new UUID when the user edits it
+        # (e.g. switching commands to analog). Adopt it by title or short name.
+        existing = next((el for el in objects if el.get("Type") == "VirtualUdpIn"
+                         and (el.get("Title") == TITLE or el.get("IName") == INAME)), None)
+    desired = {(e["key"] + "=\\v", not e.get("digital")) for e in wanted}
     report["ha_values"] = len(wanted)
     if existing is not None:
-        current = {(c.get("U"), c.get("Check")) for c in existing.findall("C")}
-        if existing.get("Port") == str(port) and current == desired:
+        current = {(c.get("Check"), c.get("Analog") == "true") for c in existing.findall("C")}
+        ours = existing.get("U") == input_id and all(
+            c.get("U") == uid(c.get("Check", "")[:-3]) for c in existing.findall("C"))
+        if ours and existing.get("Port") == str(port) and current == desired:
             return xml, report
     elif not wanted:
         return xml, report
@@ -83,22 +90,26 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
             raise coded_error("HA_VALUES_PORT_IN_USE", "UDP port for HA values is used by another virtual input", ValueError)
         if (el.get("IName") or "").startswith(INAME):
             raise ValueError("Foreign object uses the HA values short name")
-    titles = {c.get("U"): c.get("Title") for c in existing.findall("C")} if existing is not None else {}
+    # Titles the user changed in Config survive a rebuild, keyed by the command text.
+    titles = {c.get("Check"): c.get("Title") for c in existing.findall("C")} if existing is not None else {}
     block = ET.Element("C", Type="VirtualUdpIn", IName=INAME, V=version, U=input_id, Title=TITLE,
                        WF="16384", Address="", Port=str(port))
     for index, entry in enumerate(wanted, 1):
         key = entry["key"]
-        cmd = ET.SubElement(block, "C", Type="VirtualUdpInCmd", IName=f"{INAME}{index}", V=version, U=uid(key),
-                            Title=titles.get(uid(key)) or entry["title"], Cl="238,238,238", Nio="2", WF="16400",
-                            Check=key + "=\\v", Signed="true", SourceValHigh="100", DestValHigh="100",
-                            MinVal="-1000000000", MaxVal="1000000000", MinChange="0", MinTime="0")
+        attrs = dict(Type="VirtualUdpInCmd", IName=f"{INAME}{index}", V=version, U=uid(key),
+                     Title=titles.get(key + "=\\v") or entry["title"], Cl="238,238,238", Nio="2", WF="16400",
+                     Check=key + "=\\v", Signed="true", SourceValHigh="100", DestValHigh="100",
+                     MinVal="-1000000000", MaxVal="1000000000", MinChange="0", MinTime="0")
+        if not entry.get("digital"):
+            attrs["Analog"] = "true"  # without this flag Config treats the command as digital
+        cmd = ET.SubElement(block, "C", attrs)
         tail = uuid.uuid5(uuid.NAMESPACE_URL, doc_id + key).hex[-12:]
         ET.SubElement(cmd, "Co", K="AQ", U=uid(key + "/AQ")[:19] + "00ff" + tail)
         ET.SubElement(cmd, "Co", K="Q", U=uid(key + "/Q")[:19] + "01ff" + tail)
         ET.SubElement(cmd, "Display", Type="1", Unit="<v>" if entry.get("digital") else "<v.2>", StateOnly="true")
     text = xml.decode("utf-8")
     if existing is not None:
-        start, end = _span(text, input_id)
+        start, end = _span(text, existing.get("U"))
         text = text[:start] + text[end:]
     if wanted:
         text = _append(text, caption.get("U"), ET.tostring(block, encoding="unicode"))
