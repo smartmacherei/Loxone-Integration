@@ -46,7 +46,8 @@ async def async_setup_entry(
     """Set up entry."""
     miniserver = get_miniserver_from_hass(hass, config_entry)
     loxconfig = miniserver.lox_config.json
-    entities = [ConnectionCheckButton(config_entry, miniserver.serial)]
+    entities = [ConnectionCheckButton(config_entry, miniserver.serial),
+                HaValuesApplyButton(config_entry, miniserver.serial)]
 
     for button_entity in get_all(loxconfig, ["Pushbutton"]):
         button_entity = add_room_and_cat_to_value_values(loxconfig, button_entity)
@@ -69,6 +70,23 @@ class ConnectionCheckButton(ButtonEntity):
     async def async_press(self):
         from .connection_diagnostics import run_check
         await run_check(self.hass, self.entry)
+
+
+class HaValuesApplyButton(ButtonEntity):
+    """Weg 3: write the labelled HA entities into the Miniserver program, on request only."""
+    _attr_has_entity_name = True
+    _attr_translation_key = "ha_values_apply"
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_icon = "mdi:upload-network"
+
+    def __init__(self, entry, serial):
+        self.entry = entry
+        self._attr_unique_id = f"{serial}-ha_values_apply"
+        self._attr_device_info = {"identifiers": {(DOMAIN, serial)}}
+
+    async def async_press(self):
+        from .ha_values import async_apply
+        await async_apply(self.hass, self.entry)
 
 
 class LoxoneButton(LoxoneEntity, ButtonEntity):

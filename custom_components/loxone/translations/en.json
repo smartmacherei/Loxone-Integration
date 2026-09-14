@@ -167,6 +167,9 @@
   },
   "entity": {
     "sensor": {
+      "ha_values": {
+        "name": "HA → Loxone"
+      },
       "udp_status": {
         "name": "UDP status",
         "state": {
@@ -188,6 +191,9 @@
     "button": {
       "check_connection": {
         "name": "Check connection"
+      },
+      "ha_values_apply": {
+        "name": "Apply HA values to program"
       }
     }
   }

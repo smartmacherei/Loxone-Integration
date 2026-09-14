@@ -50,9 +50,6 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
         raise ValueError("Expected one Document")
     doc_id = documents[0].get("U", "")
     report = {"ha_values": 0, "ha_values_changed": False}
-    caption, version = _caption(root)
-    if caption is None:
-        return xml, report
 
     def uid(label):
         value = uuid.uuid5(uuid.NAMESPACE_URL, doc_id + "/smartmacherei/havalues/" + label).hex
@@ -67,14 +64,6 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
     existing = next((el for el in objects if el.get("U") == input_id), None)
     if existing is not None and (existing.get("Type") != "VirtualUdpIn" or existing.get("IName") != INAME):
         raise ValueError("Managed object was modified; refusing to overwrite it")
-    owned = set(existing.iter()) if existing is not None else set()
-    for el in objects:
-        if el in owned:
-            continue
-        if el.get("Type") == "VirtualUdpIn" and el.get("Port") == str(port):
-            raise coded_error("HA_VALUES_PORT_IN_USE", "UDP port for HA values is used by another virtual input", ValueError)
-        if (el.get("IName") or "").startswith(INAME):
-            raise ValueError("Foreign object uses the HA values short name")
     desired = {(uid(e["key"]), e["key"] + "=\\v") for e in wanted}
     report["ha_values"] = len(wanted)
     if existing is not None:
@@ -83,6 +72,17 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
             return xml, report
     elif not wanted:
         return xml, report
+    caption, version = _caption(root)
+    if caption is None:
+        return xml, {"ha_values": 0, "ha_values_changed": False}
+    owned = set(existing.iter()) if existing is not None else set()
+    for el in objects:
+        if el in owned:
+            continue
+        if el.get("Type") == "VirtualUdpIn" and el.get("Port") == str(port):
+            raise coded_error("HA_VALUES_PORT_IN_USE", "UDP port for HA values is used by another virtual input", ValueError)
+        if (el.get("IName") or "").startswith(INAME):
+            raise ValueError("Foreign object uses the HA values short name")
     titles = {c.get("U"): c.get("Title") for c in existing.findall("C")} if existing is not None else {}
     block = ET.Element("C", Type="VirtualUdpIn", IName=INAME, V=version, U=input_id, Title=TITLE,
                        WF="16384", Address="", Port=str(port))

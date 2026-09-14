@@ -228,9 +228,10 @@ async def async_setup_entry(
     miniserver = get_miniserver_from_hass(hass, config_entry)
 
     loxconfig = miniserver.lox_config.json
-    from .udp_status import UdpStatusSensor
+    from .udp_status import HaValuesSensor, UdpStatusSensor
     entities: list[Any] = [LoxoneKeepAliveSensor(miniserver.serial),
-                           UdpStatusSensor(config_entry.entry_id, miniserver.serial)]
+                           UdpStatusSensor(config_entry.entry_id, miniserver.serial),
+                           HaValuesSensor(config_entry, miniserver.serial)]
     from .control_states import state_inventory
     from .raw_sensor import RawValueSensor
     for state in state_inventory(loxconfig):

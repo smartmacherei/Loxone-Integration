@@ -99,6 +99,8 @@ async def async_unload_entry(hass, config_entry):
             coordinator = co
             break
 
+    from .ha_values import async_unload_values
+    async_unload_values(hass, config_entry)
     manager = hass.data.get(DOMAIN + "_udp_setup", {}).pop(config_entry.entry_id, None)
     if manager is not None:
         await manager.close()
@@ -942,6 +944,10 @@ async def _async_setup_entry(hass, config_entry):
         manager = UdpSetup(hass, config_entry, _program)
         hass.data.setdefault(DOMAIN + "_udp_setup", {})[config_entry.entry_id] = manager
         manager.start()
+
+    # Weg 3: stored wish list to the manager, sender for the labelled entities.
+    from .ha_values import async_setup_values
+    await async_setup_values(hass, config_entry)
 
     return True
 
