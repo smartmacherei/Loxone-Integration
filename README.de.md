@@ -26,7 +26,7 @@ Geräteansichten auf Deutsch und Englisch aus der Demo-Installation.
 - **Geprüfte Projektsicherung vor Änderungen.** Vollständiges Originalprogramm und
   eine Projektdatei zum Öffnen in Loxone Config aufbewahren.
 
-**Aktuelle Veröffentlichung: 1.7.0.** Projektsicherung, automatischer Upload/Neustart, UDP-
+**Aktuelle Veröffentlichung: 1.7.1.** Projektsicherung, automatischer Upload/Neustart, UDP-
 Lebenszeichen und erneutes Laden wurden am Demokoffer geprüft. Physische
 Zustandswechsel und Wiederherstellung aus der Sicherung müssen noch abgenommen werden.
 Die UDP-Einrichtung im Gateway/Client-Verbund wurde an einer Anlage mit vier Miniservern

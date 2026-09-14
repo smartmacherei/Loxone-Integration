@@ -4,8 +4,10 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.7.1] - 2026-09-14
 
+- Weg 3: Ist der Zustand einer Entität beim Knopfdruck unbekannt, entscheidet die Domäne über
+  analog oder digital (Binärsensor, Schalter, Licht, Schloss, Rollo, Lüfter, Sirene, Ventil = digital).
 - Weg 3: Zahlenwerte werden im Loxone-Programm als analoge UDP-Befehle angelegt (`Analog="true"`);
   bisher legte Config sie als Digitaleingänge an. Bestehende Einträge ohne das Merkmal werden beim
   nächsten Knopfdruck neu geschrieben.
