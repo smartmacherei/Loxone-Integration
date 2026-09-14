@@ -103,4 +103,9 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
     if wanted:
         text = _append(text, caption.get("U"), ET.tostring(block, encoding="unicode"))
     report["ha_values_changed"] = True
-    return stamp_document(text, doc_id), report
+    # Config writes one Memory proxy per page for a foreign terminal, all with
+    # the terminal's UUID. Those duplicates pre-exist; only new ones are rejected.
+    from collections import Counter
+    counts = Counter(el.get("U").lower() for el in root.iter() if el.tag in {"C", "Co"} and el.get("U"))
+    preexisting = {value for value, n in counts.items() if n > 1}
+    return stamp_document(text, doc_id, preexisting), report
