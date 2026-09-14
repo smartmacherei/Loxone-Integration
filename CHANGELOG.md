@@ -4,6 +4,15 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.7.0b2] - 2026-09-14 (Vorabversion)
+
+- Das Neuladen der Integration nach dem Speichern der Optionen schlug seit 1.6.0 fehl
+  („a coroutine was expected“). Der Eintrag blieb in „Entladen fehlgeschlagen“, die
+  Entitäten wurden nicht mehr versorgt und geänderte Optionen, auch die Beta-Option für
+  den Gateway/Client-Verbund, kamen nie an. Behoben; Optionen wirken wieder sofort.
+- Analoge Klemmen, für die der Miniserver keinen Wert liefert (NaN), melden sich als
+  „nicht verfügbar“, statt bei jedem Update einen Fehler ins Protokoll zu schreiben.
+
 ## [1.7.0b1] - 2026-09-11 (Vorabversion)
 
 - Beta: UDP-Einrichtung auch im Gateway/Client-Verbund, nur mit der neuen Option
