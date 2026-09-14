@@ -4,7 +4,7 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.7.2] - 2026-09-14
 
 - Weg 3: Beim erneuten Übernehmen bleiben vorhandene UDP-Befehle unverändert (Titel, Skalierung,
   analog/digital, Kennung, Kürzel). Neue Entitäten werden angehängt, abgewählte entfernt. Bisher

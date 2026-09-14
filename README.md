@@ -25,7 +25,7 @@ German and English screenshots from the demo installation.
 - **A verified project backup before changes.** Keep the complete original program
   and a project file that can be opened in Loxone Config.
 
-**Current release: 1.7.1.** Project backup, automatic upload/restart, UDP heartbeat reception and
+**Current release: 1.7.2.** Project backup, automatic upload/restart, UDP heartbeat reception and
 integration reload were verified on the demo installation; UDP setup in a Gateway/Client
 system was verified on a four-Miniserver installation. Physical device transitions and
 restoration from backup still require acceptance testing. Gateway/Client installations:
