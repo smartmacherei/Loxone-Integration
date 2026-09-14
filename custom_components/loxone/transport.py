@@ -172,8 +172,11 @@ class SignalRouter:
         self.attempted_at[key.lower()] = self.clock()
 
     def seed(self, values):
+        """Initial HTTP values count as a poll, so the first rotation does not read them again."""
+        now = self.clock()
         self.last.update({key.lower(): value for key, value in values.items()})
-        self.seen_at.update({key.lower(): self.clock() for key in values})
+        self.seen_at.update({key.lower(): now for key in values})
+        self.polled_at.update({key.lower(): now for key in values})
 
     def expire(self, keys, max_age=90):
         """Do not display a frozen value as current after all usable paths fail.

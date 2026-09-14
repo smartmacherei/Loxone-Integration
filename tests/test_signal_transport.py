@@ -250,3 +250,13 @@ def test_slow_keys_poll_every_four_hours_and_never_expire():
     assert events == [{U: 87}]  # a battery level is not declared unavailable
     clock[0] = 4 * 3600 + 1
     assert r.due([U]) == [U]
+
+
+def test_seeded_slow_key_waits_four_hours_after_startup():
+    r, clock, _ = router()
+    r.slow = {U}
+    r.seed({U: 87, H: 1})  # startup values came over HTTP already
+    clock[0] = 31
+    assert r.due([U, H]) == [H]
+    clock[0] = 4 * 3600
+    assert set(r.due([U, H])) == {U, H}
