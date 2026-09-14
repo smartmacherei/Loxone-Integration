@@ -1,5 +1,8 @@
 # Integration card 1.7.0 / Gerätekarte 1.7.0
 
+`entity-label-de.png` / `entity-label-en.png`: the entity settings dialog with the label
+"loxone" that marks an entity for way 3.
+
 `integration-card-de.png` / `integration-card-en.png`: the integration's device card in Home
 Assistant with the diagnostic sensors "UDP status" and "HA → Loxone" and the two buttons
 "Check connection" and "Apply HA values to program".

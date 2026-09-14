@@ -72,7 +72,11 @@ Version 1.7.0):
 So bringst du einen Wert von Home Assistant nach Loxone:
 
 1. In HA der Entität (z. B. dem Thermostat) das Label **loxone** geben: Einstellungen → Geräte &
-   Dienste → Entitäten → Entität öffnen → Zahnrad → Labels.
+   Dienste → Entitäten → Entität öffnen → Zahnrad → Labels. Das Label gibt es einmal anzulegen
+   (Einstellungen → Bereiche, Labels & Zonen → Labels), danach steht es in jeder Entität zur Wahl.
+
+   ![Entitätsdialog mit dem Label loxone](docs/screenshots/1.7.0/entity-label-de.png)
+
 2. Auf der Gerätekarte zeigt „HA → Loxone“ im Attribut `pending_add` die neuen Werte.
 3. **HA-Werte ins Programm übernehmen** drücken. Der Miniserver startet kurz neu.
 4. In Loxone Config das Projekt **vom Miniserver laden**. Unter Peripherie → Virtuelle Eingänge
