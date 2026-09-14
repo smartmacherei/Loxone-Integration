@@ -82,6 +82,9 @@ Getting a value from Home Assistant into Loxone:
    Drag the commands onto your pages as usual.
 5. From now on HA sends every change at once, plus all values every 5 minutes.
 
+Another button press appends new entities and removes deselected ones; existing commands stay
+as they are, even after you renamed or changed them in Config.
+
 The value rules are described under [HA → Loxone (way 3)](#ha--loxone-way-3-label-and-button).
 
 ## Automatic real-time setup (UDP)

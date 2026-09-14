@@ -69,13 +69,15 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
         # (e.g. switching commands to analog). Adopt it by title or short name.
         existing = next((el for el in objects if el.get("Type") == "VirtualUdpIn"
                          and (el.get("Title") == TITLE or el.get("IName") == INAME)), None)
-    desired = {(e["key"] + "=\\v", not e.get("digital")) for e in wanted}
     report["ha_values"] = len(wanted)
+    commands = {c.get("Check"): c for c in existing.findall("C")} if existing is not None else {}
+    # Existing commands are kept as they are (the user may have changed title, scaling
+    # or analog in Config); the only forced change is the analog flag HA knows about.
+    needs_flag = any(not e.get("digital") and commands[e["key"] + "=\\v"].get("Analog") != "true"
+                     for e in wanted if e["key"] + "=\\v" in commands)
     if existing is not None:
-        current = {(c.get("Check"), c.get("Analog") == "true") for c in existing.findall("C")}
-        ours = existing.get("U") == input_id and all(
-            c.get("U") == uid(c.get("Check", "")[:-3]) for c in existing.findall("C"))
-        if ours and existing.get("Port") == str(port) and current == desired:
+        same_set = set(commands) == {e["key"] + "=\\v" for e in wanted}
+        if existing.get("U") == input_id and existing.get("Port") == str(port) and same_set and not needs_flag:
             return xml, report
     elif not wanted:
         return xml, report
@@ -90,15 +92,26 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
             raise coded_error("HA_VALUES_PORT_IN_USE", "UDP port for HA values is used by another virtual input", ValueError)
         if (el.get("IName") or "").startswith(INAME):
             raise ValueError("Foreign object uses the HA values short name")
-    # Titles the user changed in Config survive a rebuild, keyed by the command text.
-    titles = {c.get("Check"): c.get("Title") for c in existing.findall("C")} if existing is not None else {}
     block = ET.Element("C", Type="VirtualUdpIn", IName=INAME, V=version, U=input_id, Title=TITLE,
                        WF="16384", Address="", Port=str(port))
-    for index, entry in enumerate(wanted, 1):
+    # New commands get short names after the highest one in use, so wiring in Config
+    # that refers to the existing commands stays valid.
+    numbers = [int(m.group(1)) for c in commands.values()
+               for m in [re.fullmatch(INAME + r"(\d+)", c.get("IName") or "")] if m]
+    index = max(numbers, default=0)
+    for entry in wanted:
         key = entry["key"]
+        check = key + "=\\v"
+        if check in commands:
+            cmd = commands[check]
+            if not entry.get("digital") and cmd.get("Analog") != "true":
+                cmd.set("Analog", "true")
+            block.append(cmd)
+            continue
+        index += 1
         attrs = dict(Type="VirtualUdpInCmd", IName=f"{INAME}{index}", V=version, U=uid(key),
-                     Title=titles.get(key + "=\\v") or entry["title"], Cl="238,238,238", Nio="2", WF="16400",
-                     Check=key + "=\\v", Signed="true", SourceValHigh="100", DestValHigh="100",
+                     Title=entry["title"], Cl="238,238,238", Nio="2", WF="16400",
+                     Check=check, Signed="true", SourceValHigh="100", DestValHigh="100",
                      MinVal="-1000000000", MaxVal="1000000000", MinChange="0", MinTime="0")
         if not entry.get("digital"):
             attrs["Analog"] = "true"  # without this flag Config treats the command as digital

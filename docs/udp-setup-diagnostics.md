@@ -111,6 +111,7 @@ Ab Version 1.4.5 unterscheidet die Archivprüfung folgende Fehler:
 | `ARCHIVE_REQUIRED_FILES_MISSING` | Von der Sicherheitsprüfung geforderte Begleitdateien fehlen. |
 | `ARCHIVE_SIZE_LIMIT` | Entpackte Gesamtgröße überschreitet 64 MiB. |
 | `ARCHIVE_CHECKSUM_MISMATCH` | Die ZIP-Integritätsprüfung hat einen beschädigten Eintrag gefunden. |
+| `CLIENT_UNREACHABLE` | Gateway/Client: Ein Client-Miniserver antwortet nicht; der Upload wurde nicht gestartet. Client einschalten oder neu starten, dann erneut versuchen. |
 | `HA_VALUES_PORT_IN_USE` | Weg 3: Der UDP-Port 55556 für HA-Werte ist im Programm schon von einem anderen virtuellen UDP-Eingang belegt. |
 
 `archive_details` enthält nur Dateizähler und gegebenenfalls fehlende Namen aus

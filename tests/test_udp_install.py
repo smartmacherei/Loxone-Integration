@@ -247,6 +247,7 @@ class FakeClient:
         self.calls += 1
         return "sps_1_20260905120000.zip", self.raw + (b"changed" if self.changed and self.calls > 1 else b"")
     def destination(self, port): return TARGET
+    def reachable(self, host, port): return not getattr(self, "client_down", False)
     def ftp(self):
         self.events.append("ftp")
         return FakeFTP(self)

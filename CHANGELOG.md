@@ -4,6 +4,15 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+- Weg 3: Beim erneuten Übernehmen bleiben vorhandene UDP-Befehle unverändert (Titel, Skalierung,
+  analog/digital, Kennung, Kürzel). Neue Entitäten werden angehängt, abgewählte entfernt. Bisher
+  wurde der ganze Eingang neu geschrieben, wodurch in Config gemachte Änderungen verloren gingen.
+- Gateway/Client: Vor jedem Upload prüft die Integration, ob alle Client-Miniserver antworten.
+  Antwortet einer nicht, bleibt das Programm unverändert (`CLIENT_UNREACHABLE`, Schritt „Clients
+  prüfen“), damit kein Client mit veraltetem Programm zurückbleibt.
+
 ## [1.7.1] - 2026-09-14
 
 - Weg 3: Ist der Zustand einer Entität beim Knopfdruck unbekannt, entscheidet die Domäne über

@@ -155,3 +155,16 @@ def test_install_uploads_the_whole_archive_to_the_gateway_only(tmp_path):
     assert set(program.program_members(uploaded)) == {"sps0.LoxCC", "sps1.LoxCC"}
     backups = list(folder.glob("*.Loxone"))
     assert len(backups) == 1 and b'Type="Program"' in backups[0].read_bytes()
+
+
+def test_upload_waits_until_every_client_answers(tmp_path):
+    client = FakeClient(tmp_path)
+    client.raw = archive()
+    client.client_down = True
+    with pytest.raises(OSError) as caught:
+        installer.install(client, str(tmp_path), 55555, lambda raw, xml: {GW_IN, CL_IN}, threading.Event(), gateway=True)
+    assert caught.value.udp_failure["code"] == "CLIENT_UNREACHABLE"
+    assert caught.value.udp_failure["step"] == "clients_check" and client.events == []
+    client.client_down = False
+    result = installer.install(client, str(tmp_path), 55555, lambda raw, xml: {GW_IN, CL_IN}, threading.Event(), gateway=True)
+    assert result["state"] == "restarting" and client.events == ["ftp", "upload", "activate", "restart"]

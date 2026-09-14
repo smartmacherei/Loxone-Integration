@@ -84,6 +84,9 @@ So bringst du einen Wert von Home Assistant nach Loxone:
    Befehle wie gewohnt auf die Seiten ziehen.
 5. Ab jetzt schickt HA jede Änderung sofort, alle Werte zusätzlich alle 5 Minuten.
 
+Ein weiterer Knopfdruck hängt neue Entitäten an und entfernt abgewählte; vorhandene Befehle
+bleiben, wie sie sind, auch wenn du sie in Config umbenannt oder umgestellt hast.
+
 Details zu den Wertregeln stehen unter [HA → Loxone (Weg 3)](#ha--loxone-weg-3-label-und-knopf).
 
 ## Automatische Echtzeiteinrichtung (UDP)

@@ -60,8 +60,23 @@ def test_input_recreated_by_config_with_new_uuids_is_adopted_not_duplicated():
     rebuilt, report = values.patch_ha_values(foreign, ENTRIES)
     assert report["ha_values_changed"]
     new_block, commands = managed(rebuilt)
-    assert new_block.get("U") == block.get("U")  # back on our deterministic identity
+    assert new_block.get("U") == block.get("U")  # the input is back on our deterministic identity
+    # The commands keep the UUIDs Config gave them, so pages wired to them stay valid.
     assert [c[3] for c in commands] == ["Tor", "Pooltemperatur"] and rebuilt.count(b'IName="HAV1"') == 1
+    assert all("-dead-beef-" in c[1] for c in commands)
+    assert values.patch_ha_values(rebuilt, ENTRIES)[1]["ha_values_changed"] is False  # and it stays quiet
+
+
+def test_user_changes_on_existing_commands_survive_a_rebuild():
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    # The user switched the digital command to analog and changed scaling in Config.
+    edited = patched.replace(b'Check="binary_sensor.tor=\\v" Signed="true" SourceValHigh="100"',
+                             b'Check="binary_sensor.tor=\\v" Analog="true" Signed="true" SourceValHigh="10"')
+    assert edited != patched
+    rebuilt, report = values.patch_ha_values(edited, ENTRIES + [{"key": "sensor.neu", "title": "Neu", "digital": False}])
+    assert report["ha_values_changed"]
+    tor = next(c for c in managed(rebuilt)[0].findall("C") if c.get("Check") == "binary_sensor.tor=\\v")
+    assert tor.get("Analog") == "true" and tor.get("SourceValHigh") == "10"
 
 
 def test_input_and_commands_are_created_under_the_caption():
@@ -94,7 +109,8 @@ def test_changed_wish_list_rebuilds_but_keeps_user_titles():
         renamed, ENTRIES + [{"key": "climate.bad.temperature", "title": "Bad Soll", "digital": False}])
     assert report["ha_values_changed"] and report["ha_values"] == 3
     _, commands = managed(rebuilt)
-    assert [(c[0], c[3]) for c in commands] == [("HAV1", "Tor"), ("HAV2", "Bad Soll"), ("HAV3", "Pooltemperatur")]
+    # Existing commands keep short name, UUID and the user's title; the new one gets the next number.
+    assert [(c[0], c[3]) for c in commands] == [("HAV1", "Tor"), ("HAV3", "Bad Soll"), ("HAV2", "Pooltemperatur")]
     removed, _ = values.patch_ha_values(rebuilt, [])
     assert managed(removed) is None and b"Pooltemperatur" not in removed
 

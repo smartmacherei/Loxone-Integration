@@ -54,6 +54,17 @@ class ProgramClient:
         name = newest_archive(listing.decode())
         return name, self.get("/dev/fsget/prog/" + name)
 
+    def reachable(self, host, port):
+        """Answers the Miniserver at host:port at all? (no login required for this path)"""
+        conn = http.client.HTTPConnection(host, int(port), timeout=5, source_address=self.source_address)
+        try:
+            conn.request("GET", "/jdev/cfg/api")
+            return conn.getresponse().status in (200, 401)
+        except OSError:
+            return False
+        finally:
+            conn.close()
+
     def destination(self, port):
         # TCP route selection to this Miniserver gives HA's reachable source IP.
         with socket.create_connection((self.host, self.port), timeout=10,
@@ -189,6 +200,14 @@ def _install(client, directory, udp_port, select, stop: threading.Event, gateway
     if stop.is_set():
         return dict(report, state="stopped", backup=backup_path, backup_verified=True)
     _, expected_xml = unpack(candidate, gateway)
+    if gateway:
+        # Like Loxone Config: do not distribute a program while a client is missing,
+        # or that client keeps running the old one afterwards.
+        mark("clients_check")
+        from .topology import miniservers
+        for server in miniservers(expected_xml):
+            if server["role"] == "client" and server["host"] and not client.reachable(server["host"], server["port"]):
+                raise coded_error("CLIENT_UNREACHABLE", "A client Miniserver does not answer; upload not started")
     journal = {"attempt": attempt, "backup": backup_path,
                "expected_xml_sha256": digest(expected_xml), "state": "pending"}
     mark("backup_write")
