@@ -30,6 +30,8 @@ BOOL = {"on": 1, "off": 0, "true": 1, "false": 0, "open": 1, "closed": 0, "locke
         "home": 1, "not_home": 0, "wet": 1, "dry": 0, "detected": 1, "clear": 0}
 ACTIONS = ["off", "heating", "cooling", "drying", "idle", "fan", "preheating", "defrosting"]
 CLIMATE = ("current_temperature", "temperature", "hvac_action")
+# Domains whose state is on/off-like; decides digital when the state is not known yet.
+DIGITAL_DOMAINS = {"binary_sensor", "switch", "light", "input_boolean", "lock", "cover", "fan", "siren", "valve"}
 LABELS = {"de": {"current_temperature": "Ist-Temperatur", "temperature": "Solltemperatur", "hvac_action": "Aktion"},
           "en": {"current_temperature": "current temperature", "temperature": "target temperature", "hvac_action": "action"}}
 
@@ -59,7 +61,9 @@ def entries_for(entity_id, state, language="de"):
     value = getattr(state, "state", None)
     if value in BOOL:
         return [_entry(entity_id, None, name, True)]
-    if value in UNKNOWN or _number(value) is not None:
+    if value in UNKNOWN:
+        return [_entry(entity_id, None, name, entity_id.split(".", 1)[0] in DIGITAL_DOMAINS)]
+    if _number(value) is not None:
         return [_entry(entity_id, None, name, False)]
     return None
 

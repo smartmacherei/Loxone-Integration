@@ -27,6 +27,10 @@ def test_unknown_states_export_but_send_nothing_and_text_is_unsupported():
     assert values.value_of(entry, state("unavailable")) is None and values.value_of(entry, None) is None
     assert values.entries_for("sensor.later", None) == [entry]
     assert values.entries_for("sensor.text", state("Hello")) is None
+    # Not known yet at button time: the domain decides analog or digital.
+    assert values.entries_for("sensor.later", None)[0]["digital"] is False
+    assert values.entries_for("binary_sensor.tor", None)[0]["digital"] is True
+    assert values.entries_for("switch.pumpe", state("unavailable"))[0]["digital"] is True
 
 
 def test_climate_exports_mode_temperatures_and_action():
