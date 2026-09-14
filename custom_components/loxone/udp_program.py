@@ -411,6 +411,11 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
 
     if not changed:
         return xml, report
+    return stamp_document(text, doc_id, proxies), report
+
+
+def stamp_document(text: str, doc_id: str, proxies=frozenset()) -> bytes:
+    """Refresh Date/DateS/NumO on the Document and reject duplicate identities."""
     date = dt.datetime.now().replace(microsecond=0)
     date_s = int((dt.datetime.now(dt.timezone.utc) - dt.datetime(2009, 1, 1, tzinfo=dt.timezone.utc)).total_seconds())
     start, _ = _span(text, doc_id)
@@ -427,9 +432,9 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
     ids = [el.get("U").lower() for el in ET.fromstring(result).iter()
            if el.get("U") and (el.tag in {"C", "Co"} or re.fullmatch(
                r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{16}", el.get("U")))]
-    if len(ids) != len(set(ids)) and {value for value in ids if ids.count(value) > 1} - proxies:
+    if len(ids) != len(set(ids)) and {value for value in ids if ids.count(value) > 1} - set(proxies):
         raise ValueError("Duplicate UUID in patched program")
-    return result, report
+    return result
 
 
 def _stamp_structure(content: bytes, date: str) -> bytes:
