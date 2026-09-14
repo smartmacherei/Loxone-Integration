@@ -187,7 +187,7 @@ def _form_schema(auto_udp_default):
             vol.Optional(CONF_UDP_PORT, default=DEFAULT_UDP_PORT): NumberSelector(
                 NumberSelectorConfig(mode=NumberSelectorMode.BOX, min=0, max=65535)
             ),
-            # Beta: Gateway/Client archives, deliberately off until enabled.
+            # Gateway/Client archives, deliberately off until enabled.
             vol.Optional(CONF_UDP_GATEWAY_BETA, default=False): BooleanSelector(),
         }
     )

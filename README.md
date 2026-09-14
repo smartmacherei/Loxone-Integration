@@ -25,12 +25,13 @@ German and English screenshots from the demo installation.
 - **A verified project backup before changes.** Keep the complete original program
   and a project file that can be opened in Loxone Config.
 
-**Current release: 1.6.0.** Project backup, automatic upload/restart, UDP heartbeat reception and
-integration reload were verified on the demo installation. Physical device
-transitions and restoration from backup still require acceptance testing.
-Gateway/Client installations: all Miniservers are discovered and read; automatic UDP setup
-for them leaves the programs unchanged unless the beta option
-"Set up UDP in a Gateway/Client system too" is enabled (pre-release 1.7.0b1, see below).
+**Current release: 1.7.0.** Project backup, automatic upload/restart, UDP heartbeat reception and
+integration reload were verified on the demo installation; UDP setup in a Gateway/Client
+system was verified on a four-Miniserver installation. Physical device transitions and
+restoration from backup still require acceptance testing. Gateway/Client installations:
+all Miniservers are discovered and read; automatic UDP setup for them leaves the programs
+unchanged unless the option "Set up UDP in a Gateway/Client system too" is enabled (see
+below). Way 3 (HA → Loxone) is new in 1.7.0 and not yet verified on real hardware.
 
 ## Install with HACS
 
@@ -126,9 +127,9 @@ native controls, read-only states, special formats and the tested project covera
 - Gateway/Client installations: discovery reads the full project, so terminals of all
   Miniservers are found and grouped by their Miniserver; terminals of a client are polled
   at that client. Automatic UDP setup stops before any change with the error code
-  `ARCHIVE_MULTIPLE_PROGRAMS` unless the beta option is enabled. WebSocket, commands and
+  `ARCHIVE_MULTIPLE_PROGRAMS` unless the option is enabled. WebSocket, commands and
   rooms work through the gateway as usual.
-- Beta (1.7.0b1): with the option "Set up UDP in a Gateway/Client system too", every
+- Gateway/Client (1.7.0): with the option "Set up UDP in a Gateway/Client system too", every
   Miniserver gets its own logger and page "HA UDP" in its own program, limited to 5
   terminals per Miniserver, plus a heartbeat per Miniserver. Battery levels and device
   internals never take a slot; they are read over HTTP every 4 hours instead.

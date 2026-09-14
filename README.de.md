@@ -26,13 +26,14 @@ Geräteansichten auf Deutsch und Englisch aus der Demo-Installation.
 - **Geprüfte Projektsicherung vor Änderungen.** Vollständiges Originalprogramm und
   eine Projektdatei zum Öffnen in Loxone Config aufbewahren.
 
-**Aktuelle Veröffentlichung: 1.6.0.** Projektsicherung, automatischer Upload/Neustart, UDP-
+**Aktuelle Veröffentlichung: 1.7.0.** Projektsicherung, automatischer Upload/Neustart, UDP-
 Lebenszeichen und erneutes Laden wurden am Demokoffer geprüft. Physische
 Zustandswechsel und Wiederherstellung aus der Sicherung müssen noch abgenommen werden.
-Gateway/Client-Anlagen: Alle Miniserver werden erkannt und gelesen; die automatische
-UDP-Einrichtung lässt die Programme unverändert, solange die Beta-Option
-„UDP auch im Gateway/Client-Verbund einrichten“ nicht eingeschaltet ist
-(Vorabversion 1.7.0b1, siehe unten).
+Die UDP-Einrichtung im Gateway/Client-Verbund wurde an einer Anlage mit vier Miniservern
+bestätigt. Gateway/Client-Anlagen: Alle Miniserver werden erkannt und gelesen; die
+automatische UDP-Einrichtung lässt die Programme unverändert, solange die Option
+„UDP auch im Gateway/Client-Verbund einrichten“ nicht eingeschaltet ist (siehe unten).
+Weg 3 (HA → Loxone) ist neu in 1.7.0 und noch nicht an echter Hardware geprüft.
 
 ## Installation mit HACS
 
@@ -128,10 +129,10 @@ Bedienfunktionen, lesende Zustände und Sonderformate mit dem aktuellen Prüfsta
   oder die Host-Einstellung anpassen.
 - Gateway/Client-Anlagen: Die Erkennung liest das Gesamtprojekt, findet die Klemmen aller
   Miniserver und gruppiert sie je Miniserver; Klemmen eines Clients werden direkt am
-  Client abgefragt. Die automatische UDP-Einrichtung bricht ohne die Beta-Option vor jeder
+  Client abgefragt. Die automatische UDP-Einrichtung bricht ohne die Option vor jeder
   Änderung mit dem Fehlercode `ARCHIVE_MULTIPLE_PROGRAMS` ab. WebSocket, Befehle und
   Räume laufen über das Gateway.
-- Beta (1.7.0b1): Mit der Option „UDP auch im Gateway/Client-Verbund einrichten“ bekommt
+- Gateway/Client (1.7.0): Mit der Option „UDP auch im Gateway/Client-Verbund einrichten“ bekommt
   jeder Miniserver in seinem eigenen Programm einen eigenen Logger und eine Seite „HA UDP“,
   begrenzt auf 5 Klemmen je Miniserver, plus ein Lebenszeichen je Miniserver. Batterie
   und Geräteinterna belegen keinen Platz; sie werden stattdessen alle 4 Stunden per HTTP

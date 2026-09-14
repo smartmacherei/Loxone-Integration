@@ -4,8 +4,12 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unveröffentlicht]
+## [1.7.0] - 2026-09-14
 
+- Die UDP-Einrichtung im Gateway/Client-Verbund ist keine Beta mehr: an einer Anlage mit
+  vier Miniservern bestätigt (Seite „HA UDP“ auf allen Miniservern, Lebenszeichen von
+  allen, kein erneuter Upload nach HA-Neustart). Die Option heißt jetzt „UDP auch im
+  Gateway/Client-Verbund einrichten“; gespeicherte Optionen bleiben gültig.
 - Tür-, Fenster- und Toröffnungskontakte übernehmen die Statustexte aus Loxone: Steht dort
   1 = „Geschlossen“ und 0 = „Offen“ (auch „closed/open“, „zu/auf“), zeigt HA die Entität
   jetzt passend zur Klasse, also „geschlossen“ bei Wert 1. Erkannte Klemmen bringen ihre
