@@ -6,6 +6,13 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unveröffentlicht]
 
+- Weg 3, HA → Loxone: Entitäten mit dem Label „loxone“ werden per Knopf „HA-Werte ins
+  Programm übernehmen“ als virtueller UDP-Eingang „HA Werte“ (Port 55556) mit einem
+  Befehl je Wert ins Programm des Gateways bzw. des einzigen Miniservers geschrieben;
+  Zustandsänderungen gehen als UDP-Pakete raus, alle Werte zusätzlich alle 5 Minuten und
+  nach jedem Programmwechsel. Neuer Diagnose-Sensor „HA → Loxone“ mit den wartenden
+  Änderungen. Ohne Knopfdruck ändert sich am Programm nichts. Weg 3 setzt Weg 2 voraus.
+  Neuer Fehlercode `HA_VALUES_PORT_IN_USE`.
 - Batterie und Geräteinterna (Online-Status, Schutzabschaltungen, Systemtemperatur)
   belegen keinen UDP-Platz mehr, auch nicht einen der 5 je Miniserver im
   Gateway/Client-Verbund. Die Plätze bleiben für Taster und Kontakte. Bestehende

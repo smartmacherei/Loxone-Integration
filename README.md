@@ -82,6 +82,32 @@ saves from Loxone Config while setup is running. Load the current program
 See [setup requirements, technical details and recovery](docs/automatic-udp.md)
 for the full procedure and the exact settings.
 
+## HA → Loxone (way 3, label and button)
+
+Values from Home Assistant (thermostat readings, sensors, switches) can become inputs in
+the Loxone program without creating objects in Loxone Config:
+
+1. Give every entity that should reach Loxone the label **loxone** in Home Assistant.
+2. The diagnostic sensor **HA → Loxone** shows how many values are in the program and, as
+   attributes, `pending_add` / `pending_remove` (entities that gained or lost the label
+   since the last button press), `unsupported` (text states) and `beyond_limit`.
+3. Press **Apply HA values to program**. The integration downloads the current program from
+   the Miniserver, backs it up, adds one virtual UDP input "HA Werte" (port 55556) with
+   one command per value under the gateway's (or only Miniserver's) virtual inputs,
+   uploads and restarts. Nothing changes without the button, even when labels change.
+4. From then on every state change is sent as `<key>=<number>`, plus all values every
+   5 minutes and after each program change. In Loxone Config, load the project from the
+   Miniserver and drag the commands from the periphery onto your pages; clients reach
+   them like any gateway input.
+
+Values are numbers only: numeric states as they are; on/off, open/closed and similar as
+1/0; entities with an `options` attribute as the index of the state; `climate` entities
+give the mode index (`hvac_modes`), current temperature, target temperature and the
+action index (off, heating, cooling, drying, idle, fan, preheating, defrosting). Text
+states are listed as unsupported. Way 3 needs way 2 (automatic UDP setup) enabled,
+because it uses the same backup, upload and restart chain. `udp_max_signals` caps the
+number of values.
+
 ## Scope and limitations
 
 See [device coverage and the acceptance checklist](docs/device-coverage.md) for

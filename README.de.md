@@ -85,6 +85,32 @@ erfolgen. Währenddessen nicht gleichzeitig aus Loxone Config speichern. Vor eig
 
 [Voraussetzungen, technische Details und Wiederherstellung](docs/automatic-udp.de.md)
 
+## HA → Loxone (Weg 3, Label und Knopf)
+
+Werte aus Home Assistant (Thermostat, Sensoren, Schalter) werden Eingänge im
+Loxone-Programm, ohne in Loxone Config Objekte anzulegen:
+
+1. In Home Assistant jeder Entität, die nach Loxone soll, das Label **loxone** geben.
+2. Der Diagnose-Sensor **HA → Loxone** zeigt die Zahl der Werte im Programm und als
+   Attribute `pending_add` / `pending_remove` (Entitäten, die seit dem letzten Knopfdruck
+   das Label bekamen oder verloren), `unsupported` (Textzustände) und `beyond_limit`.
+3. **HA-Werte ins Programm übernehmen** drücken. Die Integration lädt das aktuelle Programm
+   vom Miniserver, sichert es, legt unter den virtuellen Eingängen des Gateways (bzw. des
+   einzigen Miniservers) einen virtuellen UDP-Eingang „HA Werte“ (Port 55556) mit einem
+   Befehl je Wert an, lädt hoch und startet neu. Ohne Knopfdruck ändert sich nichts, auch
+   wenn Labels kommen oder gehen.
+4. Ab dann geht jede Zustandsänderung als `<schlüssel>=<zahl>` raus, dazu alle Werte alle
+   5 Minuten und nach jedem Programmwechsel. In Loxone Config das Projekt vom Miniserver
+   laden und die Befehle aus der Peripherie auf die Seiten ziehen; Clients erreichen sie wie
+   jeden Gateway-Eingang.
+
+Werte sind immer Zahlen: Zahlenzustände unverändert; on/off, open/closed und ähnliche als
+1/0; Entitäten mit Attribut `options` als Index des Zustands; `climate` liefert Modus-Index
+(`hvac_modes`), Ist-Temperatur, Solltemperatur und Aktions-Index (off, heating, cooling,
+drying, idle, fan, preheating, defrosting). Textzustände stehen unter „unsupported“. Weg 3
+setzt Weg 2 (automatische UDP-Einrichtung) voraus, weil er dieselbe Kette aus Sicherung,
+Upload und Neustart nutzt. `udp_max_signals` begrenzt die Zahl der Werte.
+
 ## Umfang und Grenzen
 
 [Geräteabdeckung und Abnahme](docs/device-coverage.de.md) unterscheiden native
