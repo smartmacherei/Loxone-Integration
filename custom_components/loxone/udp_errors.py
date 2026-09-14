@@ -33,6 +33,7 @@ REASONS = {
     "ARCHIVE_REQUIRED_FILES_MISSING": ("Im ZIP fehlen Begleitdateien, die unsere Sicherheitsprüfung voraussetzt. Das beweist kein beschädigtes Kundenprojekt; der Archivaufbau kann abweichen.", "The ZIP lacks companion files required by our safety check. This does not prove project corruption; the archive layout may differ."),
     "ARCHIVE_SIZE_LIMIT": ("Die entpackte Gesamtgröße überschreitet das Sicherheitslimit von 64 MiB.", "The total uncompressed size exceeds the 64 MiB safety limit."),
     "ARCHIVE_CHECKSUM_MISMATCH": ("Die ZIP-Integritätsprüfung meldet einen beschädigten Dateieintrag.", "The ZIP integrity check reports a corrupt file entry."),
+    "HA_VALUES_PORT_IN_USE": ("Der UDP-Port 55556 für HA-Werte wird im Programm bereits von einem anderen virtuellen UDP-Eingang benutzt.", "UDP port 55556 for HA values is already used by another virtual UDP input in the program."),
     "PROGRAM_FORMAT_UNSUPPORTED": ("Das Programmformat ist für automatische Bearbeitung nicht freigegeben.", "The program format is not approved for automatic editing."),
     "UPLOAD_SIZE_MISMATCH": ("Das zurückgelesene Archiv überschreitet die erwartete Größe.", "The archive read back exceeds the expected size."),
     "UPLOAD_CHECKSUM_MISMATCH": ("Die Prüfsumme des zurückgelesenen Uploads stimmt nicht überein.", "The uploaded archive's read-back checksum does not match."),
