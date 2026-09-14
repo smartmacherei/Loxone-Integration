@@ -16,7 +16,7 @@ if HAS_HA:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from homeassistant.core import HomeAssistant
     from homeassistant.config_entries import ConfigEntry, ConfigEntries
-    from homeassistant.helpers import entity_registry as er, label_registry as lr
+    from homeassistant.helpers import device_registry as dr, entity_registry as er, label_registry as lr
     from custom_components.loxone import ha_values
 
 
@@ -26,7 +26,8 @@ class HaValuesHATest(unittest.IsolatedAsyncioTestCase):
         self.directory = tempfile.TemporaryDirectory(prefix="loxone_ha_values_test_")
         self.hass = HomeAssistant(self.directory.name)
         self.hass.config_entries = ConfigEntries(self.hass, {})
-        await asyncio.gather(er.async_load(self.hass), lr.async_load(self.hass))
+        dr.async_setup(self.hass)
+        await asyncio.gather(dr.async_load(self.hass), er.async_load(self.hass), lr.async_load(self.hass))
         self.receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.receiver.bind(("127.0.0.1", 0))
         self.receiver.settimeout(2)
