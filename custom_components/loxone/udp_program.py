@@ -446,22 +446,35 @@ def _stamp_structure(content: bytes, date: str) -> bytes:
     return content
 
 
-def prepare(raw: bytes, target: str, selected: set[str], gateway: bool = False) -> tuple[bytes, dict]:
+def prepare(raw: bytes, target: str, selected: set[str], gateway: bool = False, ha_values=None) -> tuple[bytes, dict]:
+    """``ha_values``: wish list for the HA -> Loxone input (Weg 3); ``None`` leaves it alone."""
+    from .ha_values_program import patch_ha_values
+
+    def with_ha_values(patched, report):
+        if ha_values is None:
+            return patched
+        patched, extra = patch_ha_values(patched, ha_values)
+        report.update(extra)
+        return patched
+
     member, xml = unpack(raw, gateway)
     if member != PROJECT:
         updated, report = patch_xml(xml, target, selected)
+        updated = with_ha_values(updated, report)
         parts = {}
     else:
         # Gateway/Client: the full project decides which terminals belong to which
         # Miniserver; every partial program then gets the same deterministic
         # objects, so Config and the Miniservers agree.
         updated, report = patch_xml(xml, target, selected, gateway=True)
+        updated = with_ha_values(updated, report)
         parts = {}
         for name, partial in program_members(raw).items():
             programs = [el.get("U") for el in ET.fromstring(partial).iter("C") if el.get("Type") == "Program"]
             if len(programs) != 1 or programs[0] not in report["scopes"]:
                 raise ValueError("Partial program " + name + " does not match the project")
             patched, _ = patch_xml(partial, target, set(report["scopes"][programs[0]]), gateway=True)
+            patched = with_ha_values(patched, {})
             if patched != partial:
                 parts[name] = patched
     if updated == xml and not parts:

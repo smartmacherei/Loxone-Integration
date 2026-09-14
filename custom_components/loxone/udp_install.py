@@ -109,7 +109,7 @@ def _write_journal(path: Path, value: dict):
             os.close(descriptor)
 
 
-def install(client, directory, udp_port, select, stop: threading.Event, progress=None, gateway=False):
+def install(client, directory, udp_port, select, stop: threading.Event, progress=None, gateway=False, ha_values=None):
     with _LOCKS_GUARD:
         lock = _LOCKS.setdefault(directory, threading.Lock())
     if not lock.acquire(blocking=False):
@@ -117,7 +117,7 @@ def install(client, directory, udp_port, select, stop: threading.Event, progress
     trace = SetupTrace(progress)
     token = TRACE.set(trace)
     try:
-        return _install(client, directory, udp_port, select, stop, gateway)
+        return _install(client, directory, udp_port, select, stop, gateway, ha_values)
     except Exception as error:
         data = failure(trace.step, error)
         error.udp_failure = data
@@ -145,7 +145,7 @@ def install(client, directory, udp_port, select, stop: threading.Event, progress
         lock.release()
 
 
-def _install(client, directory, udp_port, select, stop: threading.Event, gateway=False):
+def _install(client, directory, udp_port, select, stop: threading.Event, gateway=False, ha_values=None):
     """At most one activation attempt per source archive and UDP destination.
 
     A failed/uncertain activation stays blocked across HA restarts. A new program
@@ -160,7 +160,7 @@ def _install(client, directory, udp_port, select, stop: threading.Event, gateway
     mark("udp_destination")
     target = client.destination(udp_port)
     mark("program_prepare")
-    candidate, report = prepare(original, target, select(original, xml), gateway)
+    candidate, report = prepare(original, target, select(original, xml), gateway, ha_values)
     report.update(source_sha256=digest(original), xml_sha256=digest(xml))
     if candidate == original:
         return dict(report, state="configured")
@@ -172,7 +172,9 @@ def _install(client, directory, udp_port, select, stop: threading.Event, gateway
     # Store next to the backup so integration removal/reinstallation preserves it.
     journal_path = Path(directory) / "activation.json"
     journal = json.loads(journal_path.read_text()) if journal_path.exists() else {}
-    attempt = digest(original + target.encode())
+    # A changed HA wish list on the same program is a new attempt, not a retry.
+    wish = json.dumps(sorted(entry["key"] for entry in ha_values or []), separators=(",", ":"))
+    attempt = digest(original + target.encode() + wish.encode())
     trace.attempt = attempt
     if journal.get("attempt") == attempt:
         data = restore_failure(journal.get("error"))

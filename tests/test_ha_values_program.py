@@ -16,6 +16,7 @@ ENTRIES = [{"key": "sensor.pool", "title": "Pool", "digital": False},
 
 def live(uuid, title, extra=""):
     return (f'<C Type="LoxLIVE" V="174" U="{uuid}" Title="{title}">'
+            f'<C Type="LoggerOutCaption" V="174" U="{uuid[:-1]}9"/>'
             f'<C Type="VirtualInCaption" V="174" U="{uuid[:-1]}4" Title="Virtuelle Eingaenge"/>{extra}</C>')
 
 
@@ -93,3 +94,19 @@ def test_gateway_project_and_partial_agree_and_client_is_untouched():
                 for el in ET.fromstring(full).iter("C") if el.get("Type") == "VirtualInCaption"}
     assert captions == {GW[:-1] + "4": ["VirtualUdpIn"], CL[:-1] + "4": []}
     assert values.patch_ha_values(PART_CL, ENTRIES) == (PART_CL, {"ha_values": 0, "ha_values_changed": False})
+
+
+def test_prepare_places_the_input_in_project_and_gateway_partial_only():
+    from test_gateway_udp import archive
+    from test_udp_install import TARGET, program
+    raw = archive(full=FULL, parts=(PART_GW, PART_CL))
+    result, report = program.prepare(raw, TARGET, set(), gateway=True, ha_values=ENTRIES)
+    assert report["ha_values"] == 2 and report["ha_values_changed"]
+    members = program.program_members(result)
+    project = program.unpack(result, gateway=True)[1]
+    assert managed(project)[1] == managed(members["sps0.LoxCC"])[1]
+    assert managed(members["sps1.LoxCC"]) is None
+    unchanged, again = program.prepare(result, TARGET, set(), gateway=True, ha_values=ENTRIES)
+    assert unchanged == result and again["ha_values_changed"] is False
+    without, _ = program.prepare(raw, TARGET, set(), gateway=True)  # None: Weg 3 untouched
+    assert managed(program.unpack(without, gateway=True)[1]) is None

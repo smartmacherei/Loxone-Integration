@@ -41,6 +41,9 @@ class UdpSetup:
         self.limit = int(options.get("udp_max_signals") or 500)
         # Gateway/Client archives are only touched with the explicit beta option.
         self.gateway_beta = bool(options.get("udp_gateway_beta", False))
+        # Weg 3: wish list for the HA -> Loxone input, set only by the apply button.
+        self.ha_values = None
+        self.configured_callbacks = []
         self.stop = threading.Event()
         self.task = None
         self.initial_sha = digest(program) if program else None
@@ -97,11 +100,11 @@ class UdpSetup:
         if not self.stop.is_set() and (self.task is None or self.task.done()):
             self.task = self.hass.async_create_task(self.check())
 
-    async def check(self):
+    async def check(self, force=False):
         previous = self.status.get("state")
         previous_error = self.status.get("error")
         previous_attempt = self.status.get("error_attempt")
-        if previous in {"configured", "error", "blocked"} and self.listing_sha is not None:
+        if not force and previous in {"configured", "error", "blocked"} and self.listing_sha is not None:
             # Only the small directory listing is read every interval. The full
             # program is downloaded again only after Config saved a new one.
             try:
@@ -134,7 +137,7 @@ class UdpSetup:
         try:
             result = await self.hass.async_add_executor_job(
                 install, self.client, self.directory, self.port, self.select, self.stop, progress,
-                self.gateway_beta,
+                self.gateway_beta, self.ha_values,
             )
             active = False
             self.status.update(result)
@@ -155,6 +158,8 @@ class UdpSetup:
                 for key in ("error", "error_code", "error_step", "error_timestamp", "error_persisted", "error_attempt", "step"):
                     self.status.pop(key, None)
                 persistent_notification.async_dismiss(self.hass, "loxone_udp_" + self.entry.entry_id)
+                for callback in self.configured_callbacks:
+                    callback()
                 if self.initial_sha is not None and result["xml_sha256"] != self.initial_sha:
                     if not self.stop.is_set():
                         # Schedule outside this task, which unload waits for.
