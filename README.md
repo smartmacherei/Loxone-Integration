@@ -52,6 +52,27 @@ This fork uses the same `loxone` domain as PyLoxone. Install only one of them.
 Use a non-default Miniserver password and an account allowed to read the program.
 Home Assistant must be able to reach the Miniserver on the local network.
 
+### Miniserver user rights
+
+Create a dedicated user for Home Assistant, e.g. `homeassistant`. The rights its user group
+needs in Loxone Config depend on the way you use:
+
+| Use | Rights of the user group |
+|---|---|
+| Way 1: read and control | Web interface / Apps |
+| Way 2 (UDP) and way 3 (HA → Loxone) | Web interface / Apps, **FTP** and **Loxone Config** |
+
+Ways 2 and 3 download the program from the Miniserver, upload the changed program to `/prog`
+over FTP and restart it. According to Loxone, the "Loxone Config" right grants administrator
+privileges, so this user is effectively an administrator; as a dedicated user it can still be
+disabled separately. The setup has been verified with a user in the "Full access" group; a
+narrower restriction has not been tested.
+
+Without these rights way 1 keeps working. If the user cannot read the program, only the
+additionally discovered terminals and the grouping by device are missing, and the log shows a
+warning. **Check connection** tests the login, the FTP login and read access to the program,
+but not write access.
+
 ## Using it in Home Assistant
 
 ![Integration device card with the two buttons](docs/screenshots/1.7.0/integration-card-en.png)

@@ -54,6 +54,27 @@ PyLoxone und dieser Fork verwenden dieselbe Domain `loxone`; nur eine Variante
 installieren. Ein vom Werkszustand abweichendes Passwort und Leseberechtigungen für
 das Programm sind erforderlich. HA muss den Miniserver im lokalen Netz erreichen können.
 
+### Benutzerrechte am Miniserver
+
+Am besten einen eigenen Benutzer für Home Assistant anlegen, z. B. `homeassistant`. Welche
+Rechte seine Benutzergruppe in Loxone Config braucht, hängt vom Weg ab:
+
+| Nutzung | Rechte der Benutzergruppe |
+|---|---|
+| Weg 1: lesen und bedienen | Web-Interface / Apps |
+| Weg 2 (UDP) und Weg 3 (HA → Loxone) | Web-Interface / Apps, **FTP** und **Loxone Config** |
+
+Weg 2 und 3 laden das Programm vom Miniserver, laden es geändert per FTP nach `/prog` hoch
+und starten es neu. Das Recht „Loxone Config“ gibt laut Loxone Administratorrechte; der
+Benutzer ist damit praktisch Administrator, lässt sich als eigener Benutzer aber getrennt
+sperren. Geprüft ist die Einrichtung mit einem Benutzer der Gruppe „Vollzugriff“; eine feinere
+Einschränkung ist nicht getestet.
+
+Ohne diese Rechte läuft Weg 1 weiter. Kann der Benutzer das Programm nicht lesen, fehlen nur
+die zusätzlich erkannten Klemmen und die Gruppierung nach Geräten; das Log zeigt dann eine
+Warnung. **Verbindung prüfen** zeigt Anmeldung, FTP-Login und Lesezugriff auf das Programm,
+prüft aber keine Schreibrechte.
+
 ## Bedienung in Home Assistant
 
 ![Gerätekarte der Integration mit den beiden Knöpfen](docs/screenshots/1.7.0/integration-card-de.png)
