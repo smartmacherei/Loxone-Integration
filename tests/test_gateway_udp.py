@@ -112,6 +112,31 @@ def test_partial_proxy_never_gets_a_foreign_terminal():
     assert {on for _, on, _ in managed(members["sps0.LoxCC"])[2]} == {GW_IN + ";<v>", GW + ";<v>"}
 
 
+def test_project_and_all_partials_share_one_program_date(monkeypatch):
+    # Config writes one Date/DateS into sps.Loxone and every spsN. A client whose
+    # partial program carries another date is reported as outdated by the gateway.
+    real = program.dt.datetime
+
+    class Ticking(real):  # every clock read is one second later
+        ticks = 0
+
+        @classmethod
+        def now(cls, tz=None):
+            cls.ticks += 1
+            return real(2026, 9, 23, 14, 24, 41, tzinfo=tz) + program.dt.timedelta(seconds=cls.ticks)
+
+    first, _ = program.prepare(archive(), TARGET, {GW_IN}, gateway=True)
+    monkeypatch.setattr(program.dt, "datetime", Ticking)
+    # Second run changes only the client's partial, like a re-patch after a Config save.
+    for raw in (archive(), first):
+        changed, _ = program.prepare(raw, TARGET, {GW_IN, CL_IN}, gateway=True)
+        _, project = program.unpack(changed, gateway=True)
+        documents = [project] + list(program.program_members(changed).values())
+        stamps = {tuple(next(el for el in ET.fromstring(xml).iter("C") if el.get("Type") == "Document").get(key)
+                        for key in ("Date", "DateS")) for xml in documents}
+        assert len(stamps) == 1 and stamps != {("2026-09-05 12:00:00", "1")}
+
+
 def test_config_proxy_duplicates_are_tolerated_but_real_duplicates_are_not():
     # Config repeats a foreign input used on two pages as two Memory proxies with one
     # object UUID (their connectors stay unique, as in the tester's archive).

@@ -437,6 +437,19 @@ def stamp_document(text: str, doc_id: str, proxies=frozenset()) -> bytes:
     return result
 
 
+def _stamp_date(xml: bytes, date: str, date_s: str) -> bytes:
+    """Set Date/DateS on the Document only; objects and NumO stay untouched."""
+    match = re.search(rb'<C\b[^>]*\bType="Document"[^>]*>', xml)
+    if match is None:
+        raise ValueError("Missing Document")
+    tag = match.group()
+    for key, value in ((b"Date", date), (b"DateS", date_s)):
+        tag, count = re.subn(rb'\b' + key + rb'="[^"]*"', key + b'="' + value.encode() + b'"', tag)
+        if count != 1:
+            raise ValueError("Missing Document attribute " + key.decode())
+    return xml[:match.start()] + tag + xml[match.end():]
+
+
 def _stamp_structure(content: bytes, date: str) -> bytes:
     content, count = re.subn(rb'("lastModified"\s*:\s*")[^"]*"',
         lambda m: m.group(1) + date.encode() + b'"', content, count=1)
@@ -469,7 +482,8 @@ def prepare(raw: bytes, target: str, selected: set[str], gateway: bool = False, 
         updated, report = patch_xml(xml, target, selected, gateway=True)
         updated = with_ha_values(updated, report)
         parts = {}
-        for name, partial in program_members(raw).items():
+        members = program_members(raw)
+        for name, partial in members.items():
             programs = [el.get("U") for el in ET.fromstring(partial).iter("C") if el.get("Type") == "Program"]
             if len(programs) != 1 or programs[0] not in report["scopes"]:
                 raise ValueError("Partial program " + name + " does not match the project")
@@ -479,6 +493,15 @@ def prepare(raw: bytes, target: str, selected: set[str], gateway: bool = False, 
                 parts[name] = patched
     if updated == xml and not parts:
         return raw, report
+    if member == PROJECT:
+        # Like Config: one Date/DateS for the project and every partial program,
+        # also the unchanged ones. The gateway reports a client whose program date
+        # differs from its own as running an outdated program.
+        moment = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+        date = moment.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+        date_s = str(int((moment - dt.datetime(2009, 1, 1, tzinfo=dt.timezone.utc)).total_seconds()))
+        updated = _stamp_date(updated, date, date_s)
+        parts = {name: _stamp_date(parts.get(name, partial), date, date_s) for name, partial in members.items()}
     stamped = updated if updated != xml else next(iter(parts.values()))
     document = next(el for el in ET.fromstring(stamped).iter("C") if el.get("Type") == "Document")
     date = document.get("Date")

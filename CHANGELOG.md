@@ -4,6 +4,14 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.7.4b1] - 2026-09-23 (Vorabversion)
+
+- Gateway/Client: Nach einer Programmänderung durch die Integration meldete das Gateway
+  „Client-Programm veraltet“, obwohl alle Miniserver liefen. Die Integration gab dem
+  Gesamtprojekt und jedem geänderten Teilprogramm eine eigene Uhrzeit, unveränderte Teile
+  behielten ihre alte. Jetzt tragen `sps.Loxone` und alle Teilprogramme dasselbe
+  Programmdatum (`Date`/`DateS`), wie Loxone Config es speichert.
+
 ## [1.7.3] - 2026-09-14
 
 - Gateway/Client: Die Client-Prüfung vor dem Upload war zu streng und meldete erreichbare Clients als
