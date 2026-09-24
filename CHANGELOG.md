@@ -4,6 +4,12 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.7.4] - 2026-09-24
+
+- Finale Version von 1.7.4b1 (gemeinsames Programmdatum im Gateway/Client-Verbund),
+  am Code keine weitere Änderung.
+- Der Dienst „Bereiche abgleichen“ (`sync_areas`) hat jetzt einen deutschen Namen und Text.
+
 ## [1.7.4b1] - 2026-09-23 (Vorabversion)
 
 - Gateway/Client: Nach einer Programmänderung durch die Integration meldete das Gateway

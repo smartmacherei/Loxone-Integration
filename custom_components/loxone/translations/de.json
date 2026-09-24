@@ -133,6 +133,16 @@
         }
       }
     },
+    "sync_areas": {
+      "name": "Bereiche abgleichen",
+      "description": "Weist den Loxone-Entitäten die Bereiche anhand der Räume aus Loxone zu. Gibt es einen Bereich noch nicht, bleiben die Entitäten unverändert.",
+      "fields": {
+        "create_areas": {
+          "name": "Bereiche anlegen",
+          "description": "Fehlende Bereiche in HA anlegen."
+        }
+      }
+    },
     "enable_sun_automation": {
       "name": "Sonnenautomatisierung aktivieren",
       "description": "Sonnenautomatisierung für Loxone Jalousie aktivieren"
