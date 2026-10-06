@@ -4,6 +4,12 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.7.5b2] - 2026-10-06 (Vorabversion)
+
+- Gleiche UDP-Änderung wie 1.7.5b1. Die zusätzliche Manifest-Abhängigkeit `httpx`
+  wurde entfernt: Home Assistant bringt sie selbst mit; die aktuelle
+  Hassfest-Prüfung lehnt diesen redundanten Eintrag ab.
+
 ## [1.7.5b1] - 2026-10-06 (Vorabversion)
 
 - Die automatische UDP-Einrichtung prüft das Programm nur noch beim Laden oder
