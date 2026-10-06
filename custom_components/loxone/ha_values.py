@@ -230,4 +230,4 @@ async def async_apply(hass, entry):
             title="Loxone HA → Loxone", notification_id=notification_id)
         return
     persistent_notification.async_dismiss(hass, notification_id)
-    manager.task = hass.async_create_task(manager.check(force=True))
+    manager.task = hass.async_create_task(manager.check())

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
 import hashlib
 import io
 import json
@@ -11,13 +10,11 @@ import threading
 import zipfile
 
 from homeassistant.components import persistent_notification
-from homeassistant.helpers.event import async_track_time_interval
 
 from .const import DOMAIN
 from .topology import enumerate_discoverable, interleave_by_miniserver, terminal_owner
 from .udp_install import ProgramClient, install
-from .udp_errors import details, failure, notification, restore_failure, utc_now
-from .udp_program import digest
+from .udp_errors import details, failure, notification, restore_failure
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,7 +24,7 @@ GATEWAY_SIGNALS_PER_MINISERVER = 5
 
 
 class UdpSetup:
-    def __init__(self, hass, entry, program):
+    def __init__(self, hass, entry):
         self.hass, self.entry = hass, entry
         options = entry.options
         self.client = ProgramClient(options["host"], options["port"],
@@ -46,13 +43,10 @@ class UdpSetup:
         self.configured_callbacks = []
         self.stop = threading.Event()
         self.task = None
-        self.initial_sha = digest(program) if program else None
         self.status = {"state": "checking", "step": "program_download",
                        "backup_verified": False, "backup_location": self.directory}
-        self.cancel_interval = None
         # Private support evidence: excluded from status, notifications and logs.
         self.failed_program = None
-        self.listing_sha = None
         self.logged = None
         self.signals_discovered = None
 
@@ -87,8 +81,8 @@ class UdpSetup:
         return set(found)
 
     def start(self):
-        self.cancel_interval = async_track_time_interval(self.hass, self.tick, timedelta(seconds=60))
         # Let setup complete before triggering a Miniserver restart/reconnection.
+        # Check once per integration load; never compete with later Config saves.
         self.task = self.hass.async_create_task(self._run_delayed())
 
     async def _run_delayed(self):
@@ -96,28 +90,13 @@ class UdpSetup:
         if not self.stop.is_set():
             await self.check()
 
-    async def tick(self, _now):
-        if not self.stop.is_set() and (self.task is None or self.task.done()):
-            self.task = self.hass.async_create_task(self.check())
-
-    async def check(self, force=False):
+    async def check(self):
         previous = self.status.get("state")
         previous_error = self.status.get("error")
         previous_attempt = self.status.get("error_attempt")
-        if not force and previous in {"configured", "error", "blocked"} and self.listing_sha is not None:
-            # Only the small directory listing is read every interval. The full
-            # program is downloaded again only after Config saved a new one.
-            try:
-                listing = await self.hass.async_add_executor_job(self.client.get, "/dev/fslist/prog")
-            except Exception:
-                listing = None
-            if listing is not None and digest(listing) == self.listing_sha:
-                self.status["last_listing_check"] = utc_now()
-                return
         self.status.update(state="checking", step="program_download", backup_verified=False)
         self.status["step_history"] = []
         self.status.pop("backup", None)
-        self.client.last_listing = None
         loop = asyncio.get_running_loop()
         active = True
 
@@ -141,7 +120,19 @@ class UdpSetup:
             )
             active = False
             self.status.update(result)
-            if result["state"] == "blocked":
+            if result["state"] == "restarting":
+                # Verification needs a deliberate reload after the gateway has
+                # finished distributing. Do not start a timer or reload here.
+                self.status["state"] = "reload_required"
+                self.notify(
+                    "Das UDP-Programm wurde zur Aktivierung übergeben. Bitte warten, bis der Miniserver "
+                    "und alle Clients fertig sind, und danach die Loxone-Integration in HA neu laden. "
+                    "Erst dann wird das aktive Programm geprüft."
+                    if self.language.startswith("de") else
+                    "The UDP program was submitted for activation. Wait until the Miniserver and all "
+                    "clients have finished, then reload the Loxone integration in HA to verify the active program."
+                )
+            elif result["state"] == "blocked":
                 data = result["error"]
                 if (data["code"] == "PREVIOUS_ATTEMPT_BLOCKED" and previous_error
                         and previous_attempt == result.get("error_attempt")):
@@ -160,10 +151,6 @@ class UdpSetup:
                 persistent_notification.async_dismiss(self.hass, "loxone_udp_" + self.entry.entry_id)
                 for callback in self.configured_callbacks:
                     callback()
-                if self.initial_sha is not None and result["xml_sha256"] != self.initial_sha:
-                    if not self.stop.is_set():
-                        # Schedule outside this task, which unload waits for.
-                        self.hass.async_create_task(self.hass.config_entries.async_reload(self.entry.entry_id))
             if previous != result["state"]:
                 _LOGGER.info("Loxone automatic UDP setup: %s", result["state"])
         except Exception as err:
@@ -189,7 +176,7 @@ class UdpSetup:
                 self.status["activation_error"] = activation_error
                 _LOGGER.warning("Loxone UDP original activation failure: code=%s step=%s exception=%s",
                                 activation_error["code"], activation_error["step"], activation_error["exception_type"])
-            # The same failure every minute is one warning, then debug only.
+            # Repeated explicit checks of the same failure are debug only.
             key = (data["code"], data["step"])
             log = _LOGGER.debug if key == self.logged else _LOGGER.warning
             self.logged = key
@@ -209,8 +196,6 @@ class UdpSetup:
             self.status.update(signal_limit=self.limit, signals_discovered=self.signals_discovered,
                                gateway_beta=self.gateway_beta,
                                signals_per_miniserver=GATEWAY_SIGNALS_PER_MINISERVER if self.gateway_beta else None)
-            listing = getattr(self.client, "last_listing", None)
-            self.listing_sha = digest(listing) if listing else None
 
     @property
     def language(self):
@@ -246,8 +231,6 @@ class UdpSetup:
 
     async def close(self):
         self.stop.set()
-        if self.cancel_interval:
-            self.cancel_interval()
         # Never abandon a worker halfway through writing/activating a program.
         if self.task is not None and not self.task.done():
             await asyncio.shield(self.task)

@@ -124,10 +124,9 @@ große Anlage, etwa ein Gateway/Client-Verbund mit vielen Miniservern, im Umlauf
 wird statt Miniserver oder Netzwerk zu überlasten. In Home Assistant deaktivierte
 Entitäten werden gar nicht abgefragt, und Geräteinterna (Online-Status,
 Schutzabschaltungen, interne Temperatur, Rohformate) werden deaktiviert angelegt. Der
-Miniserver antwortet so nur für das, was du wirklich nutzt. Nach der
-Einrichtung liest die Integration alle 60 Sekunden nur das Verzeichnislisting des
-Miniserver-Programms; das Programm selbst wird erst nach einem neuen Speichern aus
-Loxone Config erneut heruntergeladen.
+Miniserver antwortet so nur für das, was du wirklich nutzt. Die automatische
+UDP-Einrichtung prüft das Programm einmal beim Laden oder Neuladen der Integration.
+Es gibt keine regelmäßige Abfrage nach Programmänderungen.
 
 **Die automatische Einrichtung ändert das Miniserver-Programm und startet seine
 Logik kurz neu.** Dafür werden Berechtigungen zum Hochladen und Aktivieren benötigt.
@@ -135,9 +134,13 @@ Vor jeder Änderung sichert und prüft die Integration das vollständige Origina
 und ein in Config öffenbares `.Loxone`-Projekt.
 **Scheitert die Sicherung, gibt es weder Upload noch Neustart.**
 
-Auch nach einem neuen Miniserver-Programm prüft die Integration die Einrichtung und
-ergänzt sie bei Bedarf. Dabei können erneut eine Sicherung und ein kurzer Neustart
-erfolgen. Währenddessen nicht gleichzeitig aus Loxone Config speichern. Vor eigenen
+Nach dem Speichern aus Loxone Config zuerst die Verteilung an alle Clients abwarten,
+dann die Loxone-Integration in HA neu laden. Dabei prüft sie die Einrichtung und ergänzt
+sie bei Bedarf; das kann eine Sicherung und einen kurzen Programmneustart auslösen.
+Nach einer solchen Änderung erneut das Ende des Programmstarts und der Client-Verteilung
+abwarten und die Integration zur Kontrolle neu laden. Der UDP-Status weist darauf hin.
+Der Knopf „HA-Werte ins Programm übernehmen“ prüft ebenfalls ausdrücklich das Programm.
+Während der Einrichtung nicht gleichzeitig aus Config speichern. Vor eigenen
 Änderungen das aktuelle Programm **aus dem Miniserver laden**.
 
 [Voraussetzungen, technische Details und Wiederherstellung](docs/automatic-udp.de.md)
@@ -222,9 +225,8 @@ Nach Installation einer neuen Integrationsversion Home Assistant neu starten.
 Nach dem Löschen von Geräten in Loxone Config das Programm auf dem Miniserver
 speichern und die Loxone-Integration in HA neu laden. Gelöschte UUIDs werden mit
 dem geprüften vollständigen Projekt abgeglichen; Offline-Geräte bleiben erhalten.
-Die aktivierte automatische Einrichtung prüft Programmänderungen alle 60 Sekunden
-und lädt nach erfolgreicher Konfiguration neu. Ist sie abgeschaltet oder blockiert,
-manuell neu laden. Vor dem Entfernen werden die Registereinträge unter
+Die aktivierte automatische UDP-Einrichtung prüft das Programm bei diesem Neuladen,
+ohne regelmäßige Hintergrundabfrage. Vor dem Entfernen werden die Registereinträge unter
 `/config/loxone_registry_backups/<entry-id>/` gesichert. Ohne prüfbares Projekt
 wird nichts bereinigt. Nicht eindeutig zuordenbare Entity-Kennungen können eine
 manuelle Prüfung erfordern.

@@ -44,7 +44,7 @@ def manager(reporting, tmp_path, language="de"):
     hass = NS(config=NS(path=lambda *parts: str(tmp_path), language=language),
               async_add_executor_job=executor, data={})
     entry = NS(entry_id="demo", options={"host": "offline.invalid", "port": 80, "username": "user", "password": SECRET})
-    result = reporting.setup.UdpSetup(hass, entry, None)
+    result = reporting.setup.UdpSetup(hass, entry)
     result.client = FakeClient(tmp_path)
     result.select = lambda raw, xml: {"18f7cbc0-017a-4c94-ffffa13734b4be2f"}
     return result
@@ -94,7 +94,7 @@ def test_error_clears_only_after_verified_recovery(reporting, tmp_path):
     assert reporting.dismissed
 
 
-@pytest.mark.parametrize("state", ["checking", "error", "blocked", "restarting"])
+@pytest.mark.parametrize("state", ["checking", "error", "blocked", "restarting", "reload_required"])
 def test_setup_state_not_hidden_by_receiver(reporting, state):
     for receiver in (None, NS(last_valid_received=None)):
         sensor = reporting.status.UdpStatusSensor("demo", "serial")
@@ -342,32 +342,6 @@ def test_explicit_unsupported_tls_keeps_existing_plain_ftp_fallback(tmp_path, mo
     assert run(client)["state"] == "restarting"
     assert events == ["tls_connect", "auth", "close", "plain_connect", "plain_login", "cwd"]
     assert client.events == ["upload", "activate", "restart"]
-
-
-def test_unchanged_program_listing_skips_download(reporting, tmp_path):
-    setup = manager(reporting, tmp_path)
-    client = setup.client
-    client.listing = b"-  1000  2026-09-05 12:00:00  sps_1_20260905120000.zip\n"
-    restart, current = client.get, client.current
-    def get(path):
-        return client.listing if path == "/dev/fslist/prog" else restart(path)
-    def listed_current():
-        client.last_listing = client.listing
-        return current()
-    client.get, client.current = get, listed_current
-    asyncio.run(setup.check())  # upload reads the program twice: before and at activation
-    assert setup.status["state"] == "restarting" and client.calls == 2
-    asyncio.run(setup.check())  # after an activation the full check runs again
-    assert setup.status["state"] == "blocked" and client.calls == 3
-    asyncio.run(setup.check())  # unchanged listing: the program is not downloaded
-    assert client.calls == 3 and setup.status["state"] == "blocked"
-    assert setup.status["last_listing_check"]
-    client.listing = b"-  1000  2026-09-05 12:05:00  sps_1_20260905120500.zip\n"
-    client.raw = client.files.pop("sps_new.zip")
-    asyncio.run(setup.check())
-    assert setup.status["state"] == "configured" and client.calls == 4
-    asyncio.run(setup.check())
-    assert client.calls == 4 and setup.status["state"] == "configured"
 
 
 def test_repeated_failure_is_warned_once(reporting, tmp_path, caplog):

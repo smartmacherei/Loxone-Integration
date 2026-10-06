@@ -177,6 +177,7 @@
           "configured": "Configured",
           "blocked": "Activation blocked",
           "restarting": "Miniserver restarting",
+          "reload_required": "Reload integration after program startup",
           "error": "Setup failed",
           "disabled": "Disabled or unavailable",
           "manual": "Manual setup",

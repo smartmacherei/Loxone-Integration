@@ -4,6 +4,17 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.7.5b1] - 2026-10-06 (Vorabversion)
+
+- Die automatische UDP-Einrichtung prüft das Programm nur noch beim Laden oder
+  Neuladen der Integration. Die 60-Sekunden-Abfrage entfällt, damit HA nach einem
+  Speichern aus Loxone Config nicht während der Client-Verteilung erneut hochlädt
+  und die Logik neu startet. Nach Config-Änderungen die Verteilung abwarten und HA
+  ausdrücklich neu laden. Der Knopf „HA-Werte ins Programm übernehmen“ bleibt erhalten.
+- Nach einer Programmanpassung durch HA fordert der UDP-Status zum Neuladen nach
+  abgeschlossenem Programmstart und abgeschlossener Client-Verteilung auf. Erst
+  dabei wird die Aktivierung geprüft; es gibt keine automatische Folgeprüfung.
+
 ## [1.7.4] - 2026-09-24
 
 - Finale Version von 1.7.4b1 (gemeinsames Programmdatum im Gateway/Client-Verbund),

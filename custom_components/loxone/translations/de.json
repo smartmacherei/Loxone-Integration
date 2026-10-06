@@ -177,6 +177,7 @@
           "configured": "Konfiguriert",
           "blocked": "Aktivierung gesperrt",
           "restarting": "Miniserver startet neu",
+          "reload_required": "Integration nach Programmstart neu laden",
           "error": "Einrichtung fehlgeschlagen",
           "disabled": "Deaktiviert oder nicht verfügbar",
           "manual": "Manuelle Einrichtung",

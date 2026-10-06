@@ -941,7 +941,7 @@ async def _async_setup_entry(hass, config_entry):
 
     if _udp_ready and config_entry.options.get("auto_configure_udp", False):
         from .udp_setup import UdpSetup
-        manager = UdpSetup(hass, config_entry, _program)
+        manager = UdpSetup(hass, config_entry)
         hass.data.setdefault(DOMAIN + "_udp_setup", {})[config_entry.entry_id] = manager
         manager.start()
 
