@@ -31,7 +31,7 @@ def test_registry_ids_accept_mapping_and_entry_iterators():
     ("web_timeout", "TIMEOUT"), ("ftp_directory", "FTP_PATH_OR_PERMISSION_REJECTED"),
     ("structure", "MINISERVER_STRUCTURE_INVALID"), ("ftp_tls", "TLS_FAILED"),
     ("ftp_fallback", None), ("ftp_tls530", None), ("ftp_tls_policy534", None),
-    ("ftp_directory530", "FTP_NOT_LOGGED_IN")])
+    ("ftp_directory530", "FTP_NOT_LOGGED_IN"), ("ftp_tls530_login530", "FTP_LOGIN_REJECTED")])
 def test_checks_are_read_only_and_safe(monkeypatch, caplog, failure, expected):
     module = load("connection_probe")
     secret = "PASSWORD_TOKEN_SERVER_PRIVATE_PROJECT"
@@ -58,11 +58,11 @@ def test_checks_are_read_only_and_safe(monkeypatch, caplog, failure, expected):
             if failure == "ftp_tls": raise module.ssl.SSLError(secret)
             if failure == "ftp_fallback": raise module.ftplib.error_perm("502 " + secret)
             # Miniserver firmware answers every command before USER/PASS with 530.
-            if failure == "ftp_tls530": raise module.ftplib.error_perm("530 " + secret)
+            if failure in {"ftp_tls530", "ftp_tls530_login530"}: raise module.ftplib.error_perm("530 " + secret)
             if failure == "ftp_tls_policy534": raise module.ftplib.error_perm("534 " + secret)
         def login(self, *args):
             operations.append("LOGIN")
-            if failure == "ftp_login": raise module.ftplib.error_perm("530 " + secret)
+            if failure in {"ftp_login", "ftp_tls530_login530"}: raise module.ftplib.error_perm("530 " + secret)
         def prot_p(self): operations.append("PROT")
         def cwd(self, path):
             assert path == "/prog"
@@ -85,7 +85,8 @@ def test_checks_are_read_only_and_safe(monkeypatch, caplog, failure, expected):
         assert result["state"] == "failed"
     else:
         assert result["state"] == "completed"
-    if failure == "ftp_login":
+    if failure in {"ftp_login", "ftp_tls530_login530"}:
+        # After the plain-FTP fallback a rejected login is final: one attempt, no retry.
         assert operations.count("LOGIN") == 1
         assert result["checks"]["ftp_directory"]["state"] == "not_tested"
     if failure == "ftp_tls":

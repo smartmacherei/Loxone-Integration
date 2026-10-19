@@ -77,8 +77,11 @@ compared byte for byte. If a program changed or another `sps_new.*` upload is pe
 automatic activation stops. The verified ZIP is then renamed to `sps_new.zip` and the
 Miniserver is asked to restart its program. This briefly interrupts the logic.
 
-FTPS is preferred; plain FTP is used only when the server explicitly reports that
-AUTH TLS is unsupported. Use this feature on a trusted local connection.
+FTPS is preferred; plain FTP is used when the server refuses `AUTH TLS` before login
+(reply codes 500, 502, 504, 530 or 534). A Miniserver that answers every command before
+login with 530 (measured on firmware 17.2.8.28) therefore gets an unencrypted session, and
+user name and password cross the local network in clear text. Use this feature on a trusted
+local connection.
 Do not save from Loxone Config concurrently: the Miniserver has no cross-client
 transaction lock, so the final check cannot eliminate every possible race.
 

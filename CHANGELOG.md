@@ -13,6 +13,8 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   UDP-Einrichtung und die Diagnose „Verbindung prüfen“.
 - Diagnose: `FTP_LOGIN_REJECTED` steht nur noch für einen echten Login-Versuch. Ein
   530 in anderen Schritten heißt `FTP_NOT_LOGGED_IN`.
+- Die Manifest-Abhängigkeit `httpx` entfällt: Home Assistant bringt sie selbst mit,
+  und die aktuelle Hassfest-Prüfung lehnt den Eintrag ab (wie schon in 1.7.5b2).
 
 ## [1.7.4] - 2026-09-24
 

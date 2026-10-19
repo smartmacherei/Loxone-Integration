@@ -262,13 +262,15 @@ def run(client):
     return installer.install(client, str(client.folder), 55555, lambda raw, xml: {U}, threading.Event())
 
 
-def fake_ftp_classes(auth_error):
-    """FTP_TLS/FTP stand-ins; AUTH TLS fails with auth_error, login always works."""
+def fake_ftp_classes(auth_error, login_error=None):
+    """FTP_TLS/FTP stand-ins; AUTH TLS fails with auth_error, login with login_error."""
     calls = []
     class Plain:
         def __init__(self, **kwargs): calls.append(type(self).__name__ + ".init")
         def connect(self, host, port): calls.append((type(self).__name__ + ".connect", port))
-        def login(self, user, password): calls.append(type(self).__name__ + ".login")
+        def login(self, user, password):
+            calls.append(type(self).__name__ + ".login")
+            if login_error: raise installer.ftplib.error_perm(login_error)
         def cwd(self, path): calls.append((type(self).__name__ + ".cwd", path))
         def close(self): calls.append(type(self).__name__ + ".close")
     class Tls(Plain):
@@ -291,6 +293,22 @@ def test_ftp_falls_back_to_plain_when_auth_tls_is_refused_before_login(monkeypat
     assert calls.count("Plain.login") == 1 and "Tls.login" not in calls
     assert "Tls.prot_p" not in calls
     assert ("Plain.cwd", "/prog") in calls
+    # The refused TLS connection must be closed before the plain one is opened.
+    assert calls.index("Tls.close") < calls.index("Plain.init")
+
+
+def test_ftp_rejected_login_after_fallback_is_not_retried(monkeypatch):
+    plain, tls, calls = fake_ftp_classes("530 Failed", login_error="530 Failed")
+    monkeypatch.setattr(installer.ftplib, "FTP", plain)
+    monkeypatch.setattr(installer.ftplib, "FTP_TLS", tls)
+    with pytest.raises(installer.ftplib.error_perm):
+        installer.ProgramClient("miniserver.invalid", 80, "user", "pw").ftp()
+    assert calls.count("Plain.login") == 1 and calls.count("Plain.init") == 1
+    assert calls[-1] == "Plain.close"
+
+
+def test_installer_and_probe_use_the_same_no_tls_codes():
+    assert set(module("connection_probe").NO_TLS_CODES) == set(installer._NO_TLS_CODES)
 
 
 def test_ftp_uses_tls_when_auth_tls_succeeds(monkeypatch):

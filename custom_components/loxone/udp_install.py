@@ -113,6 +113,8 @@ class ProgramClient:
                 if not str(err).startswith(_NO_TLS_CODES):
                     raise
                 ftp.close()
+                # Reply code only, never the server's text.
+                _LOGGER.info("Loxone FTP: AUTH TLS refused (%s), continuing with plain FTP", str(err)[:3])
                 mark("ftp_connect")
                 ftp = ftplib.FTP(timeout=30, source_address=self.source_address)
                 ftp.connect(self.host, 21)
