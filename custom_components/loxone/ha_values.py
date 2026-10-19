@@ -23,6 +23,8 @@ except ImportError:  # offline tests load this module without Home Assistant
 _LOGGER = logging.getLogger(__name__)
 
 LABEL = "loxone"
+LABEL_ICON, LABEL_COLOR = "mdi:alpha-l-box", "green"
+STATUS_UNIQUE_SUFFIX = "-ha_connected"
 KEY = DOMAIN + "_ha_values"
 RESEND = timedelta(minutes=5)
 UNKNOWN = {None, "", "unknown", "unavailable"}
@@ -120,6 +122,41 @@ def desired(hass, limit, language):
     return entries[:limit], sorted(unsupported), [e["key"] for e in entries[limit:]]
 
 
+def seed_due(stored, fresh):
+    """The HA status value is prepared once, for brand-new installations only.
+
+    An update never touches an existing entry; its program changes on the button.
+    """
+    return bool(fresh) and not (stored or {}).get("seeded")
+
+
+async def _async_seed(hass, entry, state, store):
+    """Label the HA status entity (creating the label if needed) and store the wish list."""
+    from homeassistant.helpers import entity_registry as er, label_registry as lr
+    registry, labels = er.async_get(hass), lr.async_get(hass)
+    status = next((e for e in er.async_entries_for_config_entry(registry, entry.entry_id)
+                   if e.domain == "binary_sensor" and (e.unique_id or "").endswith(STATUS_UNIQUE_SUFFIX)), None)
+    if status is None:
+        _LOGGER.debug("Loxone HA status entity is not registered; nothing to prepare")
+        return False
+    by_name = getattr(labels, "async_get_label_by_name", None)
+    if by_name is not None:
+        label = by_name(LABEL)
+    else:
+        listed = labels.async_list_labels() if hasattr(labels, "async_list_labels") else labels.labels.values()
+        label = next((item for item in listed if (item.name or "").lower() == LABEL), None)
+    if label is None:
+        label = labels.async_create(LABEL, icon=LABEL_ICON, color=LABEL_COLOR)
+    registry.async_update_entity(status.entity_id, labels=set(status.labels) | {label.label_id})
+    # Only the status entity: further labelled entities show up as pending_add and
+    # reach the program with the button, never silently.
+    found = entries_for(status.entity_id, hass.states.get(status.entity_id), hass.config.language) or []
+    entries = sorted(found, key=lambda e: e["key"])
+    state["entries"] = entries
+    await store.async_save({"entries": entries, "seeded": True})
+    return True
+
+
 def _store(hass, entry_id):
     from homeassistant.helpers.storage import Store
     return Store(hass, 1, f"loxone.ha_values.{entry_id}")
@@ -190,10 +227,16 @@ def _attach(hass, entry, state):
         manager.configured_callbacks = [sender.send_all]
 
 
-async def async_setup_values(hass, entry):
-    data = await _store(hass, entry.entry_id).async_load()
+async def async_setup_values(hass, entry, fresh=False):
+    store = _store(hass, entry.entry_id)
+    data = await store.async_load()
     state = {"entries": list((data or {}).get("entries", [])), "sender": None}
     hass.data.setdefault(KEY, {})[entry.entry_id] = state
+    if seed_due(data, fresh):
+        try:
+            await _async_seed(hass, entry, state, store)
+        except Exception as err:  # noqa: BLE001 - a convenience, never a reason to fail the setup
+            _LOGGER.warning("Loxone HA status value could not be prepared: %s", type(err).__name__)
     _attach(hass, entry, state)
 
 
@@ -209,7 +252,8 @@ async def async_apply(hass, entry):
     german = str(getattr(hass.config, "language", "en")).lower().startswith("de")
     limit = int(entry.options.get("udp_max_signals") or 500)
     entries, unsupported, beyond = desired(hass, limit, hass.config.language)
-    await _store(hass, entry.entry_id).async_save({"entries": entries})
+    store = _store(hass, entry.entry_id)
+    await store.async_save({**((await store.async_load()) or {}), "entries": entries})
     state = hass.data.setdefault(KEY, {}).setdefault(entry.entry_id, {"entries": [], "sender": None})
     state["entries"] = entries
     _attach(hass, entry, state)
@@ -230,4 +274,4 @@ async def async_apply(hass, entry):
             title="Loxone HA → Loxone", notification_id=notification_id)
         return
     persistent_notification.async_dismiss(hass, notification_id)
-    manager.task = hass.async_create_task(manager.check(force=True))
+    manager.task = hass.async_create_task(manager.check())

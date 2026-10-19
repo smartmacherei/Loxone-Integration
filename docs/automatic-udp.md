@@ -6,7 +6,7 @@ This technical guide explains how real-time updates for eligible signals work wi
 adding controls to the customer's visualization. Existing visualization controls keep
 using WebSocket; discovered terminals with usable sources use the additional UDP path.
 
-Version 1.3.1 adds heartbeat monitoring and periodic verification. See
+Version 1.3.1 adds heartbeat monitoring; verification runs on integration load or reload. See
 [device coverage and source selection](device-coverage.md) for the exact fallback
 behavior and the limitations of read-only special values.
 
@@ -24,9 +24,10 @@ behavior and the limitations of read-only special values.
 Lighting moods are always available as effects of the light entity. The scene options
 of earlier versions were removed in 1.5.0.
 
-Once configured, the periodic check (every 60 seconds) only reads the Miniserver's
-program directory listing. The program archive itself is downloaded again only after
-Loxone Config saved a new one, so an idle installation causes no repeated downloads.
+Since version 1.7.5b1, automatic UDP setup checks the program once when the integration
+loads or reloads. There are no periodic directory queries or automatic reactions to
+later saves from Loxone Config. The **Apply HA values to program** button still
+explicitly checks and, when needed, updates the program.
 
 Automatic setup requires a complete current program ZIP, permission to read/upload
 and activate the program, local FTP/FTPS on port 21, an IPv4 route to the Miniserver,
@@ -77,14 +78,21 @@ compared byte for byte. If a program changed or another `sps_new.*` upload is pe
 automatic activation stops. The verified ZIP is then renamed to `sps_new.zip` and the
 Miniserver is asked to restart its program. This briefly interrupts the logic.
 
-FTPS is preferred; plain FTP is used only when the server explicitly reports that
-AUTH TLS is unsupported. Use this feature on a trusted local connection.
+FTPS is preferred; plain FTP is used when the server refuses `AUTH TLS` before login
+(reply codes 500, 502, 504, 530 or 534). A Miniserver that answers every command before
+login with 530 (measured on firmware 17.2.8.28) therefore gets an unencrypted session, and
+user name and password cross the local network in clear text. Use this feature on a trusted
+local connection.
 Do not save from Loxone Config concurrently: the Miniserver has no cross-client
 transaction lock, so the final check cannot eliminate every possible race.
 
-On a later check, the running program must contain the expected functional logger
-references before setup reports configured. HA reloads after detected program changes
-to refresh the entities. **Receiving UDP data** means known terminal packets have
+After saving from Loxone Config, wait for distribution to all clients to finish,
+then reload the integration in HA. If HA updates the program, wait for program startup
+and client distribution to finish, then reload again to verify activation. Until then,
+the UDP status shows **Reload integration after program startup**. On this reload, the
+running program must contain the expected functional logger references before setup
+reports configured. Errors are not checked periodically; reload explicitly after
+resolving the cause. **Receiving UDP data** means known terminal packets have
 actually arrived. **Waiting for UDP data** and **No recent UDP data** are not proof
 of a fault, because unchanged values may not emit packets.
 

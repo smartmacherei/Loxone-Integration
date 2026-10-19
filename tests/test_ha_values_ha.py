@@ -90,16 +90,16 @@ class HaValuesHATest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(stored["entries"]), 5)
         self.assertEqual(await ha_values._store(self.hass, self.entry.entry_id).async_load(), {"entries": stored["entries"]})
         stored["sender"].stop()
-        # With the manager present the button hands over the wish list and forces a check.
-        forced = []
+        # With the manager present the button hands over the wish list and checks once.
+        checked = []
 
-        async def check(force=False):
-            forced.append(force)
+        async def check():
+            checked.append(True)
         manager = NS(ha_values=None, configured_callbacks=[], task=None, check=check)
         self.hass.data.setdefault("loxone_udp_setup", {})[self.entry.entry_id] = manager
         await ha_values.async_apply(self.hass, self.entry)
         await self.hass.async_block_till_done()
-        self.assertEqual(forced, [True])
+        self.assertEqual(checked, [True])
         self.assertEqual([e["key"] for e in manager.ha_values][:1], ["climate.demo_thermo"])
         self.assertEqual(set(manager.ha_values[0]), {"key", "title", "digital"})
         self.hass.data[ha_values.KEY][self.entry.entry_id]["sender"].stop()

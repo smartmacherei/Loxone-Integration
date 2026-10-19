@@ -11,8 +11,7 @@
   "issue_tracker": "https://github.com/smartmacherei/Loxone-Integration/issues",
   "requirements": [
     "websockets>=14",
-    "pycryptodome",
-    "httpx"
+    "pycryptodome"
   ],
-  "version": "1.7.4"
+  "version": "1.8.0"
 }

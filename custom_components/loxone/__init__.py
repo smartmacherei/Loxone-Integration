@@ -279,6 +279,13 @@ async def _async_setup_entry(hass, config_entry):
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
 
+    # A brand-new installation has no registry entries yet; an update of an existing one does.
+    from homeassistant.helpers import entity_registry as _er
+    # The first verdict stays until setup succeeds, so a retried setup does not lose it.
+    hass.data.setdefault(DOMAIN + "_fresh", {}).setdefault(
+        config_entry.entry_id,
+        not _er.async_entries_for_config_entry(_er.async_get(hass), config_entry.entry_id))
+
     if not config_entry.options:
         await async_set_options(hass, config_entry)
     # 1.5.0 dropped the vendor suffix from the integration name. Runs before the
@@ -939,15 +946,19 @@ async def _async_setup_entry(hass, config_entry):
     from .registry_cleanup import async_cleanup_registry
     await async_cleanup_registry(hass, config_entry, _program, coordinator.miniserver.lox_config.json)
 
+    manager = None
     if _udp_ready and config_entry.options.get("auto_configure_udp", False):
         from .udp_setup import UdpSetup
-        manager = UdpSetup(hass, config_entry, _program)
+        manager = UdpSetup(hass, config_entry)
         hass.data.setdefault(DOMAIN + "_udp_setup", {})[config_entry.entry_id] = manager
-        manager.start()
 
-    # Weg 3: stored wish list to the manager, sender for the labelled entities.
+    # Weg 3: stored wish list to the manager, sender for the labelled entities. Runs before
+    # the manager starts, so even a first check already knows a freshly seeded value.
     from .ha_values import async_setup_values
-    await async_setup_values(hass, config_entry)
+    await async_setup_values(hass, config_entry,
+                             fresh=hass.data.get(DOMAIN + "_fresh", {}).pop(config_entry.entry_id, False))
+    if manager is not None:
+        manager.start()
 
     return True
 

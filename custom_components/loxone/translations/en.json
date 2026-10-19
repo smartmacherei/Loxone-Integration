@@ -166,6 +166,11 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "ha_connected": {
+        "name": "Home Assistant connected"
+      }
+    },
     "sensor": {
       "ha_values": {
         "name": "HA → Loxone"
@@ -177,6 +182,7 @@
           "configured": "Configured",
           "blocked": "Activation blocked",
           "restarting": "Miniserver restarting",
+          "reload_required": "Reload integration after program startup",
           "error": "Setup failed",
           "disabled": "Disabled or unavailable",
           "manual": "Manual setup",

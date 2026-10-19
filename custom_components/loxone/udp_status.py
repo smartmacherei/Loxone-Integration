@@ -5,6 +5,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import EntityCategory
 
 from .const import DOMAIN
+from .udp_errors import slim_status
 
 
 class HaValuesSensor(SensorEntity):
@@ -47,7 +48,7 @@ class UdpStatusSensor(SensorEntity):
     async def async_update(self):
         manager = self.hass.data.get(DOMAIN + "_udp_setup", {}).get(self.entry_id)
         receiver = self.hass.data.get(DOMAIN + "_udp", {}).get(self.entry_id)
-        status = dict(manager.status) if manager else {"state": "manual"}
+        status = slim_status(manager.status) if manager else {"state": "manual"}
         if manager is None and receiver is not None:
             # Platforms can perform their first update before async_setup_entry
             # registers the automatic setup manager. Do not imply manual success.

@@ -4,6 +4,67 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.0] - 2026-10-19
+
+- Finale Version von 1.8.0b1, am Code keine weitere Änderung. Sie fasst die Vorabversionen
+  1.7.5b1 bis 1.8.0b1 zusammen:
+  - Die automatische UDP-Einrichtung prüft das Programm nur noch beim Laden oder Neuladen
+    der Integration, nicht mehr zyklisch (1.7.5b1).
+  - Der FTP-Aufbau fällt auf Klartext-FTP zurück, wenn der Miniserver `AUTH TLS` vor dem
+    Login mit 530 oder 534 beantwortet (1.7.5b3). Benutzername und Passwort gehen dabei im
+    Klartext über das lokale Netz.
+  - Das Loxone-Gerät hat die Entität **Home Assistant verbunden**; eine Neuinstallation legt
+    das Label **loxone** an und setzt sie auf die Wunschliste für Weg 3 (1.8.0b1).
+  - Der Sensor „UDP-Status“ trägt keine UUID-Listen mehr als Attribut (1.8.0b1).
+  Die Einzelheiten stehen in den Abschnitten der Vorabversionen darunter.
+
+## [1.8.0b1] - 2026-10-19 (Vorabversion)
+
+- Neu: Das Loxone-Gerät hat die Entität **Home Assistant verbunden** (immer an). Eine
+  Neuinstallation legt das Label **loxone** (Symbol `mdi:alpha-l-box`, grün) selbst an,
+  falls es fehlt, gibt es dieser Entität und setzt sie auf die Wunschliste für Weg 3
+  (HA → Loxone); weitere Entitäten mit dem Label bleiben bis zum Knopfdruck draußen.
+  Die erste automatische UDP-Einrichtung schreibt den Wert zusammen mit den UDP-Loggern
+  ins Programm. Enthält das Programm die Logger schon, löst der neue Wert allein einen
+  Upload und Neustart aus. Eine bestehende Installation bekommt nach dem Update nur die
+  Entität, weder Label noch Programmänderung.
+- Behoben: Der Sensor „UDP-Status“ trug nach der Einrichtung die vollständige UUID-Liste
+  aller Klemmen (`scopes`) als Attribut. Bei mehreren hundert Klemmen überschritt das
+  die 16384 Byte der HA-Datenbank; HA warnte alle 30 Sekunden und speicherte die
+  Attribute nicht. Der Sensor zeigt jetzt `scope_signals` (Anzahl je Programm). Die
+  vollständigen Listen bleiben im Diagnose-Download.
+
+## [1.7.5b3] - 2026-10-19 (Vorabversion)
+
+- FTP-Aufbau zum Miniserver: Antwortet der Miniserver auf `AUTH TLS` vor dem Login
+  mit 530 (oder 534), gilt das wie 500/502/504 als „kein FTPS“. Die Integration
+  verbindet dann neu und loggt sich einmal per Klartext-FTP ein, statt wegen eines
+  vermeintlich abgelehnten Logins abzubrechen. Betrifft die automatische
+  UDP-Einrichtung und die Diagnose „Verbindung prüfen“. Benutzername und Passwort
+  gehen dabei im Klartext über das lokale Netz.
+- Diagnose: `FTP_LOGIN_REJECTED` steht nur noch für einen echten Login-Versuch. Ein
+  530 in anderen Schritten heißt `FTP_NOT_LOGGED_IN`.
+- Der Wechsel auf Klartext-FTP wird mit dem Antwortcode protokolliert (ohne Servertext).
+- Die Dokumentation zur automatischen UDP-Einrichtung beschreibt die unverschlüsselte
+  FTP-Sitzung jetzt offen.
+
+## [1.7.5b2] - 2026-10-06 (Vorabversion)
+
+- Gleiche UDP-Änderung wie 1.7.5b1. Die zusätzliche Manifest-Abhängigkeit `httpx`
+  wurde entfernt: Home Assistant bringt sie selbst mit; die aktuelle
+  Hassfest-Prüfung lehnt diesen redundanten Eintrag ab.
+
+## [1.7.5b1] - 2026-10-06 (Vorabversion)
+
+- Die automatische UDP-Einrichtung prüft das Programm nur noch beim Laden oder
+  Neuladen der Integration. Die 60-Sekunden-Abfrage entfällt, damit HA nach einem
+  Speichern aus Loxone Config nicht während der Client-Verteilung erneut hochlädt
+  und die Logik neu startet. Nach Config-Änderungen die Verteilung abwarten und HA
+  ausdrücklich neu laden. Der Knopf „HA-Werte ins Programm übernehmen“ bleibt erhalten.
+- Nach einer Programmanpassung durch HA fordert der UDP-Status zum Neuladen nach
+  abgeschlossenem Programmstart und abgeschlossener Client-Verteilung auf. Erst
+  dabei wird die Aktivierung geprüft; es gibt keine automatische Folgeprüfung.
+
 ## [1.7.4] - 2026-09-24
 
 - Finale Version von 1.7.4b1 (gemeinsames Programmdatum im Gateway/Client-Verbund),

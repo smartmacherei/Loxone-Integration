@@ -21,10 +21,11 @@ ein UDP-Logger im Miniserver-Programm eingerichtet.
 Lichtstimmungen sind immer als Effekte der Licht-Entität verfügbar. Die Szenen-Optionen
 früherer Versionen wurden in 1.5.0 entfernt.
 
-Nach der Einrichtung liest die 60-Sekunden-Prüfung nur noch das Verzeichnislisting
-des Miniserver-Programms. Das Programmarchiv selbst wird erst nach einem neuen
-Speichern aus Loxone Config erneut heruntergeladen; eine ruhende Anlage erzeugt
-keine wiederholten Downloads.
+Ab Version 1.7.5b1 prüft die automatische UDP-Einrichtung das Programm nur einmal beim
+Laden oder Neuladen der Integration. Es gibt keine regelmäßigen Verzeichnisabfragen
+oder automatischen Reaktionen auf spätere Speichervorgänge aus Loxone Config.
+Der Knopf **HA-Werte ins Programm übernehmen** löst weiterhin eine ausdrückliche
+Programmprüfung und gegebenenfalls eine Anpassung aus.
 
 Voraussetzungen sind ein vollständiges aktuelles Programm-ZIP, geeignete Lese-,
 Upload- und Aktivierungsberechtigungen, FTP/FTPS auf Port 21, eine IPv4-Verbindung
@@ -38,16 +39,19 @@ eingeschaltet. Bestehende Einträge bleiben unverändert, bis die Option ausdrü
 aktiviert wird. Deaktivierte Klemmenerkennung oder UDP-Port `0` verhindern ebenfalls
 automatische Programmänderungen. Bereits angelegte Logger bleiben beim Ausschalten erhalten.
 
-Die Integration prüft das aktuelle Programm alle 60 Sekunden. Fehlende Referenzen
+Die Integration prüft das aktuelle Programm beim Laden oder Neuladen. Fehlende Referenzen
 werden für geeignete entdeckte Klemmen ergänzt. Passende vorhandene Logger werden
 weiterverwendet. Eigene Objekte haben feste Kennungen; ihre Seite heißt
 **HA UDP** (Anlagen aus früheren Versionen behalten den Seitennamen **HA UDP (smartmacherei)**,
 bis die Seite neu aufgebaut wird). Dort keine eigene Kundenlogik ergänzen.
 
 **Die Einrichtung ändert das Miniserver-Programm und startet seine Logik kurz neu.**
-Das kann auch nach einem neuen Upload aus Loxone Config geschehen. Während der
-Einrichtung nicht gleichzeitig aus Config speichern. Vor späteren Änderungen das
-aktuelle Programm aus dem Miniserver laden.
+Nach einem neuen Upload aus Loxone Config zuerst die Verteilung an alle Clients
+abwarten, dann die Integration in HA neu laden. Nach einer Programmanpassung durch
+HA ebenfalls Programmstart und Client-Verteilung abwarten und zur Kontrolle erneut
+neu laden. Der UDP-Status zeigt bis dahin **Integration nach Programmstart neu laden**.
+Während der Einrichtung nicht gleichzeitig aus Config speichern. Vor späteren
+Änderungen das aktuelle Programm aus dem Miniserver laden.
 
 ## Ohne überprüfte Sicherung kein Upload
 
@@ -78,14 +82,16 @@ und ausstehende Uploads nochmals geprüft. Bei verändertem Programm oder vorhan
 `sps_new.*` wird die Aktivierung abgebrochen. Danach erfolgen Umbenennung zu
 `sps_new.zip` und Programmneustart.
 
-FTPS wird bevorzugt. Nur wenn der Server AUTH TLS ausdrücklich nicht unterstützt,
-wird normales FTP verwendet. Diese Funktion ist für eine vertrauenswürdige lokale
-Verbindung vorgesehen. Der Miniserver bietet keine Transaktionssperre zwischen
+FTPS wird bevorzugt. Lehnt der Server `AUTH TLS` vor der Anmeldung ab (Antwortcodes
+500, 502, 504, 530 oder 534), wird normales FTP verwendet. Beantwortet der Miniserver
+alle Befehle vor dem Login mit 530 (so an Firmware 17.2.8.28 gemessen), läuft die
+Einrichtung daher unverschlüsselt, und Benutzername und Passwort gehen im Klartext über
+das lokale Netz. Diese Funktion ist für eine vertrauenswürdige lokale Verbindung vorgesehen. Der Miniserver bietet keine Transaktionssperre zwischen
 verschiedenen Clients; daher nicht gleichzeitig aus Config speichern.
 
-Bei einer Folgeprüfung müssen passende funktionale Logger-Referenzen vorhanden sein,
-bevor die Einrichtung als konfiguriert gilt. Bei erkannten Programmänderungen lädt HA
-die Integration neu, um die Entities zu aktualisieren.
+Beim nächsten Neuladen müssen passende funktionale Logger-Referenzen vorhanden sein,
+bevor die Einrichtung als konfiguriert gilt. Fehler werden nicht regelmäßig erneut
+geprüft; nach Ursachenbehebung die Integration ausdrücklich neu laden.
 
 Der Sensor **UDP-Status** zeigt Einrichtung, Fehler/Sperren und tatsächlichen Empfang.
 „Warte auf UDP-Daten“ bedeutet noch keinen Fehler: Unveränderte Klemmen senden

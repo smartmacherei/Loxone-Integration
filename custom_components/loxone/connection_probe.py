@@ -14,6 +14,9 @@ from urllib.parse import urlparse
 _LOGGER = logging.getLogger(__name__)
 TIMEOUT = 8
 MAX_BODY = 32 * 1024 * 1024
+# Replies to AUTH TLS that mean "no TLS here". Must equal udp_install._NO_TLS_CODES
+# (tests compare them); this module is loaded without its package, so no import.
+NO_TLS_CODES = ("500", "502", "504", "530", "534")
 LABELS = {
     "web_connect": ("Webport erreichbar", "Web port reachable"),
     "web_login": ("Web-Anmeldung", "Web login"),
@@ -51,7 +54,8 @@ def error_code(step, error):
         # Read only the protocol's numeric code; never expose server text.
         code = str(error)[:3]
         if code == "530":
-            return "FTP_LOGIN_REJECTED"
+            # Only a real login attempt can be "rejected"; elsewhere it means "not logged in".
+            return "FTP_LOGIN_REJECTED" if step == "ftp_login" else "FTP_NOT_LOGGED_IN"
         if code == "550":
             return "FTP_PATH_OR_PERMISSION_REJECTED"
     return "CHECK_FAILED"
@@ -129,9 +133,9 @@ def probe(options, progress=None):
         try:
             ftp.auth()
         except ftplib.error_perm as error:
-            if str(error)[:3] not in {"500", "502", "504"}:
+            if str(error)[:3] not in NO_TLS_CODES:
                 raise
-            # Match the existing installer's fallback, never retry rejected logins.
+            # Never retry rejected logins.
             ftp.close()
             ftp = None
             record(step, "unsupported", "FTP_TLS_UNSUPPORTED")

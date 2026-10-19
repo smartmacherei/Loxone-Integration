@@ -85,8 +85,9 @@ version 1.7.0):
 |---|---|
 | **UDP status** | Way 2. Shows whether real-time values arrive from the Miniserver ("Receiving UDP data"). The setup itself is enabled under *Configure*. |
 | **HA → Loxone** | Way 3. Number of values that exist as inputs in the Loxone program. The attributes `pending_add` and `pending_remove` show what a button press would change. |
+| **Home Assistant connected** | Way 3. Always on while the integration runs. A brand-new installation gives it the label "loxone" and puts it on the wish list from the start; an update does not add the label. |
 | **Check connection** | Checks the web port, login, FTP/TLS and UDP reception. No uploads, no restart. The result arrives as a notification. Press it first whenever something looks wrong. |
-| **Apply HA values to program** | Way 3. Writes every entity labelled "loxone" into the Miniserver program (backup, upload, restart). Nothing changes without the button. |
+| **Apply HA values to program** | Way 3. Writes every entity labelled "loxone" into the Miniserver program (backup, upload, restart). Nothing changes without the button (exception: a brand-new installation, see below). |
 
 Getting a value from Home Assistant into Loxone:
 
@@ -122,19 +123,22 @@ example a Gateway/Client system with many Miniservers, is polled in rotation ins
 flooding the Miniservers or the network. Entities you disable in Home Assistant are not
 polled at all, and device internals (online state, protective shutdowns, internal
 temperature, raw formats) are created disabled, so the Miniserver only answers for what
-you actually use. Once configured, the integration
-only reads the Miniserver's program directory listing every 60 seconds; the program
-itself is downloaded again only after Loxone Config saved a new one.
+you actually use. Automatic UDP setup checks the program once when the integration
+loads or reloads. It does not periodically query for program changes.
 
 **Automatic setup changes the Miniserver program and briefly restarts its logic.**
 It needs permission to upload and activate the program. Before any change, the
 integration saves and verifies the complete original archive and an openable
 `.Loxone` project. **If the backup fails, no upload or restart takes place.**
 
-The integration also checks replacement programs and can configure real-time updates
-again when needed. This may cause another backup and brief restart. Avoid simultaneous
-saves from Loxone Config while setup is running. Load the current program
-**from the Miniserver** before editing it.
+After saving from Loxone Config, wait for distribution to all clients to finish,
+then reload the Loxone integration in HA. It checks the program and configures real-time
+updates when needed, which may cause a backup and brief program restart. After such a
+change, wait for program startup and client distribution to finish, then reload again
+to verify activation. The UDP status indicates when this is needed. The “Apply HA values
+to program” button also explicitly checks the program. Avoid simultaneous saves from
+Loxone Config while setup is running. Load the current program **from the Miniserver**
+before editing it.
 
 See [setup requirements, technical details and recovery](docs/automatic-udp.md)
 for the full procedure and the exact settings.
@@ -156,6 +160,15 @@ the Loxone program without creating objects in Loxone Config:
    5 minutes and after each program change. In Loxone Config, load the project from the
    Miniserver and drag the commands from the periphery onto your pages; clients reach
    them like any gateway input.
+
+**New installation:** A brand-new installation creates the label **loxone** (icon
+`mdi:alpha-l-box`, green) itself if it is missing and gives it to the entity **Home Assistant
+connected** on the Loxone device. Only this one entity is then on the wish list (further labelled
+entities appear as `pending_add` and reach the program with the button). The first automatic
+UDP setup writes the value into the program together with the UDP loggers: one upload, one
+restart. If the program already contains the loggers (for example after the integration was
+removed and added again), the new value alone triggers an upload and restart. Updating an
+existing installation also adds the entity, but without the label and without a program change.
 
 Values are numbers only: numeric states as they are; on/off, open/closed and similar as
 1/0; entities with an `options` attribute as the index of the state; `climate` entities
@@ -218,9 +231,8 @@ Installing updated integration code requires restarting Home Assistant.
 
 After deleting devices in Loxone Config, save the program to the Miniserver and
 reload the Loxone integration in HA. Deleted UUIDs are reconciled against the
-verified full project; offline devices remain. Automatic setup checks program
-changes every 60 seconds when enabled and reloads after successful configuration.
-If automatic setup is disabled or blocked, reload manually. Registry records are
+verified full project; offline devices remain. Automatic UDP setup checks the program
+on this reload, without periodic background queries. Registry records are
 backed up under `/config/loxone_registry_backups/<entry-id>/` before removal.
 Cleanup is skipped if the project cannot be verified. Custom entity identifiers
 that cannot be matched safely may still need manual review.
