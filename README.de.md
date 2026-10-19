@@ -102,7 +102,7 @@ So bringst du einen Wert von Home Assistant nach Loxone:
 2. Auf der Gerätekarte zeigt „HA → Loxone“ im Attribut `pending_add` die neuen Werte.
 3. **HA-Werte ins Programm übernehmen** drücken. Der Miniserver startet kurz neu.
 4. In Loxone Config das Projekt **vom Miniserver laden**. Unter Peripherie → Virtuelle Eingänge
-   steht jetzt „HA Werte“ mit einem Befehl je Wert, z. B. „Thermostat 1 Ist-Temperatur“. Die
+   steht jetzt „Home Assistant - HA nach Loxone (UDP)“ mit einem Befehl je Wert, z. B. „Thermostat 1 Ist-Temperatur“. Die
    Befehle wie gewohnt auf die Seiten ziehen.
 5. Ab jetzt schickt HA jede Änderung sofort, alle Werte zusätzlich alle 5 Minuten.
 
@@ -157,7 +157,7 @@ Loxone-Programm, ohne in Loxone Config Objekte anzulegen:
    das Label bekamen oder verloren), `unsupported` (Textzustände) und `beyond_limit`.
 3. **HA-Werte ins Programm übernehmen** drücken. Die Integration lädt das aktuelle Programm
    vom Miniserver, sichert es, legt unter den virtuellen Eingängen des Gateways (bzw. des
-   einzigen Miniservers) einen virtuellen UDP-Eingang „HA Werte“ (Port 55556) mit einem
+   einzigen Miniservers) einen virtuellen UDP-Eingang „Home Assistant - HA nach Loxone (UDP)“ (Port 55556) mit einem
    Befehl je Wert an, lädt hoch und startet neu. Ohne Knopfdruck ändert sich nichts, auch
    wenn Labels kommen oder gehen.
 4. Ab dann geht jede Zustandsänderung als `<schlüssel>=<zahl>` raus, dazu alle Werte alle
@@ -224,7 +224,7 @@ Bedienfunktionen, lesende Zustände und Sonderformate mit dem aktuellen Prüfsta
   Änderung mit dem Fehlercode `ARCHIVE_MULTIPLE_PROGRAMS` ab. WebSocket, Befehle und
   Räume laufen über das Gateway.
 - Gateway/Client (1.7.0): Mit der Option „UDP auch im Gateway/Client-Verbund einrichten“ bekommt
-  jeder Miniserver in seinem eigenen Programm einen eigenen Logger und eine Seite „HA UDP“,
+  jeder Miniserver in seinem eigenen Programm einen eigenen Logger und eine Seite „Home Assistant - Loxone nach HA (UDP)“,
   begrenzt auf 5 Klemmen je Miniserver, plus ein Lebenszeichen je Miniserver. Batterie
   und Geräteinterna belegen keinen Platz; sie werden stattdessen alle 4 Stunden per HTTP
   gelesen. Gesamtprojekt und alle Teilprogramme werden gleich geändert;
@@ -232,7 +232,7 @@ Bedienfunktionen, lesende Zustände und Sonderformate mit dem aktuellen Prüfsta
   die Clients verteilt. Programmformat 174 (Config 16.x) wird nur auf diesem Weg akzeptiert.
   An einer Anlage mit vier Miniservern mit 1.7.0b2 bestätigt; Sicherung trotzdem
   kontrollieren, Nutzung auf eigene Verantwortung.
-- Weg 3 (HA → Loxone, 1.7.0): nur Zahlen, ein virtueller UDP-Eingang „HA Werte“ auf Port
+- Weg 3 (HA → Loxone, 1.7.0): nur Zahlen, ein virtueller UDP-Eingang „Home Assistant - HA nach Loxone (UDP)“ auf Port
   55556 im Gateway (bzw. einzigen Miniserver), höchstens `udp_max_signals` Werte, und nur mit
   eingeschaltetem Weg 2. Textzustände werden nicht exportiert. Das Programm ändert sich nur
   beim Knopfdruck; danach in Loxone Config das Projekt vom Miniserver laden. Noch nicht an

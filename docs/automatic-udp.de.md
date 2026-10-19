@@ -42,8 +42,9 @@ automatische Programmänderungen. Bereits angelegte Logger bleiben beim Ausschal
 Die Integration prüft das aktuelle Programm beim Laden oder Neuladen. Fehlende Referenzen
 werden für geeignete entdeckte Klemmen ergänzt. Passende vorhandene Logger werden
 weiterverwendet. Eigene Objekte haben feste Kennungen; ihre Seite heißt
-**HA UDP** (Anlagen aus früheren Versionen behalten den Seitennamen **HA UDP (smartmacherei)**,
-bis die Seite neu aufgebaut wird). Dort keine eigene Kundenlogik ergänzen.
+**Home Assistant - Loxone nach HA (UDP)** wie ihr Logger, der virtuelle Eingang für Weg 3
+**Home Assistant - HA nach Loxone (UDP)** (seit 1.8.2; die Namen früherer Versionen,
+**HA UDP**, **HA UDP (smartmacherei)** und **HA Werte**, werden erkannt und einmal umbenannt). Dort keine eigene Kundenlogik ergänzen.
 
 **Die Einrichtung ändert das Miniserver-Programm und startet seine Logik kurz neu.**
 Nach einem neuen Upload aus Loxone Config zuerst die Verteilung an alle Clients

@@ -95,6 +95,22 @@ def test_input_and_commands_are_created_under_the_caption():
     assert managed(again)[1] == commands
 
 
+def test_input_with_the_name_of_an_earlier_release_is_renamed_once():
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    block, commands = managed(patched)
+    older = patched.replace(f'Title="{values.TITLE}"'.encode(), b'Title="HA Werte"')
+    assert older != patched
+    renamed, report = values.patch_ha_values(older, ENTRIES)
+    assert report["ha_values_changed"]
+    new_block, new_commands = managed(renamed)
+    assert new_block.get("Title") == values.TITLE and new_block.get("U") == block.get("U")
+    assert new_commands == commands  # same commands, same UUIDs: wiring in Config stays valid
+    assert values.patch_ha_values(renamed, ENTRIES)[1]["ha_values_changed"] is False
+    # A name the user chose in Config is not a reason to rebuild.
+    own = patched.replace(f'Title="{values.TITLE}"'.encode(), b'Title="Werte aus HA"')
+    assert values.patch_ha_values(own, ENTRIES)[0] == own
+
+
 def test_unchanged_wish_list_leaves_program_untouched():
     patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
     same, report = values.patch_ha_values(patched, ENTRIES)

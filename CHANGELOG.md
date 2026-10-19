@@ -4,6 +4,24 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.2] - 2026-10-19
+
+- Behoben: Nach jedem Speichern aus Loxone Config hat die Integration das Programm beim
+  nächsten Laden noch einmal hochgeladen (Sicherung, Upload, Neustart der Miniserver-Logik),
+  obwohl sich an ihren Objekten nichts geändert hatte. Ursache: Config setzt beim Speichern das
+  Kennzeichen `Analog` an den Logger-Referenzen der verwalteten Seite neu, nach Art des
+  Quell-Konnektors. An einer echten Anlage waren es 259 von 501 Referenzen. Der Vergleich hat
+  dieses Kennzeichen mitgezählt und die Seite deshalb für geändert gehalten. Er lässt es jetzt
+  aus; was der Logger sendet, bestimmt das Meldungsformat (`<v>` / `<v.n>`).
+- Neue Namen im Loxone-Programm, damit man die Objekte leichter findet: Seite und Logger heißen
+  **Home Assistant - Loxone nach HA (UDP)**, der virtuelle UDP-Eingang für Weg 3 heißt
+  **Home Assistant - HA nach Loxone (UDP)**. Die bisherigen Namen (`HA UDP`,
+  `HA UDP (smartmacherei)`, `HA Werte`) werden erkannt und beim nächsten Laden einmal
+  umbenannt. UUIDs, Kurznamen und Befehle bleiben, die Verdrahtung in Config bleibt gültig.
+  Einen Namen, den man dem Eingang in Config selbst gegeben hat, fasst die Integration nicht an.
+- Das Umbenennen ist eine Programmänderung: Ein Update auf 1.8.2 führt beim ersten Laden einmal
+  Sicherung, Upload und einen kurzen Neustart der Miniserver-Logik durch.
+
 ## [1.8.1] - 2026-10-19
 
 - Behoben (Weg 3, HA → Loxone): Digitale HA-Werte (Schalter, Binärsensoren, `input_boolean`,
