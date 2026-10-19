@@ -175,6 +175,27 @@ dem Löschen und erneuten Hinzufügen der Integration), löst der neue Wert alle
 und Neustart aus. Ein Update einer bestehenden Installation legt die Entität ebenfalls an, aber
 ohne Label und ohne Programmänderung.
 
+**Befehlserkennung nach HA-Typ:** Die Integration legt jeden Befehl passend zum Typ der Entität an.
+Zahlenwerte (Sensoren, Temperaturen, Zähler, `climate`) sind **analoge** Befehle mit der Erkennung
+`<schlüssel>=\v` und liefern den Wert an `AQ`. Digitale Werte (Schalter, Binärsensoren,
+`input_boolean`, `light` u. Ä.) sind **digitale** Befehle mit der exakten Erkennung `<schlüssel>=1`:
+Sie lösen einen Impuls aus, wenn der Wert 1 ankommt. Der Platzhalter `\v` funktioniert an digitalen
+Befehlen nicht (an einem echten Miniserver gemessen).
+
+Deshalb sendet HA digitale Werte nur bei einem echten Zustandswechsel: nicht bei Attributänderungen,
+nicht alle 5 Minuten, nicht beim Start und nicht nach einem Programmwechsel. Ein Wiederholen würde die
+Klingel erneut auslösen oder eine Leuchte umschalten. Zahlenwerte gehen wie bisher bei jeder Änderung,
+alle 5 Minuten, beim Start und nach jedem Programmwechsel raus.
+
+Für den Zustand 0 gibt es keinen Befehl. Wer ihn braucht, legt in Config einen zweiten Befehl mit
+`<schlüssel>=0` an oder stellt den Befehl auf analog (`<schlüssel>=\v`); beides bleibt erhalten, ebenso
+Befehle, deren Erkennung nicht mit `<schlüssel>=` beginnt.
+
+Befehle aus Version 1.8.0 mit `=\v` an einem digitalen Wert stellt die Integration beim nächsten Laden
+der Integration auf `=1` um. Das ist eine Programmänderung (Sicherung, Upload, kurzer Neustart der
+Miniserver-Logik) und passiert auch bei einem reinen Update. UUID, Kurzname und Titel bleiben, deine
+Verdrahtung bleibt gültig.
+
 Werte sind immer Zahlen: Zahlenzustände unverändert; on/off, open/closed und ähnliche als
 1/0; Entitäten mit Attribut `options` als Index des Zustands; `climate` liefert Modus-Index
 (`hvac_modes`), Ist-Temperatur, Solltemperatur und Aktions-Index (off, heating, cooling,
