@@ -161,7 +161,8 @@ def test_real_ftp_client_reports_each_phase_without_retry(tmp_path, monkeypatch,
         def __init__(self, **kwargs): pass
         def operation(self, name):
             events.append(name)
-            if name == where: raise ftplib.error_perm("530 " + SECRET)
+            # 530 on AUTH TLS means "no TLS" and falls back to plain FTP, so use 550 there.
+            if name == where: raise ftplib.error_perm(("550 " if name == "auth" else "530 ") + SECRET)
         def connect(self, *args): self.operation("connect")
         def auth(self): self.operation("auth")
         def login(self, *args): self.operation("login")
