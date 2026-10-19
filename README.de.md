@@ -87,8 +87,9 @@ Version 1.7.0):
 |---|---|
 | **UDP-Status** | Weg 2. Zeigt, ob Echtzeitwerte vom Miniserver ankommen („Empfängt UDP-Daten“). Die Einrichtung selbst schaltest du unter *Konfigurieren* ein. |
 | **HA → Loxone** | Weg 3. Zahl der Werte, die im Loxone-Programm als Eingänge stehen. Die Attribute `pending_add` und `pending_remove` zeigen, was ein Knopfdruck ändern würde. |
+| **Home Assistant verbunden** | Weg 3. Vorbelegter Wert jeder Installation: immer an, mit dem Label „loxone“. Bei einer Neuinstallation steht er von Anfang an auf der Wunschliste. |
 | **Verbindung prüfen** | Prüft Webport, Anmeldung, FTP/TLS und UDP-Empfang. Keine Uploads, kein Neustart. Das Ergebnis kommt als Benachrichtigung. Bei Problemen immer zuerst drücken. |
-| **HA-Werte ins Programm übernehmen** | Weg 3. Schreibt alle Entitäten mit dem Label „loxone“ ins Programm des Miniservers (Sicherung, Upload, Neustart). Ohne Knopfdruck ändert sich am Programm nichts. |
+| **HA-Werte ins Programm übernehmen** | Weg 3. Schreibt alle Entitäten mit dem Label „loxone“ ins Programm des Miniservers (Sicherung, Upload, Neustart). Ohne Knopfdruck ändert sich am Programm nichts (Ausnahme: Neuinstallation, siehe unten). |
 
 So bringst du einen Wert von Home Assistant nach Loxone:
 
@@ -163,6 +164,13 @@ Loxone-Programm, ohne in Loxone Config Objekte anzulegen:
    5 Minuten und nach jedem Programmwechsel. In Loxone Config das Projekt vom Miniserver
    laden und die Befehle aus der Peripherie auf die Seiten ziehen; Clients erreichen sie wie
    jeden Gateway-Eingang.
+
+**Neuinstallation:** Eine neue Installation legt das Label **loxone** (Symbol `mdi:alpha-l-box`,
+grün) selbst an, falls es fehlt, und gibt es der Entität **Home Assistant verbunden** am
+Loxone-Gerät. Diese steht damit schon auf der Wunschliste; die erste automatische
+UDP-Einrichtung schreibt sie zusammen mit den UDP-Loggern ins Programm (ein Upload, ein
+Neustart). Ein Update einer bestehenden Installation legt die Entität ebenfalls an, aber ohne
+Label und ohne Programmänderung.
 
 Werte sind immer Zahlen: Zahlenzustände unverändert; on/off, open/closed und ähnliche als
 1/0; Entitäten mit Attribut `options` als Index des Zustands; `climate` liefert Modus-Index

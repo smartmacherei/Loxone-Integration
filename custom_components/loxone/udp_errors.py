@@ -56,6 +56,20 @@ def utc_now():
     return datetime.now(timezone.utc).isoformat()
 
 
+def slim_status(status):
+    """Attributes for the UDP status sensor: counts instead of the per-program UUID lists.
+
+    After a setup with several hundred terminals ``scopes`` alone exceeded the 16384 byte
+    limit of Home Assistant's recorder, which then logged a warning on every update and
+    dropped the attributes. The manager keeps the full lists (diagnostics download).
+    """
+    data = dict(status)
+    scopes = data.pop("scopes", None)
+    if scopes:
+        data["scope_signals"] = {program: len(signals) for program, signals in scopes.items()}
+    return data
+
+
 def coded_error(code, message, kind=OSError):
     error = kind(message)  # Only fixed internal messages; never a server response.
     error.udp_code = code

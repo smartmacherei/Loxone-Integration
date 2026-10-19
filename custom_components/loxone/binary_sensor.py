@@ -14,6 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (CONF_DEVICE_CLASS, CONF_NAME,
                                  CONF_UNIT_OF_MEASUREMENT, CONF_VALUE_TEMPLATE,
                                  STATE_OFF, STATE_ON, STATE_UNKNOWN)
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -157,6 +158,7 @@ async def async_setup_entry(
             async_add_binary_sensors,
         )
     )
+    entities.append(HaConnectedBinarySensor(miniserver.serial))
     async_add_entities(entities)
 
 
@@ -308,3 +310,21 @@ class LoxoneCustomBinarySensor(LoxoneEntity, BinarySensorEntity):
     def name(self):
         """Return the name of the sensor."""
         return self._name
+
+
+class HaConnectedBinarySensor(BinarySensorEntity):
+    """Weg 3: the ready-made value of a new installation (label ``loxone``).
+
+    Always on while the integration runs. Brand-new installations label it and put
+    it on the wish list, so the first program change already contains one HA value.
+    """
+    _attr_has_entity_name = True
+    _attr_translation_key = "ha_connected"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:home-assistant"
+    _attr_should_poll = False
+    _attr_is_on = True
+
+    def __init__(self, serial):
+        self._attr_unique_id = f"{serial}-ha_connected"
+        self._attr_device_info = {"identifiers": {(DOMAIN, serial)}}

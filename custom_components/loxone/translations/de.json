@@ -166,6 +166,11 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "ha_connected": {
+        "name": "Home Assistant verbunden"
+      }
+    },
     "sensor": {
       "ha_values": {
         "name": "HA → Loxone"

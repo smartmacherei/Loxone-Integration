@@ -1,0 +1,11 @@
+Vorabversion mit einer neuen Funktion und einer Fehlerkorrektur. Baut auf 1.7.5b3 auf (FTP-Fallback bei 530 auf `AUTH TLS`, an einem echten Miniserver bestätigt).
+
+Neu: Das Loxone-Gerät in Home Assistant hat die Entität **Home Assistant verbunden** (immer an). Eine **Neuinstallation** legt das Label **loxone** (Symbol `mdi:alpha-l-box`, grün) selbst an, falls es fehlt, gibt es dieser Entität und setzt sie auf die Wunschliste für Weg 3 (HA → Loxone). Die erste automatische UDP-Einrichtung schreibt sie zusammen mit den UDP-Loggern ins Programm; es gibt dafür keinen zusätzlichen Upload und keinen zusätzlichen Neustart. Im Miniserver steht dann von Anfang an ein HA-Wert zur Verfügung, den man z. B. zur Ausfallüberwachung nutzen kann.
+
+Wichtig für bestehende Installationen: Ein Update legt die Entität an, aber **ohne Label und ohne Programmänderung**. Am Miniserver-Programm ändert sich nur etwas, wenn die automatische Einrichtung ohnehin fehlende Logger ergänzt oder wenn der Knopf „HA-Werte ins Programm übernehmen“ gedrückt wird. Möchtest du die Entität nutzen, gib ihr das Label „loxone“ und drücke den Knopf.
+
+Behoben: Der Sensor „UDP-Status“ trug nach der Einrichtung die vollständige UUID-Liste aller Klemmen (`scopes`) als Attribut. Bei 391 eingerichteten Klemmen überschritt das die 16384 Byte der HA-Datenbank; HA warnte alle 30 Sekunden und speicherte die Attribute nicht. Der Sensor zeigt jetzt `scope_signals` (Anzahl je Programm). Die vollständigen Listen bleiben im Diagnose-Download.
+
+Unverändert: Die automatische Einrichtung prüft das Programm bei jedem Laden oder Neuladen der Integration und lädt ein angepasstes Programm hoch, wenn Logger-Referenzen fehlen (Sicherung vorher, kurzer Neustart der Miniserver-Logik). Benutzername und Passwort gehen beim FTP-Fallback im Klartext über das lokale Netz.
+
+Validierung: 256 Tests bestanden, 29 übersprungen. Die neuen Tests prüfen die Attributgröße, dass nur Neuinstallationen und nur einmal vorbereitet werden, das Anlegen oder Wiederverwenden des Labels, die Wunschliste und dass ein Fehler beim Vorbereiten die Einrichtung nie abbricht. Home Assistant selbst ist offline nicht installiert, die Entität und das Zusammenspiel mit den echten Registern sind noch nicht an einer Neuinstallation geprüft.

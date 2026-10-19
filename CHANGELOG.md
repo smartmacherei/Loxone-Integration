@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.0b1] - 2026-10-19 (Vorabversion)
+
+- Neu: Das Loxone-Gerät hat die Entität **Home Assistant verbunden** (immer an). Eine
+  Neuinstallation legt das Label **loxone** (Symbol `mdi:alpha-l-box`, grün) selbst an,
+  falls es fehlt, gibt es dieser Entität und setzt sie auf die Wunschliste für Weg 3
+  (HA → Loxone). Die erste automatische UDP-Einrichtung schreibt sie zusammen mit den
+  UDP-Loggern ins Programm, also ohne zusätzlichen Upload. Eine bestehende Installation
+  bekommt nach dem Update nur die Entität, weder Label noch Programmänderung.
+- Behoben: Der Sensor „UDP-Status“ trug nach der Einrichtung die vollständige UUID-Liste
+  aller Klemmen (`scopes`) als Attribut. Bei mehreren hundert Klemmen überschritt das
+  die 16384 Byte der HA-Datenbank; HA warnte alle 30 Sekunden und speicherte die
+  Attribute nicht. Der Sensor zeigt jetzt `scope_signals` (Anzahl je Programm). Die
+  vollständigen Listen bleiben im Diagnose-Download.
+
 ## [1.7.5b3] - 2026-10-19 (Vorabversion)
 
 - FTP-Aufbau zum Miniserver: Antwortet der Miniserver auf `AUTH TLS` vor dem Login

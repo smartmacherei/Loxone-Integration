@@ -85,8 +85,9 @@ version 1.7.0):
 |---|---|
 | **UDP status** | Way 2. Shows whether real-time values arrive from the Miniserver ("Receiving UDP data"). The setup itself is enabled under *Configure*. |
 | **HA → Loxone** | Way 3. Number of values that exist as inputs in the Loxone program. The attributes `pending_add` and `pending_remove` show what a button press would change. |
+| **Home Assistant connected** | Way 3. Ready-made value of every installation: always on, labelled "loxone". On a brand-new installation it is on the wish list from the start. |
 | **Check connection** | Checks the web port, login, FTP/TLS and UDP reception. No uploads, no restart. The result arrives as a notification. Press it first whenever something looks wrong. |
-| **Apply HA values to program** | Way 3. Writes every entity labelled "loxone" into the Miniserver program (backup, upload, restart). Nothing changes without the button. |
+| **Apply HA values to program** | Way 3. Writes every entity labelled "loxone" into the Miniserver program (backup, upload, restart). Nothing changes without the button (exception: a brand-new installation, see below). |
 
 Getting a value from Home Assistant into Loxone:
 
@@ -159,6 +160,13 @@ the Loxone program without creating objects in Loxone Config:
    5 minutes and after each program change. In Loxone Config, load the project from the
    Miniserver and drag the commands from the periphery onto your pages; clients reach
    them like any gateway input.
+
+**New installation:** A brand-new installation creates the label **loxone** (icon
+`mdi:alpha-l-box`, green) itself if it is missing and gives it to the entity **Home Assistant
+connected** on the Loxone device. It is then already on the wish list; the first automatic UDP
+setup writes it into the program together with the UDP loggers (one upload, one restart).
+Updating an existing installation also adds the entity, but without the label and without a
+program change.
 
 Values are numbers only: numeric states as they are; on/off, open/closed and similar as
 1/0; entities with an `options` attribute as the index of the state; `climate` entities

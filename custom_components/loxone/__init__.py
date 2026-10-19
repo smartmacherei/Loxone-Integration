@@ -279,6 +279,11 @@ async def _async_setup_entry(hass, config_entry):
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
 
+    # A brand-new installation has no registry entries yet; an update of an existing one does.
+    from homeassistant.helpers import entity_registry as _er
+    hass.data.setdefault(DOMAIN + "_fresh", {})[config_entry.entry_id] = not _er.async_entries_for_config_entry(
+        _er.async_get(hass), config_entry.entry_id)
+
     if not config_entry.options:
         await async_set_options(hass, config_entry)
     # 1.5.0 dropped the vendor suffix from the integration name. Runs before the
@@ -947,7 +952,8 @@ async def _async_setup_entry(hass, config_entry):
 
     # Weg 3: stored wish list to the manager, sender for the labelled entities.
     from .ha_values import async_setup_values
-    await async_setup_values(hass, config_entry)
+    await async_setup_values(hass, config_entry,
+                             fresh=hass.data.get(DOMAIN + "_fresh", {}).pop(config_entry.entry_id, False))
 
     return True
 
