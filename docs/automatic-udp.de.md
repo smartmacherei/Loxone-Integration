@@ -82,9 +82,11 @@ und ausstehende Uploads nochmals geprüft. Bei verändertem Programm oder vorhan
 `sps_new.*` wird die Aktivierung abgebrochen. Danach erfolgen Umbenennung zu
 `sps_new.zip` und Programmneustart.
 
-FTPS wird bevorzugt. Nur wenn der Server AUTH TLS ausdrücklich nicht unterstützt,
-wird normales FTP verwendet. Diese Funktion ist für eine vertrauenswürdige lokale
-Verbindung vorgesehen. Der Miniserver bietet keine Transaktionssperre zwischen
+FTPS wird bevorzugt. Lehnt der Server `AUTH TLS` vor der Anmeldung ab (Antwortcodes
+500, 502, 504, 530 oder 534), wird normales FTP verwendet. Beantwortet der Miniserver
+alle Befehle vor dem Login mit 530 (so an Firmware 17.2.8.28 gemessen), läuft die
+Einrichtung daher unverschlüsselt, und Benutzername und Passwort gehen im Klartext über
+das lokale Netz. Diese Funktion ist für eine vertrauenswürdige lokale Verbindung vorgesehen. Der Miniserver bietet keine Transaktionssperre zwischen
 verschiedenen Clients; daher nicht gleichzeitig aus Config speichern.
 
 Beim nächsten Neuladen müssen passende funktionale Logger-Referenzen vorhanden sein,
