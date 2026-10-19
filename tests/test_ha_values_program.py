@@ -190,3 +190,61 @@ def test_default_attributes_config_strips_on_save_do_not_cause_a_rebuild():
     saved = patched.replace(b' MinChange="0"', b'').replace(b' MinTime="0"', b'')
     assert saved != patched
     assert values.patch_ha_values(saved, ENTRIES) == (saved, {"ha_values": 2, "ha_values_changed": False})
+
+
+def with_command(xml, check, title, iname, u, first=True):
+    """Insert a command the user created in Config into the managed input."""
+    import re
+    tag = re.search(rb'<C Type="VirtualUdpIn" IName="HAV"[^>]*>', xml).group(0)
+    cmd = (f'<C Type="VirtualUdpInCmd" IName="{iname}" V="178" U="{u}" Title="{title}" Cl="238,238,238" Nio="2" '
+           f'WF="16400" Check="{check}" Signed="true" SourceValHigh="100" DestValHigh="100" '
+           f'MinVal="-1000000000" MaxVal="1000000000"><Co K="AQ" U="{u[:-2]}aa"/><Co K="Q" U="{u[:-2]}bb"/>'
+           f'<Display Type="1" Unit="&lt;v&gt;" StateOnly="true"/></C>').encode()
+    return xml.replace(tag, tag + cmd, 1) if first else xml.replace(b"</C></C><C Type=\"LoggerOutCaption\"", cmd + b"</C></C><C Type=\"LoggerOutCaption\"", 1)
+
+
+MORE = ENTRIES + [{"key": "sensor.neu", "title": "Neu", "digital": False}]
+TWIN_U = "aaaaaaaa-0000-0000-ffffa13734b4be2f"
+
+
+def test_extra_command_for_the_same_key_survives_a_rebuild():
+    # Nothing documents a command for the state 0, so a user adds "tor=0" next to ours.
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    twin = with_command(patched, "binary_sensor.tor=0", "Tor aus", "VUIC9", TWIN_U)
+    rebuilt, report = values.patch_ha_values(twin, MORE)
+    assert report["ha_values_changed"]
+    commands = managed(rebuilt)[1]
+    assert (TWIN_U, "binary_sensor.tor=0") in [(c[1], c[2]) for c in commands]
+    assert sum(1 for c in commands if c[2] == "binary_sensor.tor=1") == 1  # ours is still there with its UUID
+
+
+def test_stale_placeholder_is_migrated_even_when_a_twin_comes_first():
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    old = patched.replace(b'Check="binary_sensor.tor=1"', b'Check="binary_sensor.tor=\\v"')
+    twin = with_command(old, "binary_sensor.tor=0", "Tor aus", "VUIC9", TWIN_U)
+    rebuilt, report = values.patch_ha_values(twin, ENTRIES)
+    assert report["ha_values_changed"]
+    checks = [c[2] for c in managed(rebuilt)[1]]
+    assert "binary_sensor.tor=1" in checks and "binary_sensor.tor=0" in checks
+    assert "binary_sensor.tor=\\v" not in checks
+
+
+def test_command_without_a_recognisable_key_is_kept():
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    foreign = with_command(patched, "Tor ein", "Mein Befehl", "VUIC8", TWIN_U)
+    quiet = values.patch_ha_values(foreign, ENTRIES)
+    assert quiet == (foreign, {"ha_values": 2, "ha_values_changed": False})
+    rebuilt, _ = values.patch_ha_values(foreign, MORE)
+    assert (TWIN_U, "Tor ein", "Mein Befehl") in [(c[1], c[2], c[3]) for c in managed(rebuilt)[1]]
+
+
+def test_command_switched_to_analog_gets_the_value_placeholder_too():
+    # An entity that turns from digital to numeric: the exact text "...=1" would never carry a value.
+    digital = [{"key": "sensor.pool", "title": "Pool", "digital": True}]
+    patched, _ = values.patch_ha_values(SINGLE, digital)
+    assert managed(patched)[1][0][2] == "sensor.pool=1"
+    rebuilt, report = values.patch_ha_values(patched, [{"key": "sensor.pool", "title": "Pool", "digital": False}])
+    assert report["ha_values_changed"]
+    block, commands = managed(rebuilt)
+    assert commands[0][2] == "sensor.pool=\\v" and block.find("C").get("Analog") == "true"
+    assert values.patch_ha_values(rebuilt, [{"key": "sensor.pool", "title": "Pool", "digital": False}])[1]["ha_values_changed"] is False

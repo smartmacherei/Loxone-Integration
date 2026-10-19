@@ -53,3 +53,58 @@ def test_numbers_are_formatted_with_a_dot_and_without_noise():
         "23", "34.55", "1000000.5", "0", "0.3"]
     assert values.program_entries(values.entries_for("sensor.pool", state("1", friendly_name="Pool"))) == [
         {"key": "sensor.pool", "title": "Pool", "digital": False}]
+
+
+class Socket:
+    def __init__(self):
+        self.sent = []
+
+    def sendto(self, data, address):
+        self.sent.append(data.decode())
+
+
+def sender(entries, current=None):
+    states = current or {}
+    send = values.HaValuesSender(NS(states=NS(get=states.get)), entries, "ms.invalid", 55556)
+    send.socket = Socket()
+    return send
+
+
+def event(entity_id, old, new):
+    return NS(data={"entity_id": entity_id, "old_state": old, "new_state": new})
+
+
+DIGITAL = {"key": "input_boolean.klingel", "entity_id": "input_boolean.klingel", "attribute": None, "title": "Klingel", "digital": True}
+ANALOG = {"key": "sensor.pool", "entity_id": "sensor.pool", "attribute": None, "title": "Pool", "digital": False}
+
+
+def test_digital_value_is_sent_only_when_the_state_really_changes():
+    # A digital command fires a pulse on "=1", so a repeat would ring the bell again.
+    on, off = state("on"), state("off")
+    current = {"input_boolean.klingel": on}
+    send = sender([DIGITAL], current)
+    send._changed(event("input_boolean.klingel", off, on))
+    current["input_boolean.klingel"] = off  # HA has moved on by the time the next event arrives
+    send._changed(event("input_boolean.klingel", on, off))
+    assert send.socket.sent == ["input_boolean.klingel=1", "input_boolean.klingel=0"]
+
+
+def test_digital_value_ignores_attribute_changes_and_unknown_predecessors():
+    on = state("on", brightness=10)
+    send = sender([DIGITAL], {"input_boolean.klingel": on})
+    send._changed(event("input_boolean.klingel", state("on", brightness=5), on))   # attribute only
+    send._changed(event("input_boolean.klingel", state("unavailable"), on))        # HA or integration restart
+    send._changed(event("input_boolean.klingel", None, on))                        # entity just appeared
+    assert send.socket.sent == []
+
+
+def test_resend_after_start_timer_or_program_change_skips_digital_values():
+    send = sender([DIGITAL, ANALOG], {"input_boolean.klingel": state("on"), "sensor.pool": state("23.5")})
+    send.send_all()
+    assert send.socket.sent == ["sensor.pool=23.5"]
+
+
+def test_analog_values_still_follow_every_change_including_attributes():
+    send = sender([ANALOG], {"sensor.pool": state("23.5")})
+    send._changed(event("sensor.pool", state("23.5", unit="C"), state("23.5")))
+    assert send.socket.sent == ["sensor.pool=23.5"]

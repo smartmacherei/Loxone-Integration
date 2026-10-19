@@ -12,11 +12,19 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   gemessen: das Paket kam an (UDP-Monitor), der digitale Befehl löste nicht aus, mit der
   Erkennung `<schlüssel>=1` schon. Digitale Werte bekommen jetzt `=1`, Zahlenwerte bleiben
   analog mit `\v`.
-- Bestehende digitale Befehle mit `=\v` stellt die Integration beim nächsten Programmupdate auf
-  `=1` um; UUID, Kurzname und Titel bleiben, die Verdrahtung in Config bleibt gültig.
+- Digitale Werte sind Impulse und gehen deshalb nur noch bei einem echten Zustandswechsel an
+  den Miniserver, nicht mehr bei Attributänderungen, alle 5 Minuten, beim Start oder nach einem
+  Programmwechsel. Sonst würde eine Klingel oder ein Umschalter ständig neu auslösen. Zahlenwerte
+  senden wie bisher.
+- Bestehende digitale Befehle mit `=\v` stellt die Integration beim nächsten Laden auf `=1` um.
+  Das ist eine Programmänderung (Sicherung, Upload, kurzer Neustart der Miniserver-Logik) und
+  passiert auch bei einem reinen Update. UUID, Kurzname und Titel bleiben, die Verdrahtung in
+  Config bleibt gültig.
 - Befehle werden über den Schlüssel der Entität gefunden, nicht mehr über den Erkennungstext.
-  Ändert man die Erkennung in Config (z. B. auf `=ein` oder analog), setzt die Integration das
-  nicht mehr bei jedem Neuaufbau zurück.
+  Eigene Änderungen in Config bleiben: analog gestellte Befehle, zusätzliche Befehle zum selben
+  Schlüssel (z. B. `<schlüssel>=0`) und Befehle, deren Erkennung nicht mit `<schlüssel>=`
+  beginnt. Stellt man einen digitalen Wert auf Zahlen um, bekommt der Befehl auch den
+  Platzhalter `\v`.
 - Für den Zustand 0 gibt es bei digitalen Werten weiterhin keinen Befehl.
 
 ## [1.8.0] - 2026-10-19

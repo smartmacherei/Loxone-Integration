@@ -90,18 +90,21 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
         existing = next((el for el in objects if el.get("Type") == "VirtualUdpIn"
                          and (el.get("Title") == TITLE or el.get("IName") == INAME)), None)
     report["ha_values"] = len(wanted)
-    commands = {}
-    for command in (existing.findall("C") if existing is not None else []):
+    existing_commands = existing.findall("C") if existing is not None else []
+    commands, loose = {}, []
+    for command in existing_commands:
         key = _key_of(command.get("Check"))
-        if key and key not in commands:
-            commands[key] = command
+        if key:
+            commands.setdefault(key, []).append(command)
+        else:
+            loose.append(command)  # recognition without a usable key: the user's own, kept as it is
     # Existing commands are found by their entity key, not by their text, and kept as they are
     # (the user may have changed title, recognition, scaling or analog in Config). Forced changes:
     # the analog flag HA knows about, and the old placeholder text on a digital command.
-    needs_flag = any(not e.get("digital") and commands[e["key"]].get("Analog") != "true"
-                     for e in wanted if e["key"] in commands)
-    needs_text = any(e.get("digital") and _stale(commands[e["key"]], e["key"])
-                     for e in wanted if e["key"] in commands)
+    needs_flag = any(not e.get("digital") and c.get("Analog") != "true"
+                     for e in wanted for c in commands.get(e["key"], []))
+    needs_text = any(e.get("digital") and _stale(c, e["key"])
+                     for e in wanted for c in commands.get(e["key"], []))
     if existing is not None:
         same_set = set(commands) == {e["key"] for e in wanted}
         if (existing.get("U") == input_id and existing.get("Port") == str(port) and same_set
@@ -124,19 +127,21 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
                        WF="16384", Address="", Port=str(port))
     # New commands get short names after the highest one in use, so wiring in Config
     # that refers to the existing commands stays valid.
-    numbers = [int(m.group(1)) for c in commands.values()
+    numbers = [int(m.group(1)) for c in existing_commands
                for m in [re.fullmatch(INAME + r"(\d+)", c.get("IName") or "")] if m]
     index = max(numbers, default=0)
     for entry in wanted:
         key = entry["key"]
         check = _check_for(entry)
         if key in commands:
-            cmd = commands[key]
-            if not entry.get("digital") and cmd.get("Analog") != "true":
-                cmd.set("Analog", "true")
-            elif entry.get("digital") and _stale(cmd, key):
-                cmd.set("Check", check)
-            block.append(cmd)
+            for cmd in commands[key]:
+                if not entry.get("digital") and cmd.get("Analog") != "true":
+                    cmd.set("Analog", "true")
+                    if cmd.get("Check") == key + "=1":
+                        cmd.set("Check", check)  # an analog command needs the value placeholder
+                elif entry.get("digital") and _stale(cmd, key):
+                    cmd.set("Check", check)
+                block.append(cmd)
             continue
         index += 1
         attrs = dict(Type="VirtualUdpInCmd", IName=f"{INAME}{index}", V=version, U=uid(key),
@@ -150,6 +155,9 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
         ET.SubElement(cmd, "Co", K="AQ", U=uid(key + "/AQ")[:19] + "00ff" + tail)
         ET.SubElement(cmd, "Co", K="Q", U=uid(key + "/Q")[:19] + "01ff" + tail)
         ET.SubElement(cmd, "Display", Type="1", Unit="<v>" if entry.get("digital") else "<v.2>", StateOnly="true")
+    if wanted:
+        for cmd in loose:
+            block.append(cmd)
     text = xml.decode("utf-8")
     if existing is not None:
         start, end = _span(text, existing.get("U"))
