@@ -38,7 +38,7 @@ class UdpSetup:
         self.limit = int(options.get("udp_max_signals") or 500)
         # Gateway/Client archives are only touched with the explicit beta option.
         self.gateway_beta = bool(options.get("udp_gateway_beta", False))
-        # Weg 3: wish list for the HA -> Loxone input, set only by the apply button.
+        # Weg 3: wish list for the HA -> Loxone input, set from the stored list at load and by the apply button.
         self.ha_values = None
         self.configured_callbacks = []
         self.stop = threading.Event()

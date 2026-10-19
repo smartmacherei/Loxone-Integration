@@ -13,8 +13,8 @@ from homeassistant.components.sensor import CONF_STATE_CLASS
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (CONF_DEVICE_CLASS, CONF_NAME,
                                  CONF_UNIT_OF_MEASUREMENT, CONF_VALUE_TEMPLATE,
-                                 STATE_OFF, STATE_ON, STATE_UNKNOWN)
-from homeassistant.const import EntityCategory
+                                 STATE_OFF, STATE_ON, STATE_UNKNOWN,
+                                 EntityCategory)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback

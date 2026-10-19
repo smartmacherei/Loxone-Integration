@@ -85,7 +85,7 @@ version 1.7.0):
 |---|---|
 | **UDP status** | Way 2. Shows whether real-time values arrive from the Miniserver ("Receiving UDP data"). The setup itself is enabled under *Configure*. |
 | **HA → Loxone** | Way 3. Number of values that exist as inputs in the Loxone program. The attributes `pending_add` and `pending_remove` show what a button press would change. |
-| **Home Assistant connected** | Way 3. Ready-made value of every installation: always on, labelled "loxone". On a brand-new installation it is on the wish list from the start. |
+| **Home Assistant connected** | Way 3. Always on while the integration runs. A brand-new installation gives it the label "loxone" and puts it on the wish list from the start; an update does not add the label. |
 | **Check connection** | Checks the web port, login, FTP/TLS and UDP reception. No uploads, no restart. The result arrives as a notification. Press it first whenever something looks wrong. |
 | **Apply HA values to program** | Way 3. Writes every entity labelled "loxone" into the Miniserver program (backup, upload, restart). Nothing changes without the button (exception: a brand-new installation, see below). |
 
@@ -163,10 +163,12 @@ the Loxone program without creating objects in Loxone Config:
 
 **New installation:** A brand-new installation creates the label **loxone** (icon
 `mdi:alpha-l-box`, green) itself if it is missing and gives it to the entity **Home Assistant
-connected** on the Loxone device. It is then already on the wish list; the first automatic UDP
-setup writes it into the program together with the UDP loggers (one upload, one restart).
-Updating an existing installation also adds the entity, but without the label and without a
-program change.
+connected** on the Loxone device. Only this one entity is then on the wish list (further labelled
+entities appear as `pending_add` and reach the program with the button). The first automatic
+UDP setup writes the value into the program together with the UDP loggers: one upload, one
+restart. If the program already contains the loggers (for example after the integration was
+removed and added again), the new value alone triggers an upload and restart. Updating an
+existing installation also adds the entity, but without the label and without a program change.
 
 Values are numbers only: numeric states as they are; on/off, open/closed and similar as
 1/0; entities with an `options` attribute as the index of the state; `climate` entities

@@ -139,13 +139,19 @@ async def _async_seed(hass, entry, state, store):
     if status is None:
         _LOGGER.debug("Loxone HA status entity is not registered; nothing to prepare")
         return False
-    listed = labels.async_list_labels() if hasattr(labels, "async_list_labels") else labels.labels.values()
-    label = next((item for item in listed if (item.name or "").lower() == LABEL), None)
+    by_name = getattr(labels, "async_get_label_by_name", None)
+    if by_name is not None:
+        label = by_name(LABEL)
+    else:
+        listed = labels.async_list_labels() if hasattr(labels, "async_list_labels") else labels.labels.values()
+        label = next((item for item in listed if (item.name or "").lower() == LABEL), None)
     if label is None:
         label = labels.async_create(LABEL, icon=LABEL_ICON, color=LABEL_COLOR)
     registry.async_update_entity(status.entity_id, labels=set(status.labels) | {label.label_id})
-    limit = int(entry.options.get("udp_max_signals") or 500)
-    entries, _unsupported, _beyond = desired(hass, limit, hass.config.language)
+    # Only the status entity: further labelled entities show up as pending_add and
+    # reach the program with the button, never silently.
+    found = entries_for(status.entity_id, hass.states.get(status.entity_id), hass.config.language) or []
+    entries = sorted(found, key=lambda e: e["key"])
     state["entries"] = entries
     await store.async_save({"entries": entries, "seeded": True})
     return True

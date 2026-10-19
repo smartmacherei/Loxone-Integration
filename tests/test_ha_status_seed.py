@@ -20,7 +20,7 @@ STATUS_ID = "binary_sensor.loxone_ha_verbunden"
 
 
 def test_status_attributes_stay_far_below_the_recorder_limit():
-    # 826 terminals made the sensor attributes exceed HA's 16384 byte limit.
+    # 391 configured terminals (826 discovered) made the attributes exceed HA's 16384 byte limit.
     uuids = [f"13884890-{i:04x}-1236-ffff949738c6754e" for i in range(826)]
     program = "13884893-0033-12a0-ffff949738c6754e"
     status = {"state": "configured", "scopes": {program: uuids}, "signal_limit": 500}
@@ -65,6 +65,8 @@ def install_fakes(monkeypatch, entities, labels):
         return label
     label_registry.async_create = create
     label_registry.async_list_labels = lambda: list(label_registry.labels.values())
+    label_registry.async_get_label_by_name = lambda name: next(
+        (l for l in label_registry.labels.values() if (l.name or "").casefold() == name.casefold()), None)
     er = types.ModuleType("homeassistant.helpers.entity_registry")
     er.async_get = lambda hass: registry
     er.async_entries_for_config_entry = lambda reg, entry_id: [e for e in reg.entries if e.config_entry_id == entry_id]
@@ -127,14 +129,15 @@ def test_an_existing_label_is_reused_and_never_recreated(monkeypatch):
     assert registry.entries[0].labels == {"abc123"}
 
 
-def test_other_labelled_entities_stay_on_the_wish_list(monkeypatch):
+def test_other_labelled_entities_are_not_put_on_the_wish_list_silently(monkeypatch):
     other = entity("sensor.pool", "x-pool", "sensor", labels={"loxone"})
     registry, labels = install_fakes(monkeypatch, [entity(), other], [NS(label_id="loxone", name="loxone", icon=None, color=None)])
     hass, entry = hass_and_entry()
     hass.states.get.__self__["sensor.pool"] = NS(state="23.5", attributes={"friendly_name": "Pool"})
     state, store = {"entries": []}, FakeStore()
     asyncio.run(values._async_seed(hass, entry, state, store))
-    assert sorted(e["key"] for e in state["entries"]) == [STATUS_ID, "sensor.pool"]
+    assert [e["key"] for e in state["entries"]] == [STATUS_ID]
+    assert store.saved["entries"] == state["entries"]
 
 
 def test_without_the_status_entity_nothing_is_changed(monkeypatch):

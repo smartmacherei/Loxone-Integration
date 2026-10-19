@@ -87,7 +87,7 @@ Version 1.7.0):
 |---|---|
 | **UDP-Status** | Weg 2. Zeigt, ob Echtzeitwerte vom Miniserver ankommen („Empfängt UDP-Daten“). Die Einrichtung selbst schaltest du unter *Konfigurieren* ein. |
 | **HA → Loxone** | Weg 3. Zahl der Werte, die im Loxone-Programm als Eingänge stehen. Die Attribute `pending_add` und `pending_remove` zeigen, was ein Knopfdruck ändern würde. |
-| **Home Assistant verbunden** | Weg 3. Vorbelegter Wert jeder Installation: immer an, mit dem Label „loxone“. Bei einer Neuinstallation steht er von Anfang an auf der Wunschliste. |
+| **Home Assistant verbunden** | Weg 3. Immer an, solange die Integration läuft. Eine Neuinstallation gibt ihm das Label „loxone“ und setzt ihn von Anfang an auf die Wunschliste; nach einem Update bekommt er das Label nicht. |
 | **Verbindung prüfen** | Prüft Webport, Anmeldung, FTP/TLS und UDP-Empfang. Keine Uploads, kein Neustart. Das Ergebnis kommt als Benachrichtigung. Bei Problemen immer zuerst drücken. |
 | **HA-Werte ins Programm übernehmen** | Weg 3. Schreibt alle Entitäten mit dem Label „loxone“ ins Programm des Miniservers (Sicherung, Upload, Neustart). Ohne Knopfdruck ändert sich am Programm nichts (Ausnahme: Neuinstallation, siehe unten). |
 
@@ -167,10 +167,13 @@ Loxone-Programm, ohne in Loxone Config Objekte anzulegen:
 
 **Neuinstallation:** Eine neue Installation legt das Label **loxone** (Symbol `mdi:alpha-l-box`,
 grün) selbst an, falls es fehlt, und gibt es der Entität **Home Assistant verbunden** am
-Loxone-Gerät. Diese steht damit schon auf der Wunschliste; die erste automatische
-UDP-Einrichtung schreibt sie zusammen mit den UDP-Loggern ins Programm (ein Upload, ein
-Neustart). Ein Update einer bestehenden Installation legt die Entität ebenfalls an, aber ohne
-Label und ohne Programmänderung.
+Loxone-Gerät. Nur diese eine Entität steht damit auf der Wunschliste (weitere
+Entitäten mit dem Label erscheinen als `pending_add` und kommen erst per Knopf ins Programm).
+Die erste automatische UDP-Einrichtung schreibt den Wert zusammen mit den UDP-Loggern ins
+Programm: ein Upload, ein Neustart. Enthält das Programm die Logger schon (zum Beispiel nach
+dem Löschen und erneuten Hinzufügen der Integration), löst der neue Wert allein einen Upload
+und Neustart aus. Ein Update einer bestehenden Installation legt die Entität ebenfalls an, aber
+ohne Label und ohne Programmänderung.
 
 Werte sind immer Zahlen: Zahlenzustände unverändert; on/off, open/closed und ähnliche als
 1/0; Entitäten mit Attribut `options` als Index des Zustands; `climate` liefert Modus-Index
