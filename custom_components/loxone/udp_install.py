@@ -21,6 +21,12 @@ _LOCKS_GUARD = threading.Lock()
 
 _LOGGER = logging.getLogger(__name__)
 
+# Replies to AUTH TLS that mean "no TLS here": 500/502/504 unknown or unimplemented,
+# 534 refused by policy (RFC 4217). Miniserver firmware 17.2 answers 530 "not logged
+# in" to every command before USER/PASS, AUTH TLS included (measured 2026-10-19), so
+# no TLS can be negotiated; FTPS support is unverified.
+_NO_TLS_CODES = ("500", "502", "504", "530", "534")
+
 
 class ActivationUncertainError(OSError):
     """A staged program may still be waiting for a future Miniserver restart."""
@@ -94,8 +100,8 @@ class ProgramClient:
         return f"/dev/udp/{address}/{port}"
 
     def ftp(self):
-        # Prefer FTPS as supported by Miniserver Gen 2. Fall back only when AUTH
-        # TLS is explicitly unsupported, not after a failed login or TLS session.
+        # Prefer FTPS. Fall back to plain FTP only when AUTH TLS is refused before
+        # any login (see _NO_TLS_CODES), not after a failed login or TLS session.
         mark("ftp_connect")
         ftp = ftplib.FTP_TLS(timeout=30, source_address=self.source_address)
         try:
@@ -104,7 +110,7 @@ class ProgramClient:
             try:
                 ftp.auth()
             except ftplib.error_perm as err:
-                if not str(err).startswith(("500", "502", "504")):
+                if not str(err).startswith(_NO_TLS_CODES):
                     raise
                 ftp.close()
                 mark("ftp_connect")

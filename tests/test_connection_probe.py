@@ -30,7 +30,8 @@ def test_registry_ids_accept_mapping_and_entry_iterators():
     ("ftp_login", "FTP_LOGIN_REJECTED"), ("ftp_connect", "CONNECTION_REFUSED"),
     ("web_timeout", "TIMEOUT"), ("ftp_directory", "FTP_PATH_OR_PERMISSION_REJECTED"),
     ("structure", "MINISERVER_STRUCTURE_INVALID"), ("ftp_tls", "TLS_FAILED"),
-    ("ftp_fallback", None)])
+    ("ftp_fallback", None), ("ftp_tls530", None), ("ftp_tls_policy534", None),
+    ("ftp_directory530", "FTP_NOT_LOGGED_IN")])
 def test_checks_are_read_only_and_safe(monkeypatch, caplog, failure, expected):
     module = load("connection_probe")
     secret = "PASSWORD_TOKEN_SERVER_PRIVATE_PROJECT"
@@ -56,6 +57,9 @@ def test_checks_are_read_only_and_safe(monkeypatch, caplog, failure, expected):
             operations.append("AUTH")
             if failure == "ftp_tls": raise module.ssl.SSLError(secret)
             if failure == "ftp_fallback": raise module.ftplib.error_perm("502 " + secret)
+            # Miniserver firmware answers every command before USER/PASS with 530.
+            if failure == "ftp_tls530": raise module.ftplib.error_perm("530 " + secret)
+            if failure == "ftp_tls_policy534": raise module.ftplib.error_perm("534 " + secret)
         def login(self, *args):
             operations.append("LOGIN")
             if failure == "ftp_login": raise module.ftplib.error_perm("530 " + secret)
@@ -63,12 +67,14 @@ def test_checks_are_read_only_and_safe(monkeypatch, caplog, failure, expected):
         def cwd(self, path):
             assert path == "/prog"
             if failure == "ftp_directory": raise module.ftplib.error_perm("550 " + secret)
+            if failure == "ftp_directory530": raise module.ftplib.error_perm("530 " + secret)
         def retrlines(self, command, callback):
             assert command == "NLST"
             callback(secret)
         def close(self): operations.append("CLOSE")
     monkeypatch.setattr(module.http.client, "HTTPConnection", HTTP)
-    monkeypatch.setattr(module.ftplib, "FTP_TLS", FTP)
+    class TLS(FTP): pass  # distinct from plain FTP, so isinstance(ftp, FTP_TLS) is meaningful
+    monkeypatch.setattr(module.ftplib, "FTP_TLS", TLS)
     monkeypatch.setattr(module.ftplib, "FTP", FTP)
     result = module.probe({"host": "miniserver.invalid", "port": 80, "username": "test", "password": secret})
     assert result["provisioning_performed"] is False
@@ -84,3 +90,11 @@ def test_checks_are_read_only_and_safe(monkeypatch, caplog, failure, expected):
         assert result["checks"]["ftp_directory"]["state"] == "not_tested"
     if failure == "ftp_tls":
         assert "LOGIN" not in operations
+    if failure in {"ftp_tls530", "ftp_tls_policy534"}:
+        # AUTH TLS refused before login means "no TLS": reconnect, one plain login.
+        assert result["checks"]["ftp_tls"]["state"] == "unsupported"
+        assert result["checks"]["ftp_tls"]["code"] == "FTP_TLS_UNSUPPORTED"
+        assert result["checks"]["ftp_login"]["code"] == "FTP_LOGIN_ACCEPTED"
+        assert operations.count("LOGIN") == 1 and "PROT" not in operations
+    if failure == "ftp_directory530":
+        assert "FTP_LOGIN_REJECTED" not in [c["code"] for c in result["checks"].values()]

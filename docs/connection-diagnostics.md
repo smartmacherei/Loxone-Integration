@@ -25,7 +25,9 @@ Zustand und die letzte ausdrücklich gestartete Prüfung mit deren Zeitpunkt.
 | `MINISERVER_IDENTIFIED` | Die Antwort enthält eine Loxone-Struktur mit Miniserver-Informationen. |
 | `FTP_CONNECTED` | Der FTP-Dienst auf Port 21 antwortet. |
 | `FTP_LOGIN_ACCEPTED` | Der FTP-Server hat die Anmeldung akzeptiert. |
-| `FTP_LOGIN_REJECTED` | FTP 530: Anmeldung/Zugriff wurde abgelehnt. |
+| `FTP_TLS_UNSUPPORTED` | Der Miniserver lehnt `AUTH TLS` vor dem Login ab (500, 502, 504, 530 oder 534); es folgt unverschlüsseltes FTP. |
+| `FTP_LOGIN_REJECTED` | FTP 530 beim Login: Anmeldung/Zugriff wurde abgelehnt. Meist fehlt dem Benutzer das FTP-Recht in Loxone Config. |
+| `FTP_NOT_LOGGED_IN` | FTP 530 außerhalb des Logins: Der Server verlangt eine Anmeldung. |
 | `FTP_DIRECTORY_READABLE` | Verzeichnisabfrage von `/prog` und passiver FTP-Datenkanal funktionieren. |
 | `CONNECTION_REFUSED` | Die Verbindung wurde abgewiesen; Dienst/Port prüfen. |
 | `TIMEOUT` | Zeitlimit erreicht. Eine konkrete Netzwerk- oder Firewallursache ist nicht bestätigt. |

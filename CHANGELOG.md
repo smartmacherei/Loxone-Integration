@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+- FTP-Aufbau zum Miniserver: Antwortet der Miniserver auf `AUTH TLS` vor dem Login
+  mit 530 (oder 534), gilt das wie 500/502/504 als „kein FTPS“. Die Integration
+  verbindet dann neu und loggt sich einmal per Klartext-FTP ein, statt wegen eines
+  vermeintlich abgelehnten Logins abzubrechen. Betrifft die automatische
+  UDP-Einrichtung und die Diagnose „Verbindung prüfen“.
+- Diagnose: `FTP_LOGIN_REJECTED` steht nur noch für einen echten Login-Versuch. Ein
+  530 in anderen Schritten heißt `FTP_NOT_LOGGED_IN`.
+
 ## [1.7.4] - 2026-09-24
 
 - Finale Version von 1.7.4b1 (gemeinsames Programmdatum im Gateway/Client-Verbund),

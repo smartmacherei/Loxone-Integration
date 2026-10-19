@@ -262,6 +262,55 @@ def run(client):
     return installer.install(client, str(client.folder), 55555, lambda raw, xml: {U}, threading.Event())
 
 
+def fake_ftp_classes(auth_error):
+    """FTP_TLS/FTP stand-ins; AUTH TLS fails with auth_error, login always works."""
+    calls = []
+    class Plain:
+        def __init__(self, **kwargs): calls.append(type(self).__name__ + ".init")
+        def connect(self, host, port): calls.append((type(self).__name__ + ".connect", port))
+        def login(self, user, password): calls.append(type(self).__name__ + ".login")
+        def cwd(self, path): calls.append((type(self).__name__ + ".cwd", path))
+        def close(self): calls.append(type(self).__name__ + ".close")
+    class Tls(Plain):
+        def auth(self):
+            calls.append("Tls.auth")
+            if auth_error: raise installer.ftplib.error_perm(auth_error)
+        def prot_p(self): calls.append("Tls.prot_p")
+    return Plain, Tls, calls
+
+
+@pytest.mark.parametrize("auth_error", ["500 x", "502 x", "504 x", "530 Failed", "534 x"])
+def test_ftp_falls_back_to_plain_when_auth_tls_is_refused_before_login(monkeypatch, auth_error):
+    # Miniserver firmware answers every command before USER/PASS with 530.
+    plain, tls, calls = fake_ftp_classes(auth_error)
+    monkeypatch.setattr(installer.ftplib, "FTP", plain)
+    monkeypatch.setattr(installer.ftplib, "FTP_TLS", tls)
+    client = installer.ProgramClient("miniserver.invalid", 80, "user", "pw")
+    ftp = client.ftp()
+    assert isinstance(ftp, plain) and not isinstance(ftp, tls)
+    assert calls.count("Plain.login") == 1 and "Tls.login" not in calls
+    assert "Tls.prot_p" not in calls
+    assert ("Plain.cwd", "/prog") in calls
+
+
+def test_ftp_uses_tls_when_auth_tls_succeeds(monkeypatch):
+    plain, tls, calls = fake_ftp_classes(None)
+    monkeypatch.setattr(installer.ftplib, "FTP", plain)
+    monkeypatch.setattr(installer.ftplib, "FTP_TLS", tls)
+    ftp = installer.ProgramClient("miniserver.invalid", 80, "user", "pw").ftp()
+    assert isinstance(ftp, tls)
+    assert "Tls.prot_p" in calls and "Plain.init" not in calls
+
+
+def test_ftp_does_not_fall_back_on_other_auth_errors(monkeypatch):
+    plain, tls, calls = fake_ftp_classes("550 x")
+    monkeypatch.setattr(installer.ftplib, "FTP", plain)
+    monkeypatch.setattr(installer.ftplib, "FTP_TLS", tls)
+    with pytest.raises(installer.ftplib.error_perm):
+        installer.ProgramClient("miniserver.invalid", 80, "user", "pw").ftp()
+    assert "Plain.init" not in calls and "Tls.login" not in calls
+
+
 def test_successful_transaction_and_persistent_restart_guard(tmp_path):
     client = FakeClient(tmp_path)
     assert run(client)["state"] == "restarting"
