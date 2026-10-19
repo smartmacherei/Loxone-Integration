@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.7.5b3] - 2026-10-19 (Vorabversion)
+
+- FTP-Aufbau zum Miniserver: Antwortet der Miniserver auf `AUTH TLS` vor dem Login
+  mit 530 (oder 534), gilt das wie 500/502/504 als „kein FTPS“. Die Integration
+  verbindet dann neu und loggt sich einmal per Klartext-FTP ein, statt wegen eines
+  vermeintlich abgelehnten Logins abzubrechen. Betrifft die automatische
+  UDP-Einrichtung und die Diagnose „Verbindung prüfen“. Benutzername und Passwort
+  gehen dabei im Klartext über das lokale Netz.
+- Diagnose: `FTP_LOGIN_REJECTED` steht nur noch für einen echten Login-Versuch. Ein
+  530 in anderen Schritten heißt `FTP_NOT_LOGGED_IN`.
+- Der Wechsel auf Klartext-FTP wird mit dem Antwortcode protokolliert (ohne Servertext).
+- Die Dokumentation zur automatischen UDP-Einrichtung beschreibt die unverschlüsselte
+  FTP-Sitzung jetzt offen.
+
 ## [1.7.5b2] - 2026-10-06 (Vorabversion)
 
 - Gleiche UDP-Änderung wie 1.7.5b1. Die zusätzliche Manifest-Abhängigkeit `httpx`
