@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.0] - 2026-10-19
+
+- Finale Version von 1.8.0b1, am Code keine weitere Änderung. Sie fasst die Vorabversionen
+  1.7.5b1 bis 1.8.0b1 zusammen:
+  - Die automatische UDP-Einrichtung prüft das Programm nur noch beim Laden oder Neuladen
+    der Integration, nicht mehr zyklisch (1.7.5b1).
+  - Der FTP-Aufbau fällt auf Klartext-FTP zurück, wenn der Miniserver `AUTH TLS` vor dem
+    Login mit 530 oder 534 beantwortet (1.7.5b3). Benutzername und Passwort gehen dabei im
+    Klartext über das lokale Netz.
+  - Das Loxone-Gerät hat die Entität **Home Assistant verbunden**; eine Neuinstallation legt
+    das Label **loxone** an und setzt sie auf die Wunschliste für Weg 3 (1.8.0b1).
+  - Der Sensor „UDP-Status“ trägt keine UUID-Listen mehr als Attribut (1.8.0b1).
+  Die Einzelheiten stehen in den Abschnitten der Vorabversionen darunter.
+
 ## [1.8.0b1] - 2026-10-19 (Vorabversion)
 
 - Neu: Das Loxone-Gerät hat die Entität **Home Assistant verbunden** (immer an). Eine
