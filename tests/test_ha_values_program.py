@@ -70,7 +70,7 @@ def test_input_recreated_by_config_with_new_uuids_is_adopted_not_duplicated():
 def test_user_changes_on_existing_commands_survive_a_rebuild():
     patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
     # The user switched the digital command to analog and changed scaling in Config.
-    edited = patched.replace(b'Check="binary_sensor.tor=\\v" Signed="true" SourceValHigh="100"',
+    edited = patched.replace(b'Check="binary_sensor.tor=1" Signed="true" SourceValHigh="100"',
                              b'Check="binary_sensor.tor=\\v" Analog="true" Signed="true" SourceValHigh="10"')
     assert edited != patched
     rebuilt, report = values.patch_ha_values(edited, ENTRIES + [{"key": "sensor.neu", "title": "Neu", "digital": False}])
@@ -87,7 +87,7 @@ def test_input_and_commands_are_created_under_the_caption():
     parent = next(el for el in ET.fromstring(patched).iter("C") if el.get("Type") == "VirtualInCaption")
     assert block.get("U") in {el.get("U") for el in parent}
     assert [(c[0], c[2], c[3], c[4]) for c in commands] == [
-        ("HAV1", "binary_sensor.tor=\\v", "Tor", "<v>"), ("HAV2", "sensor.pool=\\v", "Pool", "<v.2>")]
+        ("HAV1", "binary_sensor.tor=1", "Tor", "<v>"), ("HAV2", "sensor.pool=\\v", "Pool", "<v.2>")]
     doc = next(el for el in ET.fromstring(patched).iter("C") if el.get("Type") == "Document")
     assert doc.get("NumO") == str(len(list(ET.fromstring(patched).iter("C"))))
     # Deterministic identities: the same key yields the same UUIDs on every run.
@@ -153,3 +153,40 @@ def test_prepare_places_the_input_in_project_and_gateway_partial_only():
     assert unchanged == result and again["ha_values_changed"] is False
     without, _ = program.prepare(raw, TARGET, set(), gateway=True)  # None: Weg 3 untouched
     assert managed(program.unpack(without, gateway=True)[1]) is None
+
+
+def test_digital_values_get_exact_on_text_and_numbers_the_value_placeholder():
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    checks = {c[3]: c[2] for c in managed(patched)[1]}
+    # Measured on a real Miniserver: a digital command with "=\\v" never matched "tor=1".
+    assert checks == {"Tor": "binary_sensor.tor=1", "Pool": "sensor.pool=\\v"}
+
+
+def test_stale_digital_value_placeholder_is_migrated_and_keeps_identity():
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    old = patched.replace(b'Check="binary_sensor.tor=1"', b'Check="binary_sensor.tor=\\v"')  # what 1.8.0 wrote
+    assert old != patched
+    rebuilt, report = values.patch_ha_values(old, ENTRIES)
+    assert report["ha_values_changed"]
+    before = {c[0]: c[1] for c in managed(old)[1]}
+    after = {c[0]: (c[1], c[2], c[3]) for c in managed(rebuilt)[1]}
+    assert after["HAV1"] == (before["HAV1"], "binary_sensor.tor=1", "Tor")  # same UUID, short name and title
+    assert values.patch_ha_values(rebuilt, ENTRIES)[1]["ha_values_changed"] is False
+
+
+def test_user_edited_recognition_text_is_kept_and_stays_quiet():
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    edited = patched.replace(b'Check="binary_sensor.tor=1"', b'Check="binary_sensor.tor=ein"')
+    assert edited != patched
+    same, report = values.patch_ha_values(edited, ENTRIES)
+    assert same == edited and report["ha_values_changed"] is False
+    rebuilt, _ = values.patch_ha_values(edited, ENTRIES + [{"key": "sensor.neu", "title": "Neu", "digital": False}])
+    assert "binary_sensor.tor=ein" in [c[2] for c in managed(rebuilt)[1]]
+
+
+def test_default_attributes_config_strips_on_save_do_not_cause_a_rebuild():
+    patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
+    # Loxone Config drops attributes that hold their default when it saves the project.
+    saved = patched.replace(b' MinChange="0"', b'').replace(b' MinTime="0"', b'')
+    assert saved != patched
+    assert values.patch_ha_values(saved, ENTRIES) == (saved, {"ha_values": 2, "ha_values_changed": False})

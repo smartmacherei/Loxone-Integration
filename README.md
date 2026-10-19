@@ -170,6 +170,16 @@ restart. If the program already contains the loggers (for example after the inte
 removed and added again), the new value alone triggers an upload and restart. Updating an
 existing installation also adds the entity, but without the label and without a program change.
 
+**Command recognition by HA type:** The integration creates every command to match the type of the
+entity. Numeric values (sensors, temperatures, counters, `climate`) are **analog** commands with the
+recognition `<key>=\v` and deliver the value on `AQ`. Digital values (switches, binary sensors,
+`input_boolean`, `light` and similar) are **digital** commands with the exact recognition `<key>=1`:
+they fire a pulse when the value 1 arrives. The `\v` placeholder does not work on digital commands
+(measured on a real Miniserver). There is no command for the state 0; if you need the state, switch the
+command to analog in Config (`<key>=\v`), which is kept. A command from version 1.8.0 with `=\v` on a
+digital value is changed to `=1` on the next program update, without touching UUID, short name or
+title, so your wiring stays valid.
+
 Values are numbers only: numeric states as they are; on/off, open/closed and similar as
 1/0; entities with an `options` attribute as the index of the state; `climate` entities
 give the mode index (`hvac_modes`), current temperature, target temperature and the

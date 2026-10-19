@@ -18,6 +18,26 @@ INAME = "HAV"
 KEY = re.compile(r"[a-z0-9_]+\.[a-z0-9_]+(?:\.[a-z0-9_]+)?")
 
 
+def _key_of(check):
+    """Entity key a recognition text belongs to: the text before the first "=", if it is a key."""
+    head = (check or "").split("=", 1)[0]
+    return head if KEY.fullmatch(head) else None
+
+
+def _check_for(entry):
+    """Recognition text by HA type: digital values by their exact text, numbers by the value placeholder.
+
+    Measured on a real Miniserver: a digital command with ``<key>=\\v`` never fires for the
+    datagram ``<key>=1``; the placeholder only works on analog commands.
+    """
+    return entry["key"] + ("=1" if entry.get("digital") else "=\\v")
+
+
+def _stale(command, key):
+    """A digital command still carrying the value placeholder that 1.8.0 wrote: it never fires."""
+    return command.get("Analog") != "true" and command.get("Check") == key + "=\\v"
+
+
 def _caption(root):
     """VirtualInCaption of the gateway (or only) Miniserver and its program version."""
     lives = [el for el in root.iter("C") if el.get("Type") == "LoxLIVE"]
@@ -70,14 +90,22 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
         existing = next((el for el in objects if el.get("Type") == "VirtualUdpIn"
                          and (el.get("Title") == TITLE or el.get("IName") == INAME)), None)
     report["ha_values"] = len(wanted)
-    commands = {c.get("Check"): c for c in existing.findall("C")} if existing is not None else {}
-    # Existing commands are kept as they are (the user may have changed title, scaling
-    # or analog in Config); the only forced change is the analog flag HA knows about.
-    needs_flag = any(not e.get("digital") and commands[e["key"] + "=\\v"].get("Analog") != "true"
-                     for e in wanted if e["key"] + "=\\v" in commands)
+    commands = {}
+    for command in (existing.findall("C") if existing is not None else []):
+        key = _key_of(command.get("Check"))
+        if key and key not in commands:
+            commands[key] = command
+    # Existing commands are found by their entity key, not by their text, and kept as they are
+    # (the user may have changed title, recognition, scaling or analog in Config). Forced changes:
+    # the analog flag HA knows about, and the old placeholder text on a digital command.
+    needs_flag = any(not e.get("digital") and commands[e["key"]].get("Analog") != "true"
+                     for e in wanted if e["key"] in commands)
+    needs_text = any(e.get("digital") and _stale(commands[e["key"]], e["key"])
+                     for e in wanted if e["key"] in commands)
     if existing is not None:
-        same_set = set(commands) == {e["key"] + "=\\v" for e in wanted}
-        if existing.get("U") == input_id and existing.get("Port") == str(port) and same_set and not needs_flag:
+        same_set = set(commands) == {e["key"] for e in wanted}
+        if (existing.get("U") == input_id and existing.get("Port") == str(port) and same_set
+                and not needs_flag and not needs_text):
             return xml, report
     elif not wanted:
         return xml, report
@@ -101,11 +129,13 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
     index = max(numbers, default=0)
     for entry in wanted:
         key = entry["key"]
-        check = key + "=\\v"
-        if check in commands:
-            cmd = commands[check]
+        check = _check_for(entry)
+        if key in commands:
+            cmd = commands[key]
             if not entry.get("digital") and cmd.get("Analog") != "true":
                 cmd.set("Analog", "true")
+            elif entry.get("digital") and _stale(cmd, key):
+                cmd.set("Check", check)
             block.append(cmd)
             continue
         index += 1

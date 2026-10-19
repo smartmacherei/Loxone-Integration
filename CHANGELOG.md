@@ -4,6 +4,21 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.1] - 2026-10-19
+
+- Behoben (Weg 3, HA → Loxone): Digitale HA-Werte (Schalter, Binärsensoren, `input_boolean`,
+  `light` u. Ä.) kamen im Miniserver nicht an. Der Befehl hatte die Erkennung `<schlüssel>=\v`,
+  aber der Platzhalter `\v` wirkt nur an analogen Befehlen. An einem echten Miniserver
+  gemessen: das Paket kam an (UDP-Monitor), der digitale Befehl löste nicht aus, mit der
+  Erkennung `<schlüssel>=1` schon. Digitale Werte bekommen jetzt `=1`, Zahlenwerte bleiben
+  analog mit `\v`.
+- Bestehende digitale Befehle mit `=\v` stellt die Integration beim nächsten Programmupdate auf
+  `=1` um; UUID, Kurzname und Titel bleiben, die Verdrahtung in Config bleibt gültig.
+- Befehle werden über den Schlüssel der Entität gefunden, nicht mehr über den Erkennungstext.
+  Ändert man die Erkennung in Config (z. B. auf `=ein` oder analog), setzt die Integration das
+  nicht mehr bei jedem Neuaufbau zurück.
+- Für den Zustand 0 gibt es bei digitalen Werten weiterhin keinen Befehl.
+
 ## [1.8.0] - 2026-10-19
 
 - Finale Version von 1.8.0b1, am Code keine weitere Änderung. Sie fasst die Vorabversionen
