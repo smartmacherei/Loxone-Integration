@@ -20,9 +20,10 @@ import zlib
 
 from .udp_errors import coded_error, mark
 
-TITLE = "HA UDP"
-# Pages and loggers written by releases up to 1.6.2 keep working untouched.
-LEGACY_TITLES = {"HA UDP (smartmacherei)"}
+TITLE = "Home Assistant - Loxone nach HA (UDP)"
+# Names of earlier releases: still recognised as ours and renamed on the next rebuild
+# ("HA UDP (smartmacherei)" up to 1.6.2, "HA UDP" up to 1.8.1).
+LEGACY_TITLES = {"HA UDP (smartmacherei)", "HA UDP"}
 MAX_SIZE = 64 * 1024 * 1024
 
 
@@ -352,6 +353,9 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
             if el is None:
                 return None
             # Config may rewrite flags and placement; compare only functional fields.
+            # The Analog flag is one of them: on every save Config sets it from the
+            # source connector, which differs from ours for most digital terminals.
+            # The message format (<v> / <v.n>) decides what the logger sends.
             if el.get("Type") == "Logger":
                 return el.get("Address")
             refs = []
@@ -376,7 +380,7 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
                         raise ValueError("Unmanaged content on the managed UDP page")
                     refs.append((ref.get("U"), "disconnected"))
                     continue
-                refs.append((ref.get("U"), ref.get("Ref"), ref.get("Analog", "false"),
+                refs.append((ref.get("U"), ref.get("Ref"),
                              lm.get("RefLogger"), lm.get("On"), lm.get("Off"),
                              lm.get("MinimumTime", "0"), co.get("Input")))
             return sorted(refs)
@@ -384,8 +388,9 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
         old_logger = next((el for el in objects if el.get("U") == logger_id), None)
         report["managed"] += len(terminals)
         report["unsupported"] += len(skipped)
+        named = all(el is None or el.get("Title") == TITLE for el in (owned_page, old_logger))
         if (not terminals and owned_page is None and old_logger is None) or (
-            canonical(owned_page) == canonical(page) and canonical(old_logger) == canonical(logger)
+            named and canonical(owned_page) == canonical(page) and canonical(old_logger) == canonical(logger)
         ):
             continue
         if owned_page is not None:

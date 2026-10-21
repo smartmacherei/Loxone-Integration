@@ -135,15 +135,34 @@ def test_legacy_matching_logger_reused():
     assert program.prepare(legacy, TARGET, {U})[0] == legacy
 
 
-def test_previous_release_page_title_is_still_recognised():
+@pytest.mark.parametrize("legacy", sorted(program.LEGACY_TITLES))
+def test_previous_release_page_title_is_renamed_once(legacy):
     changed, _ = program.prepare(archive(), TARGET, {U})
     _, xml = program.unpack(changed)
-    older = archive(xml.replace(program.TITLE.encode(), b"HA UDP (smartmacherei)"))
-    # Same managed UUIDs, old title: accepted as ours and left untouched.
-    assert program.prepare(older, TARGET, {U})[0] == older
-    renamed = archive(xml.replace(program.TITLE.encode(), b"Kundenseite"))
+    older = archive(xml.replace(program.TITLE.encode(), legacy.encode()))
+    # Same managed UUIDs, old title: accepted as ours and renamed, wiring unchanged.
+    renamed, _ = program.prepare(older, TARGET, {U})
+    _, renamed_xml = program.unpack(renamed)
+    root = ET.fromstring(renamed_xml)
+    titles = {el.get("Type"): el.get("Title") for el in root.iter("C") if el.get("Type") in {"Page", "Logger"}
+              and el.get("U") in {e.get("U") for e in ET.fromstring(xml).iter("C") if e.get("Title") == program.TITLE}}
+    assert titles == {"Page": program.TITLE, "Logger": program.TITLE}
+    assert renamed_xml.count(b"<LoggerMailer") == xml.count(b"<LoggerMailer")
+    assert program.prepare(renamed, TARGET, {U})[0] == renamed  # and then it stays quiet
+    foreign = archive(xml.replace(program.TITLE.encode(), b"Kundenseite"))
     with pytest.raises(ValueError):
-        program.prepare(renamed, TARGET, {U})
+        program.prepare(foreign, TARGET, {U})
+
+
+def test_analog_flag_rewritten_by_config_does_not_trigger_an_upload():
+    changed, _ = program.prepare(archive(), TARGET, {U})
+    _, xml = program.unpack(changed)
+    # On every save Config sets the flag from the source connector: here it adds one
+    # to a digital terminal; on real projects it mostly removes ours.
+    flipped = xml.replace(b'Type="OutputRefLM"', b'Type="OutputRefLM" Analog="true"')
+    assert flipped != xml
+    assert program.patch_xml(flipped, TARGET, {U})[0] == flipped
+    assert program.patch_xml(flipped.replace(b' Analog="true"', b""), TARGET, {U})[0] == flipped.replace(b' Analog="true"', b"")
 
 
 def test_owned_page_with_user_logic_is_not_deleted():

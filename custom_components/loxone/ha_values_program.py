@@ -13,7 +13,9 @@ from .udp_errors import coded_error
 from .udp_program import _append, _span, stamp_document
 
 PORT = 55556
-TITLE = "HA Werte"
+TITLE = "Home Assistant - HA nach Loxone (UDP)"
+# Name up to 1.8.1: still adopted and renamed on the next rebuild.
+LEGACY_TITLES = {"HA Werte"}
 INAME = "HAV"
 KEY = re.compile(r"[a-z0-9_]+\.[a-z0-9_]+(?:\.[a-z0-9_]+)?")
 
@@ -88,7 +90,7 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
         # Config may re-create the input with a new UUID when the user edits it
         # (e.g. switching commands to analog). Adopt it by title or short name.
         existing = next((el for el in objects if el.get("Type") == "VirtualUdpIn"
-                         and (el.get("Title") == TITLE or el.get("IName") == INAME)), None)
+                         and (el.get("Title") in {TITLE} | LEGACY_TITLES or el.get("IName") == INAME)), None)
     report["ha_values"] = len(wanted)
     existing_commands = existing.findall("C") if existing is not None else []
     commands, loose = {}, []
@@ -105,10 +107,13 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
                      for e in wanted for c in commands.get(e["key"], []))
     needs_text = any(e.get("digital") and _stale(c, e["key"])
                      for e in wanted for c in commands.get(e["key"], []))
+    # A name of an earlier release is renamed; a name the user chose in Config stays until
+    # the input has to be rebuilt anyway.
+    needs_title = existing is not None and existing.get("Title") in LEGACY_TITLES
     if existing is not None:
         same_set = set(commands) == {e["key"] for e in wanted}
         if (existing.get("U") == input_id and existing.get("Port") == str(port) and same_set
-                and not needs_flag and not needs_text):
+                and not needs_flag and not needs_text and not needs_title):
             return xml, report
     elif not wanted:
         return xml, report

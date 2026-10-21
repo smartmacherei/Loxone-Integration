@@ -45,8 +45,10 @@ loggers already written to the Miniserver.
 When enabled, the integration reads the current complete program ZIP. It creates
 references only for discovered terminals with usable signal sources. Matching manual
 loggers are reused. Objects owned by this integration use deterministic identifiers;
-its own page is called **HA UDP** (installations from earlier releases keep the page name
-**HA UDP (smartmacherei)** until the page is rebuilt). Do not add customer logic to that page.
+its own page and logger are called **Home Assistant - Loxone nach HA (UDP)**, the virtual
+input for way 3 **Home Assistant - HA nach Loxone (UDP)** (since 1.8.2; the names of earlier
+releases, **HA UDP**, **HA UDP (smartmacherei)** and **HA Werte**, are recognised and renamed
+once). Do not add customer logic to that page.
 Existing application logic, permissions and other archive files are preserved.
 
 ## Backup is mandatory
