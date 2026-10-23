@@ -4,6 +4,30 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.3] - 2026-10-23
+
+- Behoben: Stand im Feld **Host** eine Browser-Adresse wie `http://192.168.178.123/`, lief die
+  Einrichtung ins Leere. Die Verbindung fragte `//jdev/cfg/apiKey` an (mit doppeltem
+  Schrägstrich), der Miniserver antwortete mit 404 „no Webinterface available“, und die
+  Integration meldete „Unrecognized command“. Die automatische UDP-Einrichtung brach beim
+  Programm-Download mit `PROGRAM_DOWNLOAD_FAILED` (OSError) ab. Der Host wird jetzt beim
+  Speichern bereinigt: ohne `http://`, ohne Schrägstrich am Ende, ein Port in der Adresse
+  wandert ins Feld **Port**. Bestehende Einträge werden beim nächsten Laden einmal
+  bereinigt, ohne Neuladen. Ein sauberer Host bleibt Zeichen für Zeichen gleich.
+  `https://` bleibt nur bei einem anderen Port als 443 stehen, weil sonst nur Port 443
+  auf https schließen lässt.
+- Neu: Die Raumzuordnung wählt für jeden Loxone-Raum den HA-Bereich mit gleichem Namen vor
+  (Groß-/Kleinschreibung und Leerzeichen am Rand egal). Gespeichert wird erst beim Bestätigen.
+  Räume, die man beim Speichern leer lässt, merkt sich die Integration (`room_area_unmapped`)
+  und wählt sie später nicht wieder vor; neue Räume werden vorausgewählt. Zuordnungen, die vor
+  1.8.3 gespeichert wurden, bekommen keine Namens-Vorauswahl, weil dort unbekannt ist, welche
+  leeren Felder Absicht waren. Einmal mit 1.8.3 speichern, dann greift sie für neue Räume.
+- Behoben: Alte Tor-Bausteine (Torsteuerung V1, im Programm `Door`, in der Strukturdatei
+  `Gate`), die Raffstores oder Rollläden fahren, erschienen in HA als Garagentor. Liegt der
+  Baustein in Loxone in einer Kategorie vom Typ Beschattung, bekommt er jetzt die
+  Geräteklasse **Jalousie**. Erkannt wird am Kategorietyp, nicht am Namen. Die `unique_id`
+  bleibt, eine in HA selbst gesetzte Darstellung („Anzeigen als“) hat weiter Vorrang.
+
 ## [1.8.2] - 2026-10-19
 
 - Behoben: Nach jedem Speichern aus Loxone Config hat die Integration das Programm beim

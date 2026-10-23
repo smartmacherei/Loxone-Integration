@@ -4,6 +4,8 @@ from __future__ import annotations
 import asyncio
 
 CONF_ROOM_MAPPING = "room_area_mapping"
+# Rooms deliberately left empty, so a same-named area is not preselected again.
+CONF_ROOM_UNMAPPED = "room_area_unmapped"
 
 
 def room_index(config):
