@@ -1,6 +1,8 @@
 Host-Bereinigung, Vorauswahl gleichnamiger Bereiche, alte Tor-Bausteine als Beschattung.
 
-Problem: Mit `http://192.168.178.123/` im Feld **Host** schlug die Einrichtung fehl. Die Verbindung fragte `//jdev/cfg/apiKey` an, der Miniserver antwortete 404 „There seems to be no Webinterface available on your Miniserver“, die Integration zeigte „Unrecognized command“. Die automatische UDP-Einrichtung brach beim Programm-Download mit `PROGRAM_DOWNLOAD_FAILED` (OSError) ab, weil der Host ungeprüft an die HTTP-Verbindung ging. Auch der Absenderfilter für UDP-Pakete und der Sender für Weg 3 nutzen den Host direkt.
+Problem: Mit `http://192.168.178.123/` im Feld **Host** schlug die Einrichtung fehl. Die Verbindung fragte `//jdev/cfg/apiKey` an, der Miniserver antwortete 404 „There seems to be no Webinterface available on your Miniserver“, die Integration zeigte „Unrecognized command“. Programm-Download, Absenderfilter für UDP-Pakete und der Sender für Weg 3 nutzen den Host ebenfalls direkt und hätten mit so einer Adresse auch nicht funktioniert.
+
+**Korrektur (mit 1.8.4):** Diese Notes führten den an der Anlage beobachteten Abbruch `PROGRAM_DOWNLOAD_FAILED` (OSError) auf den Host zurück. Das war falsch: Der Host war zu dem Zeitpunkt schon sauber, der Miniserver hat den Programm-Download mit HTTP 403 abgelehnt, weil dem Benutzer die Rechte fehlten. Seit 1.8.4 heißt dieser Fall `MINISERVER_ACCESS_DENIED` und nennt die nötigen Rechte.
 
 Änderung:
 
