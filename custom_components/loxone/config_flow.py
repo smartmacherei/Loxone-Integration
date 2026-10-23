@@ -27,7 +27,8 @@ from .const import (CONF_AUTO_CONFIGURE_UDP, CONF_AUTO_DISCOVERY, CONF_LIGHTCONT
                     CONF_UDP_GATEWAY_BETA, CONF_UDP_MAX_SIGNALS, CONF_UDP_PORT,
                     DEFAULT_AUTO_DISCOVERY, DEFAULT_IP,
                     DEFAULT_PORT, DEFAULT_UDP_MAX_SIGNALS, DEFAULT_UDP_PORT, DOMAIN)
-from .area_mapping import CONF_ROOM_MAPPING
+from .area_mapping import CONF_ROOM_MAPPING, CONF_ROOM_UNMAPPED
+from .host_option import normalize_host
 
 
 async def async_load_rooms(hass, options):
@@ -79,9 +80,24 @@ async def mapping_suggestions(handler):
     from homeassistant.helpers import area_registry as ar
 
     registry = ar.async_get(handler.parent_handler.hass)
-    saved = handler.options.get(CONF_ROOM_MAPPING, {})
-    return {label: saved[uuid] for label, uuid in mapping_fields(handler).items()
-            if uuid in saved and registry.async_get_area(saved[uuid]) is not None}
+    options = handler.options
+    saved = options.get(CONF_ROOM_MAPPING, {})
+    # Rooms left empty on an earlier save stay empty. Mappings saved before 1.8.3
+    # lack that list, so an empty field there may be deliberate: no name match.
+    by_name = CONF_ROOM_UNMAPPED in options or CONF_ROOM_MAPPING not in options
+    skipped = set(options.get(CONF_ROOM_UNMAPPED, []))
+    rooms = handler.flow_state.get("rooms", {})
+    suggestions = {}
+    for label, uuid in mapping_fields(handler).items():
+        if uuid in saved:
+            if registry.async_get_area(saved[uuid]) is not None:
+                suggestions[label] = saved[uuid]
+        elif by_name and uuid not in skipped:
+            # Areas created from the Loxone project carry the same room names.
+            area = registry.async_get_area_by_name(rooms[uuid])
+            if area is not None:
+                suggestions[label] = area.id
+    return suggestions
 
 
 async def validate_mapping(handler, user_input):
@@ -99,7 +115,8 @@ async def validate_mapping(handler, user_input):
         if not isinstance(area_id, str) or registry.async_get_area(area_id) is None:
             raise SchemaFlowError("invalid_area")
         mapping[fields[label]] = area_id
-    return {CONF_ROOM_MAPPING: mapping}
+    unmapped = sorted({uuid for uuid in fields.values() if uuid not in mapping})
+    return {CONF_ROOM_MAPPING: mapping, CONF_ROOM_UNMAPPED: unmapped}
 
 
 async def validate_loxone_setup(
@@ -126,6 +143,9 @@ async def validate_loxone_setup(
     # Ensure port is stored as int
     if CONF_PORT in user_input:
         user_input[CONF_PORT] = int(user_input[CONF_PORT])
+    if CONF_HOST in user_input:
+        user_input[CONF_HOST], user_input[CONF_PORT] = normalize_host(
+            user_input[CONF_HOST], user_input.get(CONF_PORT, handler.options.get(CONF_PORT, DEFAULT_PORT)))
     if CONF_UDP_PORT in user_input:
         user_input[CONF_UDP_PORT] = int(user_input[CONF_UDP_PORT])
     if CONF_UDP_MAX_SIGNALS in user_input:

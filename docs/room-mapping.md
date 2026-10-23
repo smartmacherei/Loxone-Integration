@@ -10,7 +10,10 @@ eingeschaltet; zum Überspringen ausschalten.
 1. Gewünschte Bereiche zunächst in Home Assistant anlegen.
 2. Die Liste zeigt alle Loxone-Räume mit jeweils einer HA-Bereichsauswahl.
 3. Für jeden gewünschten Raum einen Bereich auswählen. Bestehende Zuordnungen
-   sind vorausgewählt; das X entfernt eine Zuordnung aus der Liste.
+   sind vorausgewählt; das X entfernt eine Zuordnung aus der Liste. Ohne bestehende
+   Zuordnung ist ein HA-Bereich mit gleichem Namen vorausgewählt (Groß-/Kleinschreibung
+   egal). Wer die Bereiche aus dem Loxone-Projekt angelegt hat, muss nur bestätigen.
+   Ein beim Speichern leer gelassener Raum wird später nicht wieder vorausgewählt.
 4. Einmal bestätigen, um alle Zuordnungen gemeinsam zu speichern. Leere
    Auswahlen bedeuten keine Zuordnung.
 
@@ -38,7 +41,9 @@ Open **Settings → Devices & services → Loxone → Configure** and enable the
 room mapping checkbox. It is on by default; turn it off to skip the list.
 The same extra dialog is available during initial setup.
 Create the desired HA areas first. The list shows every Loxone room with its own
-HA area picker and preselects existing mappings. Choose the areas, use X to clear
+HA area picker and preselects existing mappings. Rooms without a mapping get the HA
+area with the same name preselected (case-insensitive); rooms left empty on save are
+not preselected again. Choose the areas, use X to clear
 a mapping, then confirm once to save the complete list. Empty selections mean
 no mapping.
 

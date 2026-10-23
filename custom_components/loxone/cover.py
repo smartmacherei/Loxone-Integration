@@ -22,6 +22,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .startup_trace import tracked_platform
 from . import LoxoneEntity
+from .control_states import in_shading_category
 from .const import (SENDDOMAIN, SERVICE_DISABLE_SUN_AUTOMATION,
                     SERVICE_ENABLE_SUN_AUTOMATION, SERVICE_QUICK_SHADE,
                     SUPPORT_QUICK_SHADE, SUPPORT_SUN_AUTOMATION)
@@ -56,6 +57,7 @@ async def async_setup_entry(
     entities = []
 
     for cover in get_all(loxconfig, ["Jalousie", "Gate", "Window"]):
+        shading = in_shading_category(loxconfig, cover)
         cover = add_room_and_cat_to_value_values(loxconfig, cover)
         cover.update(
             {
@@ -63,7 +65,7 @@ async def async_setup_entry(
             }
         )
         if cover["type"] == "Gate":
-            new_gate = LoxoneGate(**cover)
+            new_gate = LoxoneGate(shading=shading, **cover)
             entities.append(new_gate)
         elif cover["type"] == "Window":
             new_window = LoxoneWindow(**cover)
@@ -104,9 +106,11 @@ async def async_setup_entry(
 class LoxoneGate(LoxoneEntity, CoverEntity):
     """Loxone Gate"""
 
-    def __init__(self, **kwargs):
+    def __init__(self, shading=False, **kwargs):
         super().__init__(**kwargs)
         self.hass = kwargs["hass"]
+        # A gate block in a shading category drives blinds, not a gate.
+        self._shading = shading
         self._position_uuid = kwargs["states"]["position"]
         self._state_uuid = kwargs["states"]["active"]
         self._position = None
@@ -137,6 +141,8 @@ class LoxoneGate(LoxoneEntity, CoverEntity):
     @property
     def device_class(self):
         """Return the class of this device, from component DEVICE_CLASSES."""
+        if self._shading:
+            return CoverDeviceClass.BLIND
         if self.animation == 0:
             return CoverDeviceClass.GARAGE
         elif self.animation in [1, 2, 3]:

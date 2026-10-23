@@ -44,6 +44,7 @@ from .const import (ATTR_AREA_CREATE, ATTR_CODE, ATTR_COMMAND, ATTR_DEVICE,
                     SECUREDSENDDOMAIN, SENDDOMAIN, SIGNAL_STATE_UPDATE, cfmt)
 from .coordinator import LoxoneCoordinator
 from .helpers import get_miniserver_type
+from .host_option import normalize_host
 from .miniserver import MiniServer, get_miniserver_from_hass
 from .pyloxone_api.connection import LoxoneConnection
 from .pyloxone_api.exceptions import (LoxoneConnectionClosedOk,
@@ -292,6 +293,13 @@ async def _async_setup_entry(hass, config_entry):
     # update listener is registered, so it does not trigger a reload.
     if config_entry.title == "Loxone (smartmacherei)":
         hass.config_entries.async_update_entry(config_entry, title="Loxone")
+    # 1.8.3: entries saved with a browser address ("http://host/") get the plain
+    # host. Like the title fix, this runs before the update listener: no reload.
+    stored = (config_entry.options.get(CONF_HOST, ""), config_entry.options.get(CONF_PORT, DEFAULT_PORT))
+    host_port = normalize_host(*stored)
+    if host_port != (stored[0], int(stored[1])):
+        hass.config_entries.async_update_entry(config_entry, options={
+            **config_entry.options, CONF_HOST: host_port[0], CONF_PORT: host_port[1]})
 
     coordinator = LoxoneCoordinator(hass, config_entry)
     host = config_entry.options.get(CONF_HOST)

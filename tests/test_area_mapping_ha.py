@@ -201,7 +201,7 @@ class AreaMappingHATest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all("area" in selector.serialize()["selector"] for _, selector in fields.values()))
         self.assertEqual(schema({}), {})  # Clearing must not reinsert saved defaults.
         result = await flow.validate_mapping(handler, {"Loxone: Office (r1)": None, "Loxone: Office (r2)": ""})
-        self.assertEqual(result, {"room_area_mapping": {}})
+        self.assertEqual(result, {"room_area_mapping": {}, "room_area_unmapped": ["r1", "r2", "r3"]})
 
     async def test_empty_list_clears_all_saved_mappings(self):
         self.hass.config_entries.async_update_entry(self.entry, options={**self.options, "room_area_mapping": {"room-1": self.office.id}})
@@ -242,6 +242,60 @@ class AreaMappingHATest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("FAKE_SECRET", str(result["errors"]))
         result = await handler.async_step_user({**self.options, "edit_room_mapping": False})
         self.assertEqual(result["type"], "create_entry")
+
+    async def test_setup_saves_plain_host_from_browser_address(self):
+        handler = self.new_flow()
+        result = await handler.async_step_user({**self.options, "host": " http://192.0.2.10:8080/ "})
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual((result["options"]["host"], result["options"]["port"]), ("192.0.2.10", 8080))
+
+    def suggested(self, result):
+        return {str(k): (k.description or {}).get("suggested_value") for k in result["data_schema"].schema}
+
+    async def test_same_named_area_is_preselected_on_first_mapping(self):
+        rooms = {"room-1": " existing OFFICE", "room-2": "Loxone kitchen"}
+        handler = self.new_flow()
+        with patch.object(flow, "async_load_rooms", AsyncMock(return_value=rooms)):
+            result = await handler.async_step_user({**self.options, "edit_room_mapping": True})
+        values = self.suggested(result)
+        self.assertEqual(values["Loxone:  existing OFFICE"], self.office.id)
+        self.assertIsNone(values["Loxone: Loxone kitchen"])
+        # A preselection is only a suggestion: saving decides.
+        result = await handler.async_step_room_mapping({"Loxone:  existing OFFICE": self.office.id})
+        self.assertEqual(result["options"]["room_area_mapping"], {"room-1": self.office.id})
+        self.assertEqual(result["options"]["room_area_unmapped"], ["room-2"])
+
+    async def test_room_left_empty_is_not_preselected_again_but_new_room_is(self):
+        rooms = {"room-1": "Existing office", "room-2": "Existing kitchen"}
+        self.hass.config_entries.async_update_entry(self.entry, options={
+            **self.options, "room_area_mapping": {}, "room_area_unmapped": ["room-1"]})
+        handler = flow.LoxoneFlowHandler.async_get_options_flow(self.entry)
+        handler.hass = self.hass
+        with patch.object(flow, "async_load_rooms", AsyncMock(return_value=rooms)):
+            result = await handler.async_step_init({**self.options, "edit_room_mapping": True})
+        values = self.suggested(result)
+        self.assertIsNone(values["Loxone: Existing office"])
+        self.assertEqual(values["Loxone: Existing kitchen"], self.kitchen.id)
+
+    async def test_mapping_saved_before_1_8_3_gets_no_name_preselection(self):
+        # Without the list of rooms left empty, an empty field may be a deliberate choice.
+        self.hass.config_entries.async_update_entry(self.entry, options={
+            **self.options, "room_area_mapping": {"room-1": self.office.id}})
+        handler = flow.LoxoneFlowHandler.async_get_options_flow(self.entry)
+        handler.hass = self.hass
+        with patch.object(flow, "async_load_rooms", AsyncMock(return_value={"room-1": "Loxone office", "room-2": "Existing kitchen"})):
+            result = await handler.async_step_init({**self.options, "edit_room_mapping": True})
+        values = self.suggested(result)
+        self.assertEqual(values["Loxone: Loxone office"], self.office.id)
+        self.assertIsNone(values["Loxone: Existing kitchen"])
+
+    async def test_validation_retry_does_not_restore_cleared_name_match(self):
+        handler = self.new_flow()
+        with patch.object(flow, "async_load_rooms", AsyncMock(return_value={"room-1": "Existing office", "room-2": "Loxone kitchen"})):
+            await handler.async_step_user({**self.options, "edit_room_mapping": True})
+        result = await handler.async_step_room_mapping({"Loxone: Loxone kitchen": "deleted-area"})
+        self.assertEqual(result["type"], "form")
+        self.assertIsNone(self.suggested(result)["Loxone: Existing office"])
 
     async def test_actual_registries_persist_mapping_and_protect_user_edit(self):
         from types import SimpleNamespace as NS

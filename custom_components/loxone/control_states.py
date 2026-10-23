@@ -11,6 +11,16 @@ NATIVE_TYPES = {
 UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{16}$")
 
 
+def in_shading_category(config, control):
+    """Loxone marks shading categories with type "shading", whatever their name.
+
+    Old gate blocks (Torsteuerung V1) often drive blinds; their category is the
+    only hint in the structure file.
+    """
+    category = config.get("cats", {}).get(control.get("cat"))
+    return isinstance(category, dict) and category.get("type") == "shading"
+
+
 def state_inventory(config):
     """Expose named existing WS states, never guess their write commands/units."""
     seen = {value.lower() for control in config.get("controls", {}).values()
