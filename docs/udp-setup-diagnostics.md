@@ -16,6 +16,10 @@ Die Schritte sind `program_download`, `archive_check`, `program_format`,
 Unbekannte Ursachen erhalten einen schrittbezogenen `*_FAILED`-Code. Zeitüberschreitungen
 erhalten `*_TIMEOUT`; daraus wird keine Firewall- oder Berechtigungsursache abgeleitet.
 Exception-Texte, Serverantworten und Tracebacks werden nicht in die Meldungen übernommen.
+Lehnt der Miniserver eine HTTP-Anfrage ab, steht die Ursache im Code (seit 1.8.4):
+`MINISERVER_ACCESS_DENIED` bei HTTP 403 (Anmeldung gültig, dem Benutzer fehlen die Rechte
+„Web-Interface / Apps“, „FTP“ und „Loxone Config“) und `MINISERVER_LOGIN_REJECTED` bei
+HTTP 401 (Benutzername oder Passwort falsch). Ausnahmetyp ist dann `PermissionError`.
 Nicht freigegebene Exception-Klassennamen werden als `Exception` ausgegeben.
 
 Der UDP-Status und die Integrationsdiagnose enthalten `error_code`, `error_step`,

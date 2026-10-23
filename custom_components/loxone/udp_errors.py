@@ -47,7 +47,14 @@ REASONS = {
     "ACTIVATION_UNCONFIRMED": ("Die Aktivierung wurde noch nicht anhand des aktiven Programms bestätigt.", "Activation has not yet been confirmed against the active program."),
     "ACTIVATION_CLEANUP_UNCONFIRMED": ("Aktivierung und Bereinigung sind unbestätigt.", "Activation and cleanup are unconfirmed."),
     "PREVIOUS_ATTEMPT_BLOCKED": ("Ein früherer Versuch sperrt die Wiederholung; dessen Fehlerdetails sind nicht verfügbar.", "An earlier attempt blocks repetition; its error details are unavailable."),
+    "MINISERVER_ACCESS_DENIED": ("Der Miniserver verweigert dem in der Integration hinterlegten Benutzer diesen Zugriff (HTTP 403): Die Anmeldung ist gültig, aber dem Benutzer fehlen die Rechte für das Programm.", "The Miniserver refuses this access to the user configured in the integration (HTTP 403): the login is valid, but the user lacks the rights for the program."),
+    "MINISERVER_LOGIN_REJECTED": ("Der Miniserver lehnt die Anmeldung des in der Integration hinterlegten Benutzers ab (HTTP 401).", "The Miniserver rejects the login of the user configured in the integration (HTTP 401)."),
     "TEMPORARY_CLEANUP_UNCONFIRMED": ("Die Bereinigung der temporären Upload-Datei ist unbestätigt. Temporäre ha_udp_*.tmp-Dateien in /prog durch den Errichter prüfen lassen.", "Cleanup of the temporary upload file is unconfirmed. Have the installer check temporary ha_udp_*.tmp files in /prog."),
+}
+# Next checks for causes that do not depend on the step (README, "Benutzerrechte am Miniserver").
+CHECKS = {
+    "MINISERVER_ACCESS_DENIED": ("In Loxone Config unter Benutzerverwaltung der Benutzergruppe dieses Benutzers die Rechte „Web-Interface / Apps“, „FTP“ und „Loxone Config“ geben (geprüft: Gruppe „Vollzugriff“), in den Miniserver speichern und die Integration neu laden.", "In Loxone Config user management, give this user's group the rights 'Web interface / Apps', 'FTP' and 'Loxone Config' (verified: group 'Full access'), save to the Miniserver and reload the integration."),
+    "MINISERVER_LOGIN_REJECTED": ("Benutzername und Passwort in den Optionen der Integration mit der Benutzerverwaltung in Loxone Config abgleichen.", "Compare username and password in the integration options with the user management in Loxone Config."),
 }
 SAFE_TYPES = frozenset({"Exception", "OSError", "ValueError", "RuntimeError", "TimeoutError", "ConnectionError", "ConnectionRefusedError", "ConnectionResetError", "ConnectionAbortedError", "BrokenPipeError", "PermissionError", "FileNotFoundError", "IsADirectoryError", "NotADirectoryError", "UnicodeDecodeError", "UnicodeEncodeError", "KeyError", "IndexError", "AttributeError", "TypeError", "JSONDecodeError", "BadZipFile", "LargeZipFile", "ParseError", "error_perm", "error_temp", "error_reply", "error_proto", "SSLError", "SSLCertVerificationError", "SSLEOFError", "gaierror", "RemoteDisconnected", "IncompleteRead", "ActivationUncertainError"})
 
@@ -111,6 +118,8 @@ def details(data, language):
         if missing:
             description += (" Fehlende Pflichtdateien: " if de else " Missing required files: ") + ", ".join(missing) + "."
         return description, ("Archivaufbau anhand der Diagnosedaten prüfen; bei Master-/Client-Verbund die Programmzuordnung klären. Schutzprüfung nicht umgehen." if de else "Check archive layout using diagnostics; clarify program ownership in a master/client installation. Do not bypass the safety check.")
+    if code in CHECKS:
+        return description, CHECKS[code][0 if de else 1]
     return description, STEPS[step][2 if de else 3]
 
 

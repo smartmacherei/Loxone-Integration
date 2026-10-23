@@ -4,13 +4,28 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.4] - 2026-10-23
+
+- Verbessert: Lehnt der Miniserver das Lesen des Programms ab, nennt die UDP-Meldung die
+  Ursache. HTTP 403 ergibt `MINISERVER_ACCESS_DENIED` (Anmeldung gültig, dem Benutzer fehlen
+  die Rechte; empfohlen: Benutzergruppe mit „Web-Interface / Apps“, „FTP“ und „Loxone Config“,
+  geprüft mit „Vollzugriff“), HTTP 401 ergibt `MINISERVER_LOGIN_REJECTED` (Zugangsdaten
+  falsch). Bisher hieß beides `PROGRAM_DOWNLOAD_FAILED`, „eine genauere Ursache ist nicht
+  bestätigt“. Anlass: An einer echten Anlage antwortete der Miniserver auf
+  `/dev/fslist/prog` mit 403.
+- Korrigiert: Der Eintrag zu 1.8.3 schrieb den dort beobachteten Abbruch
+  `PROGRAM_DOWNLOAD_FAILED` dem Host zu. Ursache war der 403.
+
 ## [1.8.3] - 2026-10-23
 
 - Behoben: Stand im Feld **Host** eine Browser-Adresse wie `http://192.168.178.123/`, lief die
   Einrichtung ins Leere. Die Verbindung fragte `//jdev/cfg/apiKey` an (mit doppeltem
   Schrägstrich), der Miniserver antwortete mit 404 „no Webinterface available“, und die
-  Integration meldete „Unrecognized command“. Die automatische UDP-Einrichtung brach beim
-  Programm-Download mit `PROGRAM_DOWNLOAD_FAILED` (OSError) ab. Der Host wird jetzt beim
+  Integration meldete „Unrecognized command“. Programm-Download, UDP-Absenderfilter und der
+  Sender für Weg 3 nutzen den Host ebenfalls direkt und hätten mit so einer Adresse auch nicht
+  funktioniert. (Korrigiert mit 1.8.4: Der an der Anlage beobachtete Abbruch
+  `PROGRAM_DOWNLOAD_FAILED` kam nicht vom Host, sondern von fehlenden Benutzerrechten, siehe
+  1.8.4.) Der Host wird jetzt beim
   Speichern bereinigt: ohne `http://`, ohne Schrägstrich am Ende, ein Port in der Adresse
   wandert ins Feld **Port**. Bestehende Einträge werden beim nächsten Laden einmal
   bereinigt, ohne Neuladen. Ein sauberer Host bleibt Zeichen für Zeichen gleich.

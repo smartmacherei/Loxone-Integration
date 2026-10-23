@@ -415,3 +415,43 @@ def test_timeout_description_does_not_invent_firewall_cause(tmp_path):
         assert "Firewall" not in text and "firewall" not in text
         assert "TOPSECRET" not in text
         assert ("nicht bestätigt" if language == "de" else "unconfirmed") in text
+
+
+def http_status(monkeypatch, status):
+    class Response:
+        def __init__(self): self.status = status
+        def read(self, *args): return SECRET.encode()
+    class HTTP:
+        def __init__(self, *args, **kwargs): pass
+        def request(self, *args, **kwargs): pass
+        def getresponse(self): return Response()
+        def close(self): pass
+    monkeypatch.setattr(installer.http.client, "HTTPConnection", HTTP)
+    return installer.ProgramClient("offline.invalid", 80, "user", "pw")
+
+
+@pytest.mark.parametrize("status, code, hint", [
+    (403, "MINISERVER_ACCESS_DENIED", "„FTP“ und „Loxone Config“"),
+    (401, "MINISERVER_LOGIN_REJECTED", "Benutzername und Passwort"),
+])
+def test_refused_program_download_names_its_cause(monkeypatch, status, code, hint):
+    # A real installation answered /dev/fslist/prog with 403: the user lacked the rights.
+    errors = module("udp_errors")
+    with pytest.raises(PermissionError) as caught:
+        http_status(monkeypatch, status).current()
+    data = errors.failure("program_download", caught.value)
+    assert data["code"] == code
+    assert str(status) in data["description"]
+    assert "TOPSECRET" not in json.dumps(data)
+    text = errors.notification(data, "de")
+    assert code in text and hint in text
+    assert "eine genauere Ursache ist nicht bestätigt" not in text
+    assert errors.restore_failure(data)["code"] == code  # survives the journal after a restart
+
+
+def test_other_http_errors_keep_the_generic_code(monkeypatch):
+    errors = module("udp_errors")
+    with pytest.raises(OSError) as caught:
+        http_status(monkeypatch, 500).current()
+    assert not isinstance(caught.value, PermissionError)
+    assert errors.failure("program_download", caught.value)["code"] == "PROGRAM_DOWNLOAD_FAILED"

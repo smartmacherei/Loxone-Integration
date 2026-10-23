@@ -26,6 +26,9 @@ _LOGGER = logging.getLogger(__name__)
 # in" to every command before USER/PASS, AUTH TLS included (measured 2026-10-19), so
 # no TLS can be negotiated; FTPS support is unverified.
 _NO_TLS_CODES = ("500", "502", "504", "530", "534")
+# A refused HTTP request names its cause; the Miniserver answered /dev/fslist/prog of a
+# real installation with 403 for a user without the program rights (2026-10-23).
+_REFUSED = {401: "MINISERVER_LOGIN_REJECTED", 403: "MINISERVER_ACCESS_DENIED"}
 
 
 class ActivationUncertainError(OSError):
@@ -47,6 +50,9 @@ class ProgramClient:
         try:
             conn.request("GET", path, headers={"Authorization": "Basic " + auth})
             response = conn.getresponse()
+            if response.status in _REFUSED:
+                raise coded_error(_REFUSED[response.status],
+                                  f"Miniserver HTTP status {response.status}", PermissionError)
             if response.status != 200:
                 raise OSError(f"Miniserver HTTP status {response.status}")
             data = response.read(MAX_SIZE + 1)
