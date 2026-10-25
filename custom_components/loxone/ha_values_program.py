@@ -27,17 +27,17 @@ def _key_of(check):
 
 
 def _check_for(entry):
-    """Recognition text by HA type: digital values by their exact text, numbers by the value placeholder.
+    """Every value, on/off included, is an analog command with the value placeholder.
 
-    Measured on a real Miniserver: a digital command with ``<key>=\\v`` never fires for the
-    datagram ``<key>=1``; the placeholder only works on analog commands.
+    Measured on a real Miniserver: a digital command with ``<key>=\\v`` never fires, and one with
+    ``<key>=1`` only pulses, so Loxone never holds the state. An analog command keeps 0 or 1.
     """
-    return entry["key"] + ("=1" if entry.get("digital") else "=\\v")
+    return entry["key"] + "=\\v"
 
 
-def _stale(command, key):
-    """A digital command still carrying the value placeholder that 1.8.0 wrote: it never fires."""
-    return command.get("Analog") != "true" and command.get("Check") == key + "=\\v"
+def _pulse(command, key):
+    """A digital command with a text the integration wrote (1.8.0 ``=\\v``, 1.8.1 to 1.8.4 ``=1``)."""
+    return command.get("Analog") != "true" and command.get("Check") in (key + "=1", key + "=\\v")
 
 
 def _caption(root):
@@ -101,11 +101,9 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
         else:
             loose.append(command)  # recognition without a usable key: the user's own, kept as it is
     # Existing commands are found by their entity key, not by their text, and kept as they are
-    # (the user may have changed title, recognition, scaling or analog in Config). Forced changes:
-    # the analog flag HA knows about, and the old placeholder text on a digital command.
-    needs_flag = any(not e.get("digital") and c.get("Analog") != "true"
-                     for e in wanted for c in commands.get(e["key"], []))
-    needs_text = any(e.get("digital") and _stale(c, e["key"])
+    # (the user may have changed title, recognition, scaling or analog in Config). Forced change:
+    # the analog flag on numbers and on the digital commands earlier releases wrote.
+    needs_flag = any(c.get("Analog") != "true" and (not e.get("digital") or _pulse(c, e["key"]))
                      for e in wanted for c in commands.get(e["key"], []))
     # A name of an earlier release is renamed; a name the user chose in Config stays until
     # the input has to be rebuilt anyway.
@@ -113,7 +111,7 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
     if existing is not None:
         same_set = set(commands) == {e["key"] for e in wanted}
         if (existing.get("U") == input_id and existing.get("Port") == str(port) and same_set
-                and not needs_flag and not needs_text and not needs_title):
+                and not needs_flag and not needs_title):
             return xml, report
     elif not wanted:
         return xml, report
@@ -140,21 +138,18 @@ def patch_ha_values(xml: bytes, entries, port: int = PORT) -> tuple[bytes, dict]
         check = _check_for(entry)
         if key in commands:
             for cmd in commands[key]:
-                if not entry.get("digital") and cmd.get("Analog") != "true":
+                if cmd.get("Analog") != "true" and (not entry.get("digital") or _pulse(cmd, key)):
                     cmd.set("Analog", "true")
                     if cmd.get("Check") == key + "=1":
                         cmd.set("Check", check)  # an analog command needs the value placeholder
-                elif entry.get("digital") and _stale(cmd, key):
-                    cmd.set("Check", check)
                 block.append(cmd)
             continue
         index += 1
         attrs = dict(Type="VirtualUdpInCmd", IName=f"{INAME}{index}", V=version, U=uid(key),
                      Title=entry["title"], Cl="238,238,238", Nio="2", WF="16400",
                      Check=check, Signed="true", SourceValHigh="100", DestValHigh="100",
-                     MinVal="-1000000000", MaxVal="1000000000", MinChange="0", MinTime="0")
-        if not entry.get("digital"):
-            attrs["Analog"] = "true"  # without this flag Config treats the command as digital
+                     MinVal="-1000000000", MaxVal="1000000000", MinChange="0", MinTime="0",
+                     Analog="true")  # without this flag Config treats the command as digital
         cmd = ET.SubElement(block, "C", attrs)
         tail = uuid.uuid5(uuid.NAMESPACE_URL, doc_id + key).hex[-12:]
         ET.SubElement(cmd, "Co", K="AQ", U=uid(key + "/AQ")[:19] + "00ff" + tail)
