@@ -21,6 +21,21 @@ _LOGGER = logging.getLogger(__name__)
 # Beta for Gateway/Client systems: a small, predictable number of logger
 # references per Miniserver, so the first field test stays easy to judge.
 GATEWAY_SIGNALS_PER_MINISERVER = 5
+CONNECTION_RELOAD = DOMAIN + "_connection_reload"
+
+
+def mark_connection_reload(hass):
+    """The next load follows a lost connection. The reload service reloads every entry."""
+    hass.data.setdefault(CONNECTION_RELOAD, set()).update(
+        entry.entry_id for entry in hass.config_entries.async_entries(DOMAIN))
+
+
+def take_connection_reload(hass, entry_id):
+    """Whether this load follows a lost connection; the mark counts once."""
+    marks = hass.data.get(CONNECTION_RELOAD, set())
+    found = entry_id in marks
+    marks.discard(entry_id)
+    return found
 
 
 class UdpSetup:
@@ -80,17 +95,19 @@ class UdpSetup:
             found = picked
         return set(found)
 
-    def start(self):
+    def start(self, after_connection_loss=False):
         # Let setup complete before triggering a Miniserver restart/reconnection.
         # Check once per integration load; never compete with later Config saves.
-        self.task = self.hass.async_create_task(self._run_delayed())
+        # Saving from Config closes the connection, so a load after a lost connection
+        # can fall into the client distribution: it reports a change but never uploads.
+        self.task = self.hass.async_create_task(self._run_delayed(after_connection_loss))
 
-    async def _run_delayed(self):
+    async def _run_delayed(self, after_connection_loss=False):
         await asyncio.sleep(5)
         if not self.stop.is_set():
-            await self.check()
+            await self.check(allow_upload=not after_connection_loss)
 
-    async def check(self):
+    async def check(self, allow_upload=True):
         previous = self.status.get("state")
         previous_error = self.status.get("error")
         previous_attempt = self.status.get("error_attempt")
@@ -116,7 +133,7 @@ class UdpSetup:
         try:
             result = await self.hass.async_add_executor_job(
                 install, self.client, self.directory, self.port, self.select, self.stop, progress,
-                self.gateway_beta, self.ha_values,
+                self.gateway_beta, self.ha_values, allow_upload,
             )
             active = False
             self.status.update(result)
@@ -131,6 +148,18 @@ class UdpSetup:
                     if self.language.startswith("de") else
                     "The UDP program was submitted for activation. Wait until the Miniserver and all "
                     "clients have finished, then reload the Loxone integration in HA to verify the active program."
+                )
+            elif result["state"] == "upload_deferred":
+                self.notify(
+                    "Das Loxone-Programm braucht eine Anpassung durch die Integration, zum Beispiel nach dem "
+                    "Speichern aus Loxone Config. Weil die Verbindung gerade unterbrochen war, wurde nichts "
+                    "hochgeladen, damit eine laufende Verteilung an die Clients nicht gestört wird. Wenn der "
+                    "Miniserver und alle Clients fertig sind, die Loxone-Integration neu laden."
+                    if self.language.startswith("de") else
+                    "The Loxone program needs a change by the integration, for example after saving from Loxone "
+                    "Config. Because the connection was just interrupted, nothing was uploaded, so a running "
+                    "distribution to the clients is not disturbed. When the Miniserver and all clients have "
+                    "finished, reload the Loxone integration."
                 )
             elif result["state"] == "blocked":
                 data = result["error"]

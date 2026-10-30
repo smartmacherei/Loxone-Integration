@@ -150,7 +150,8 @@ def _write_journal(path: Path, value: dict):
             os.close(descriptor)
 
 
-def install(client, directory, udp_port, select, stop: threading.Event, progress=None, gateway=False, ha_values=None):
+def install(client, directory, udp_port, select, stop: threading.Event, progress=None, gateway=False, ha_values=None,
+            allow_upload=True):
     with _LOCKS_GUARD:
         lock = _LOCKS.setdefault(directory, threading.Lock())
     if not lock.acquire(blocking=False):
@@ -158,7 +159,7 @@ def install(client, directory, udp_port, select, stop: threading.Event, progress
     trace = SetupTrace(progress)
     token = TRACE.set(trace)
     try:
-        return _install(client, directory, udp_port, select, stop, gateway, ha_values)
+        return _install(client, directory, udp_port, select, stop, gateway, ha_values, allow_upload)
     except Exception as error:
         data = failure(trace.step, error)
         error.udp_failure = data
@@ -186,7 +187,7 @@ def install(client, directory, udp_port, select, stop: threading.Event, progress
         lock.release()
 
 
-def _install(client, directory, udp_port, select, stop: threading.Event, gateway=False, ha_values=None):
+def _install(client, directory, udp_port, select, stop: threading.Event, gateway=False, ha_values=None, allow_upload=True):
     """At most one activation attempt per source archive and UDP destination.
 
     A failed/uncertain activation stays blocked across HA restarts. A new program
@@ -205,6 +206,10 @@ def _install(client, directory, udp_port, select, stop: threading.Event, gateway
     report.update(source_sha256=digest(original), xml_sha256=digest(xml))
     if candidate == original:
         return dict(report, state="configured")
+    if not allow_upload:
+        # The gateway may still be distributing a program saved from Config. Write nothing,
+        # restart nothing; a deliberate check does the change once the clients are done.
+        return dict(report, state="upload_deferred")
     mark("backup_write")
     backup_path = backup(directory, name, original, gateway)
     trace = TRACE.get()

@@ -140,6 +140,8 @@ dann die Loxone-Integration in HA neu laden. Dabei prüft sie die Einrichtung un
 sie bei Bedarf; das kann eine Sicherung und einen kurzen Programmneustart auslösen.
 Nach einer solchen Änderung erneut das Ende des Programmstarts und der Client-Verteilung
 abwarten und die Integration zur Kontrolle neu laden. Der UDP-Status weist darauf hin.
+Lädt die Integration nur wegen einer unterbrochenen Verbindung neu, ändert sie das Programm nicht,
+sondern meldet **Anpassung offen, nichts hochgeladen**.
 Der Knopf „HA-Werte ins Programm übernehmen“ prüft ebenfalls ausdrücklich das Programm.
 Während der Einrichtung nicht gleichzeitig aus Config speichern. Vor eigenen
 Änderungen das aktuelle Programm **aus dem Miniserver laden**.

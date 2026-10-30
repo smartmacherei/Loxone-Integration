@@ -135,7 +135,8 @@ After saving from Loxone Config, wait for distribution to all clients to finish,
 then reload the Loxone integration in HA. It checks the program and configures real-time
 updates when needed, which may cause a backup and brief program restart. After such a
 change, wait for program startup and client distribution to finish, then reload again
-to verify activation. The UDP status indicates when this is needed. The “Apply HA values
+to verify activation. The UDP status indicates when this is needed. A reload caused only by a
+lost connection never changes the program; it reports **Change pending, nothing uploaded**. The “Apply HA values
 to program” button also explicitly checks the program. Avoid simultaneous saves from
 Loxone Config while setup is running. Load the current program **from the Miniserver**
 before editing it.

@@ -618,9 +618,12 @@ async def _async_setup_entry(hass, config_entry):
         await asyncio.wait(setup_tasks)
     await _area_mapping.apply()
 
+    from .udp_setup import mark_connection_reload
+
     async def _reload_after_delay(delay: float = 1.0) -> None:
         await coordinator.api.close()
         await asyncio.sleep(delay)
+        mark_connection_reload(hass)
         await hass.services.async_call("loxone", "reload")
 
     def handle_task_result(task: asyncio.Task) -> None:
@@ -954,9 +957,10 @@ async def _async_setup_entry(hass, config_entry):
     from .registry_cleanup import async_cleanup_registry
     await async_cleanup_registry(hass, config_entry, _program, coordinator.miniserver.lox_config.json)
 
+    from .udp_setup import UdpSetup, take_connection_reload
+    after_connection_loss = take_connection_reload(hass, config_entry.entry_id)
     manager = None
     if _udp_ready and config_entry.options.get("auto_configure_udp", False):
-        from .udp_setup import UdpSetup
         manager = UdpSetup(hass, config_entry)
         hass.data.setdefault(DOMAIN + "_udp_setup", {})[config_entry.entry_id] = manager
 
@@ -966,7 +970,7 @@ async def _async_setup_entry(hass, config_entry):
     await async_setup_values(hass, config_entry,
                              fresh=hass.data.get(DOMAIN + "_fresh", {}).pop(config_entry.entry_id, False))
     if manager is not None:
-        manager.start()
+        manager.start(after_connection_loss=after_connection_loss)
 
     return True
 

@@ -193,3 +193,14 @@ def test_upload_waits_until_every_client_answers(tmp_path):
     client.client_down = False
     result = installer.install(client, str(tmp_path), 55555, lambda raw, xml: {GW_IN, CL_IN}, threading.Event(), gateway=True)
     assert result["state"] == "restarting" and client.events == ["ftp", "upload", "activate", "restart"]
+
+
+def test_gateway_upload_can_be_withheld_while_clients_may_distribute(tmp_path):
+    """A Config save closes the connection; the reload must not restart the logic again."""
+    client = FakeClient(tmp_path)
+    client.raw = archive()
+    result = installer.install(client, str(tmp_path), 55555, lambda raw, xml: {GW_IN, CL_IN}, threading.Event(),
+                               gateway=True, allow_upload=False)
+    assert result["state"] == "upload_deferred"
+    assert client.events == []
+    assert list(tmp_path.glob("*.zip")) == [] and not (tmp_path / "activation.json").exists()

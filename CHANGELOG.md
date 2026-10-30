@@ -4,6 +4,16 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.5b2] - 2026-10-30 (Vorabversion)
+
+- Behoben (Weg 2): Beim Speichern aus Loxone Config bricht die Verbindung ab, die Integration lädt
+  neu und prüft dabei das Programm. War eine Anpassung nötig, hat sie während der Verteilung an die
+  Clients hochgeladen und die Logik neu gestartet. Nach einem Neuladen wegen Verbindungsverlust
+  ändert sie das Programm nicht mehr. Der UDP-Status zeigt dann **Anpassung offen, nichts
+  hochgeladen**. Die Anpassung folgt beim nächsten ausdrücklichen Neuladen, nach einem HA-Neustart
+  oder per Knopf „HA-Werte ins Programm übernehmen“. Gemeldet an einer Anlage, die bei „Verteilung
+  an Clients“ hängen blieb. Die Vermutung aus 1.7.5b1 hatte nur die 60-Sekunden-Prüfung erfasst.
+
 ## [1.8.5b1] - 2026-10-25 (Vorabversion)
 
 - Behoben (Weg 3, HA → Loxone): Ein/Aus-Werte (Schalter, Binärsensoren, `input_boolean`,
