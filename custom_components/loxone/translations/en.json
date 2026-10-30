@@ -183,6 +183,7 @@
           "blocked": "Activation blocked",
           "restarting": "Miniserver restarting",
           "reload_required": "Reload integration after program startup",
+          "upload_deferred": "Change pending, nothing uploaded: reload after distribution",
           "error": "Setup failed",
           "disabled": "Disabled or unavailable",
           "manual": "Manual setup",

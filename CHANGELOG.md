@@ -4,6 +4,33 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.5b2] - 2026-10-30 (Vorabversion)
+
+- Behoben (Weg 2): Beim Speichern aus Loxone Config bricht die Verbindung ab, die Integration lädt
+  neu und prüft dabei das Programm. War eine Anpassung nötig, hat sie während der Verteilung an die
+  Clients hochgeladen und die Logik neu gestartet. Nach einem Neuladen wegen Verbindungsverlust
+  ändert sie das Programm nicht mehr. Der UDP-Status zeigt dann **Anpassung offen, nichts
+  hochgeladen**. Die Anpassung folgt beim nächsten ausdrücklichen Neuladen, nach einem HA-Neustart
+  oder per Knopf „HA-Werte ins Programm übernehmen“. Gemeldet an einer Anlage, die bei „Verteilung
+  an Clients“ hängen blieb. Die Vermutung aus 1.7.5b1 hatte nur die 60-Sekunden-Prüfung erfasst.
+
+## [1.8.5b1] - 2026-10-25 (Vorabversion)
+
+- Behoben (Weg 3, HA → Loxone): Ein/Aus-Werte (Schalter, Binärsensoren, `input_boolean`,
+  `light`, `fan` u. Ä.) standen in Loxone auf „Aus“, obwohl HA „Ein“ meldete. Seit 1.8.1 waren
+  sie digitale Befehle mit `<schlüssel>=1`; die lösen nur einen Impuls aus, der Zustand bleibt
+  nicht stehen. Gemeldet an einer echten Anlage (Licht und drei Pumpen eines Whirlpools).
+- Ein/Aus-Werte sind jetzt analoge Befehle mit `<schlüssel>=\v` und kommen als 1 oder 0 an. Sie
+  gehen wie Zahlenwerte bei jeder Änderung, alle 5 Minuten, beim Start und nach jedem
+  Programmwechsel raus.
+- Digitale Befehle, die die Integration angelegt hat (`=1` aus 1.8.1 bis 1.8.4, `=\v` aus
+  1.8.0), stellt sie beim nächsten Laden auf analog mit `=\v` um. Das ist eine Programmänderung
+  (Sicherung, Upload, kurzer Neustart der Miniserver-Logik) und passiert auch bei einem reinen
+  Update. UUID, Kurzname und Titel bleiben.
+- Eigene Befehle bleiben, wie sie sind, auch digitale wie `<schlüssel>=0`. Ein solcher Befehl
+  löst durch das Wiederholen alle 5 Minuten aus, solange der Zustand 0 ist; er wird nicht mehr
+  gebraucht.
+
 ## [1.8.4] - 2026-10-23
 
 - Verbessert: Lehnt der Miniserver das Lesen des Programms ab, nennt die UDP-Meldung die

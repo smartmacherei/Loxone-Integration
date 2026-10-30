@@ -183,6 +183,7 @@
           "blocked": "Aktivierung gesperrt",
           "restarting": "Miniserver startet neu",
           "reload_required": "Integration nach Programmstart neu laden",
+          "upload_deferred": "Anpassung offen, nichts hochgeladen: nach der Verteilung neu laden",
           "error": "Einrichtung fehlgeschlagen",
           "disabled": "Deaktiviert oder nicht verfügbar",
           "manual": "Manuelle Einrichtung",

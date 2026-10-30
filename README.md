@@ -135,7 +135,8 @@ After saving from Loxone Config, wait for distribution to all clients to finish,
 then reload the Loxone integration in HA. It checks the program and configures real-time
 updates when needed, which may cause a backup and brief program restart. After such a
 change, wait for program startup and client distribution to finish, then reload again
-to verify activation. The UDP status indicates when this is needed. The “Apply HA values
+to verify activation. The UDP status indicates when this is needed. A reload caused only by a
+lost connection never changes the program; it reports **Change pending, nothing uploaded**. The “Apply HA values
 to program” button also explicitly checks the program. Avoid simultaneous saves from
 Loxone Config while setup is running. Load the current program **from the Miniserver**
 before editing it.
@@ -170,25 +171,26 @@ restart. If the program already contains the loggers (for example after the inte
 removed and added again), the new value alone triggers an upload and restart. Updating an
 existing installation also adds the entity, but without the label and without a program change.
 
-**Command recognition by HA type:** The integration creates every command to match the type of the
-entity. Numeric values (sensors, temperatures, counters, `climate`) are **analog** commands with the
-recognition `<key>=\v` and deliver the value on `AQ`. Digital values (switches, binary sensors,
-`input_boolean`, `light` and similar) are **digital** commands with the exact recognition `<key>=1`:
-they fire a pulse when the value 1 arrives. The `\v` placeholder does not work on digital commands
-(measured on a real Miniserver).
+**Command recognition:** The integration creates every value as an **analog** command with the
+recognition `<key>=\v`. It delivers the value on `AQ` and holds it until the next value. This includes
+on/off values (switches, binary sensors, `input_boolean`, `light` and similar): they arrive as 1 or 0,
+and Loxone shows "on" for as long as HA does. Digital commands do not fit (measured on a real
+Miniserver): with `<key>=\v` they never fire, with `<key>=1` they only fire a pulse and the state does
+not stay.
 
-That is why HA sends digital values only on a real state change: not on attribute updates, not every
-5 minutes, not at start and not after a program change. A repeat would ring the bell again or toggle
-a light. Numeric values go out as before: on every change, every 5 minutes, at start and after every
-program change.
+HA sends every value on every change, every 5 minutes, at start and after every program change. A
+repeat changes nothing on an analog command; after a Miniserver restart the state is right again
+within 5 minutes.
 
-There is no command for the state 0. If you need it, add a second command with `<key>=0` in Config or
-switch the command to analog (`<key>=\v`); both are kept, as are commands whose recognition does not
-start with `<key>=`.
+Your own commands are kept: commands with your own recognition (digital ones such as `<key>=0`
+included) and commands whose recognition does not start with `<key>=`. Because of the repeats, your
+own digital command `<key>=0` now fires every 5 minutes while the state is 0; it is no longer needed
+and can go.
 
-A command from version 1.8.0 with `=\v` on a digital value is changed to `=1` the next time the
-integration loads. That is a program change (backup, upload, brief restart of the Miniserver logic) and
-happens even on a plain update. UUID, short name and title stay, so your wiring remains valid.
+Digital commands created by earlier versions (`<key>=1` from 1.8.1 to 1.8.4, `<key>=\v` from 1.8.0)
+are switched to analog with `<key>=\v` the next time the integration loads. That is a program change
+(backup, upload, brief restart of the Miniserver logic) and happens even on a plain update. UUID,
+short name and title stay.
 
 Values are numbers only: numeric states as they are; on/off, open/closed and similar as
 1/0; entities with an `options` attribute as the index of the state; `climate` entities

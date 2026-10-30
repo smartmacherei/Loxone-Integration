@@ -91,7 +91,7 @@ transaction lock, so the final check cannot eliminate every possible race.
 After saving from Loxone Config, wait for distribution to all clients to finish,
 then reload the integration in HA. If HA updates the program, wait for program startup
 and client distribution to finish, then reload again to verify activation. Until then,
-the UDP status shows **Reload integration after program startup**. On this reload, the
+the UDP status shows **Reload integration after program startup**. A reload caused only by a lost connection, for example while saving from Config, never changes the program: the status then shows **Change pending, nothing uploaded**, and the change follows on the next deliberate reload. On this reload, the
 running program must contain the expected functional logger references before setup
 reports configured. Errors are not checked periodically; reload explicitly after
 resolving the cause. **Receiving UDP data** means known terminal packets have

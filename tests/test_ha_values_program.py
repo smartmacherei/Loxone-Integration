@@ -26,6 +26,19 @@ CLIENT_OBJ = f'<C Type="GatewayClient" V="174" U="{CL[:-1]}7" Title="Client" Pro
 PART_CL = document(live(CL, "Client", CLIENT_OBJ), prog(CL, "Client"))
 
 
+def earlier(xml, key, check):
+    """The command for ``key`` as an earlier release wrote it: digital, with the text ``check``."""
+    import re
+    pattern = rb'(<C Type="VirtualUdpInCmd"[^>]*?)Check="' + re.escape(key.encode()) + rb'=\\v"([^>]*?) Analog="true"'
+    changed = re.sub(pattern, lambda m: m.group(1) + b'Check="' + check.encode() + b'"' + m.group(2), xml, count=1)
+    assert changed != xml
+    return changed
+
+
+def analog(xml, check):
+    return next(c.get("Analog") for c in managed(xml)[0].findall("C") if c.get("Check") == check)
+
+
 def managed(xml):
     root = ET.fromstring(xml)
     inputs = [el for el in root.iter("C") if el.get("Type") == "VirtualUdpIn" and el.get("IName") == values.INAME]
@@ -41,7 +54,7 @@ def test_analog_values_carry_the_analog_flag_and_missing_flag_triggers_a_rebuild
     patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
     block = managed(patched)[0]
     flags = {c.get("Title"): c.get("Analog") for c in block.findall("C")}
-    assert flags == {"Tor": None, "Pool": "true"}  # digital command stays digital, number is analog
+    assert flags == {"Tor": "true", "Pool": "true"}  # on/off is analog too, so Loxone holds the state
     stripped = patched.replace(b' Analog="true"', b'')
     rebuilt, report = values.patch_ha_values(stripped, ENTRIES)
     assert report["ha_values_changed"] and b'Analog="true"' in rebuilt
@@ -69,9 +82,9 @@ def test_input_recreated_by_config_with_new_uuids_is_adopted_not_duplicated():
 
 def test_user_changes_on_existing_commands_survive_a_rebuild():
     patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
-    # The user switched the digital command to analog and changed scaling in Config.
-    edited = patched.replace(b'Check="binary_sensor.tor=1" Signed="true" SourceValHigh="100"',
-                             b'Check="binary_sensor.tor=\\v" Analog="true" Signed="true" SourceValHigh="10"')
+    # The user changed the scaling in Config.
+    edited = patched.replace(b'Check="binary_sensor.tor=\\v" Signed="true" SourceValHigh="100"',
+                             b'Check="binary_sensor.tor=\\v" Signed="true" SourceValHigh="10"')
     assert edited != patched
     rebuilt, report = values.patch_ha_values(edited, ENTRIES + [{"key": "sensor.neu", "title": "Neu", "digital": False}])
     assert report["ha_values_changed"]
@@ -87,7 +100,7 @@ def test_input_and_commands_are_created_under_the_caption():
     parent = next(el for el in ET.fromstring(patched).iter("C") if el.get("Type") == "VirtualInCaption")
     assert block.get("U") in {el.get("U") for el in parent}
     assert [(c[0], c[2], c[3], c[4]) for c in commands] == [
-        ("HAV1", "binary_sensor.tor=1", "Tor", "<v>"), ("HAV2", "sensor.pool=\\v", "Pool", "<v.2>")]
+        ("HAV1", "binary_sensor.tor=\\v", "Tor", "<v>"), ("HAV2", "sensor.pool=\\v", "Pool", "<v.2>")]
     doc = next(el for el in ET.fromstring(patched).iter("C") if el.get("Type") == "Document")
     assert doc.get("NumO") == str(len(list(ET.fromstring(patched).iter("C"))))
     # Deterministic identities: the same key yields the same UUIDs on every run.
@@ -171,29 +184,29 @@ def test_prepare_places_the_input_in_project_and_gateway_partial_only():
     assert managed(program.unpack(without, gateway=True)[1]) is None
 
 
-def test_digital_values_get_exact_on_text_and_numbers_the_value_placeholder():
+def test_digital_and_number_values_both_get_the_value_placeholder():
     patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
     checks = {c[3]: c[2] for c in managed(patched)[1]}
-    # Measured on a real Miniserver: a digital command with "=\\v" never matched "tor=1".
-    assert checks == {"Tor": "binary_sensor.tor=1", "Pool": "sensor.pool=\\v"}
+    # Measured on a real Miniserver: a digital command never fires on "=\\v" and only pulses on "=1".
+    assert checks == {"Tor": "binary_sensor.tor=\\v", "Pool": "sensor.pool=\\v"}
 
 
-def test_stale_digital_value_placeholder_is_migrated_and_keeps_identity():
+@pytest.mark.parametrize("check", ["binary_sensor.tor=1", "binary_sensor.tor=\\v"])  # 1.8.1 to 1.8.4, 1.8.0
+def test_digital_command_of_an_earlier_release_turns_analog_and_keeps_identity(check):
     patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
-    old = patched.replace(b'Check="binary_sensor.tor=1"', b'Check="binary_sensor.tor=\\v"')  # what 1.8.0 wrote
-    assert old != patched
+    old = earlier(patched, "binary_sensor.tor", check)
     rebuilt, report = values.patch_ha_values(old, ENTRIES)
     assert report["ha_values_changed"]
     before = {c[0]: c[1] for c in managed(old)[1]}
     after = {c[0]: (c[1], c[2], c[3]) for c in managed(rebuilt)[1]}
-    assert after["HAV1"] == (before["HAV1"], "binary_sensor.tor=1", "Tor")  # same UUID, short name and title
+    assert after["HAV1"] == (before["HAV1"], "binary_sensor.tor=\\v", "Tor")  # same UUID, short name and title
+    assert analog(rebuilt, "binary_sensor.tor=\\v") == "true"
     assert values.patch_ha_values(rebuilt, ENTRIES)[1]["ha_values_changed"] is False
 
 
 def test_user_edited_recognition_text_is_kept_and_stays_quiet():
     patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
-    edited = patched.replace(b'Check="binary_sensor.tor=1"', b'Check="binary_sensor.tor=ein"')
-    assert edited != patched
+    edited = earlier(patched, "binary_sensor.tor", "binary_sensor.tor=ein")  # the user's own digital text
     same, report = values.patch_ha_values(edited, ENTRIES)
     assert same == edited and report["ha_values_changed"] is False
     rebuilt, _ = values.patch_ha_values(edited, ENTRIES + [{"key": "sensor.neu", "title": "Neu", "digital": False}])
@@ -231,18 +244,20 @@ def test_extra_command_for_the_same_key_survives_a_rebuild():
     assert report["ha_values_changed"]
     commands = managed(rebuilt)[1]
     assert (TWIN_U, "binary_sensor.tor=0") in [(c[1], c[2]) for c in commands]
-    assert sum(1 for c in commands if c[2] == "binary_sensor.tor=1") == 1  # ours is still there with its UUID
+    assert analog(rebuilt, "binary_sensor.tor=0") is None  # the user's digital command stays digital
+    assert sum(1 for c in commands if c[2] == "binary_sensor.tor=\\v") == 1  # ours is still there with its UUID
 
 
-def test_stale_placeholder_is_migrated_even_when_a_twin_comes_first():
+def test_pulse_command_is_migrated_even_when_a_twin_comes_first():
     patched, _ = values.patch_ha_values(SINGLE, ENTRIES)
-    old = patched.replace(b'Check="binary_sensor.tor=1"', b'Check="binary_sensor.tor=\\v"')
+    old = earlier(patched, "binary_sensor.tor", "binary_sensor.tor=1")
     twin = with_command(old, "binary_sensor.tor=0", "Tor aus", "VUIC9", TWIN_U)
     rebuilt, report = values.patch_ha_values(twin, ENTRIES)
     assert report["ha_values_changed"]
     checks = [c[2] for c in managed(rebuilt)[1]]
-    assert "binary_sensor.tor=1" in checks and "binary_sensor.tor=0" in checks
-    assert "binary_sensor.tor=\\v" not in checks
+    assert "binary_sensor.tor=\\v" in checks and "binary_sensor.tor=0" in checks
+    assert "binary_sensor.tor=1" not in checks
+    assert analog(rebuilt, "binary_sensor.tor=\\v") == "true" and analog(rebuilt, "binary_sensor.tor=0") is None
 
 
 def test_command_without_a_recognisable_key_is_kept():
@@ -255,12 +270,45 @@ def test_command_without_a_recognisable_key_is_kept():
 
 
 def test_command_switched_to_analog_gets_the_value_placeholder_too():
-    # An entity that turns from digital to numeric: the exact text "...=1" would never carry a value.
-    digital = [{"key": "sensor.pool", "title": "Pool", "digital": True}]
-    patched, _ = values.patch_ha_values(SINGLE, digital)
-    assert managed(patched)[1][0][2] == "sensor.pool=1"
-    rebuilt, report = values.patch_ha_values(patched, [{"key": "sensor.pool", "title": "Pool", "digital": False}])
+    # An entity that turned from digital to numeric: the exact text "...=1" would never carry a value.
+    number = [{"key": "sensor.pool", "title": "Pool", "digital": False}]
+    patched, _ = values.patch_ha_values(SINGLE, number)
+    old = earlier(patched, "sensor.pool", "sensor.pool=1")
+    rebuilt, report = values.patch_ha_values(old, number)
     assert report["ha_values_changed"]
     block, commands = managed(rebuilt)
     assert commands[0][2] == "sensor.pool=\\v" and block.find("C").get("Analog") == "true"
     assert values.patch_ha_values(rebuilt, [{"key": "sensor.pool", "title": "Pool", "digital": False}])[1]["ha_values_changed"] is False
+
+
+def test_config_save_of_an_older_project_waits_for_a_deliberate_check(tmp_path):
+    """Reported case: 1.8.5b1 made a command analog, Config saved the older digital one again."""
+    import io
+    import threading
+    import zipfile
+    from test_gateway_udp import archive
+    from test_udp_install import TARGET, FakeClient, installer, program
+    entries = [{"key": "light.whirlpool", "title": "Whirlpool", "digital": True}]
+    select = lambda raw, xml: set()
+    current = program.prepare(archive(FULL, (PART_GW, PART_CL)), TARGET, set(), gateway=True, ha_values=entries)[0]
+    assert program.prepare(current, TARGET, set(), gateway=True, ha_values=entries)[0] == current
+
+    def older(xml):
+        return xml.replace(b' Analog="true"', b"").replace(b"light.whirlpool=\v", b"light.whirlpool=1")
+    output = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(current)) as source, zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as target:
+        for name in source.namelist():
+            content = source.read(name)
+            if name == "sps.Loxone":
+                content = older(content)
+            elif name.startswith("sps") and name.endswith(".LoxCC"):
+                content = program.encode(older(program.decode(content)))
+            target.writestr(name, content)
+    client = FakeClient(tmp_path)
+    client.raw = output.getvalue()
+    deferred = installer.install(client, str(tmp_path), 55555, select, threading.Event(), gateway=True,
+                                 ha_values=entries, allow_upload=False)
+    assert deferred["state"] == "upload_deferred" and client.events == []
+    deliberate = installer.install(client, str(tmp_path), 55555, select, threading.Event(), gateway=True,
+                                   ha_values=entries)
+    assert deliberate["state"] == "restarting" and client.events == ["ftp", "upload", "activate", "restart"]
