@@ -4,6 +4,26 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+- Verbessert: Scheitert die UDP-Einrichtung an einer eigenen Prüfung, nennen Status, Log und
+  Diagnose diese Prüfung jetzt als `reason`, zum Beispiel `Ambiguous or missing VirtualInCaption`
+  oder `Foreign object uses the HA values short name`. Der Status zeigt sie auch als
+  `error_reason`, die Benachrichtigung im Fehlertext. Bisher stand bei `PROGRAM_PREPARE_FAILED`
+  nur `ValueError`. Ausgegeben wird nur, was exakt in einer festen Liste steht; diese Texte
+  nennen eine Prüfung und nie einen Wert. Andere Fehlertexte, Serverantworten und
+  Projektinhalte bleiben draußen.
+- Behoben: Die Bereinigung gelöschter Einträge lief im Gateway/Client-Verbund nie, im Log stand
+  `Loxone registry cleanup skipped (ValueError)`. Sie arbeitet jetzt mit dem Gesamtprojekt,
+  auch ohne die Beta-Option für den Verbund, und schreibt wie bisher zuerst eine Sicherung. Auf
+  einer solchen Anlage kann der erste Lauf deshalb erstmals Einträge entfernen: nur
+  Entitäten und Geräte, die im ganzen Projekt und in der Struktur des Miniservers fehlen und
+  in HA nicht geladen sind.
+- Sicherer: Die Bereinigung läuft nur noch, wenn das Projekt den ganzen Verbund abdeckt: je
+  Miniserver ein Programm, das Gateway ist vorhanden und kein Client fehlt. Ein einzelnes
+  Teilprogramm galt bisher als vollständiges Projekt und hätte die Einträge der anderen
+  Miniserver als gelöscht behandeln können. Das Log nennt jetzt, warum sie übersprungen wurde.
+
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 
 - Behoben (Weg 2): Beim Speichern aus Loxone Config bricht die Verbindung ab, die Integration lädt

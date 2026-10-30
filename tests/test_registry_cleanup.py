@@ -115,7 +115,7 @@ def test_async_cleanup_guards_and_removal_order(monkeypatch, tmp_path, condition
         devices.devices = DeviceCollection()
 
     er, dr = NS(async_get=lambda h: entities), NS(async_get=lambda h: devices)
-    def unpack(data):
+    def unpack(data, gateway=False):
         if condition == "invalid_archive": raise ValueError("checksum")
         return "project", xml
     for name, mod in {
