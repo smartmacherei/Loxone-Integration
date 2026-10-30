@@ -175,7 +175,7 @@ class UdpSetup:
                     self.archive_detail(key)
                 if self.status.get("error"):
                     self.status["last_error"] = dict(self.status["error"], historical=True)
-                for key in ("error", "error_code", "error_step", "error_timestamp", "error_persisted", "error_attempt", "step"):
+                for key in ("error", "error_code", "error_step", "error_reason", "error_timestamp", "error_persisted", "error_attempt", "step"):
                     self.status.pop(key, None)
                 persistent_notification.async_dismiss(self.hass, "loxone_udp_" + self.entry.entry_id)
                 for callback in self.configured_callbacks:
@@ -206,11 +206,11 @@ class UdpSetup:
                 _LOGGER.warning("Loxone UDP original activation failure: code=%s step=%s exception=%s",
                                 activation_error["code"], activation_error["step"], activation_error["exception_type"])
             # Repeated explicit checks of the same failure are debug only.
-            key = (data["code"], data["step"])
+            key = (data["code"], data["step"], data.get("reason"))
             log = _LOGGER.debug if key == self.logged else _LOGGER.warning
             self.logged = key
-            log("Loxone automatic UDP setup failed: code=%s step=%s exception=%s; %s Next check: %s",
-                data["code"], data["step"], data["exception_type"], data["description"], data["next_check"])
+            log("Loxone automatic UDP setup failed: code=%s step=%s exception=%s reason=%s; %s Next check: %s",
+                data["code"], data["step"], data["exception_type"], data.get("reason") or "-", data["description"], data["next_check"])
             message = notification(data, self.language)
             message += ("\n\nFür Support: Diagnosedaten herunterladen. Der Download enthält das vollständige Programmarchiv, sofern abrufbar; bitte vertraulich weitergeben."
                         if self.language.startswith("de") else
@@ -232,6 +232,7 @@ class UdpSetup:
 
     def set_error(self, data):
         self.status.update(error=data, error_code=data["code"], error_step=data["step"],
+                           error_reason=data.get("reason"),
                            error_timestamp=data["timestamp"], step=data["step"])
 
     def archive_detail(self, key):

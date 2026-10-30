@@ -1,9 +1,14 @@
-"""Safe UDP setup diagnostics. Never interpolate exception or server text."""
+"""Safe UDP setup diagnostics. Never interpolate exception or server text.
+
+The one exception text that leaves is ``reason``, and only after an exact match
+against the fixed messages listed in PROGRAM_REASONS.
+"""
 from __future__ import annotations
 
 from contextvars import ContextVar
 from datetime import datetime, timezone
 import errno
+import re
 
 # Each tuple contains the German/English step label and targeted next check.
 STEPS = {
@@ -56,6 +61,41 @@ CHECKS = {
     "MINISERVER_ACCESS_DENIED": ("In Loxone Config unter Benutzerverwaltung der Benutzergruppe dieses Benutzers die Rechte „Web-Interface / Apps“, „FTP“ und „Loxone Config“ geben (geprüft: Gruppe „Vollzugriff“), in den Miniserver speichern und die Integration neu laden.", "In Loxone Config user management, give this user's group the rights 'Web interface / Apps', 'FTP' and 'Loxone Config' (verified: group 'Full access'), save to the Miniserver and reload the integration."),
     "MINISERVER_LOGIN_REJECTED": ("Benutzername und Passwort in den Optionen der Integration mit der Benutzerverwaltung in Loxone Config abgleichen.", "Compare username and password in the integration options with the user management in Loxone Config."),
 }
+# Our own ValueError texts on the program path, none with a code in REASONS. Each names a
+# failed check and no value, so it holds neither credentials nor project content.
+# tests/test_gateway_udp.py compares this list with the raise statements in the source.
+PROGRAM_REASONS = frozenset({
+    "Ambiguous or missing LoggerOutCaption",
+    "Ambiguous or missing Program",
+    "Ambiguous or missing VirtualInCaption",
+    "Automatic UDP setup currently requires IPv4",
+    "Cannot locate program object",
+    "Duplicate UUID in patched program",
+    "Duplicate UUID in source program",
+    "Expected one Document",
+    "External reference to managed logger",
+    "Foreign object uses the HA values short name",
+    "Invalid LZ4 literal",
+    "Invalid LZ4 match",
+    "Invalid LZ4 offset",
+    "Latest program has no complete ZIP; save with Loxone Config first",
+    "LoxCC checksum mismatch",
+    "Managed object was modified; refusing to overwrite it",
+    "Miniserver response exceeds size limit",
+    "Missing Document",
+    "Missing Document attribute Date",
+    "Missing Document attribute DateS",
+    "Missing Document attribute NumO",
+    "Missing LoxAPP3 lastModified",
+    "No current program archive",
+    "Truncated LoxCC header",
+    "Unmanaged content on the managed UDP page",
+    "Unsupported Document UUID",
+    "Unsupported HA value key",
+    "Unsupported LoxCC header",
+})
+# The one variable part: a member name that program_members() limits to this form.
+PARTIAL_REASON = re.compile(r"Partial program sps\d{0,3}\.LoxCC does not match the project", re.I)
 SAFE_TYPES = frozenset({"Exception", "OSError", "ValueError", "RuntimeError", "TimeoutError", "ConnectionError", "ConnectionRefusedError", "ConnectionResetError", "ConnectionAbortedError", "BrokenPipeError", "PermissionError", "FileNotFoundError", "IsADirectoryError", "NotADirectoryError", "UnicodeDecodeError", "UnicodeEncodeError", "KeyError", "IndexError", "AttributeError", "TypeError", "JSONDecodeError", "BadZipFile", "LargeZipFile", "ParseError", "error_perm", "error_temp", "error_reply", "error_proto", "SSLError", "SSLCertVerificationError", "SSLEOFError", "gaierror", "RemoteDisconnected", "IncompleteRead", "ActivationUncertainError"})
 
 
@@ -83,6 +123,13 @@ def coded_error(code, message, kind=OSError):
     return error
 
 
+def safe_reason(value):
+    """The text itself if it is one of our fixed messages, otherwise None."""
+    if isinstance(value, str) and (value in PROGRAM_REASONS or PARTIAL_REASON.fullmatch(value)):
+        return value
+    return None
+
+
 def failure(step, error=None, *, code=None, timestamp=None):
     """Create only allowlisted data; the raw exception is never stringified."""
     step = step if step in STEPS else "program_download"
@@ -97,6 +144,9 @@ def failure(step, error=None, *, code=None, timestamp=None):
     extra = safe_archive_details(getattr(error, "archive_details", None))
     if extra:
         data["archive_details"] = extra
+    reason = safe_reason(error.args[0]) if isinstance(error, ValueError) and len(error.args) == 1 else None
+    if reason:
+        data["reason"] = reason
     description, check = details(data, "en")
     return dict(data, description=description, next_check=check)
 
@@ -110,6 +160,8 @@ def details(data, language):
         description = "Der Schritt wurde nicht innerhalb des Zeitlimits abgeschlossen; die Ursache ist nicht bestätigt." if de else "The step did not complete within the timeout; the cause is unconfirmed."
     elif code.endswith("_NO_SPACE"):
         description = "Das Betriebssystem meldet keinen verfügbaren Speicherplatz." if de else "The operating system reports no space left."
+    elif safe_reason(data.get("reason")):
+        description = ("Der Schritt ist fehlgeschlagen: " if de else "The step failed: ") + data["reason"] + "."
     else:
         description = "Der Schritt ist fehlgeschlagen; eine genauere Ursache ist nicht bestätigt." if de else "The step failed; a more specific cause is unconfirmed."
     if step == "archive_check" and code.startswith("ARCHIVE_"):
@@ -158,6 +210,9 @@ def restore_failure(value):
     extra = safe_archive_details(value.get("archive_details"))
     if extra:
         data["archive_details"] = extra
+    reason = safe_reason(value.get("reason"))
+    if reason:
+        data["reason"] = reason
     description, check = details(data, "en")
     return dict(data, description=description, next_check=check)
 
