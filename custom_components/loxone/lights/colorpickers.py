@@ -1,3 +1,99 @@
+import logging
+from functools import cached_property
+
+import homeassistant.util.color as color_util
+from homeassistant.components.light import (ATTR_BRIGHTNESS,
+                                            ATTR_COLOR_TEMP_KELVIN,
+                                            ATTR_HS_COLOR, ColorMode,
+                                            LightEntity)
+from homeassistant.const import STATE_UNKNOWN
+from homeassistant.helpers.device_registry import DeviceInfo
+
+from .. import LoxoneEntity
+from ..const import DOMAIN, SENDDOMAIN
+from ..helpers import get_or_create_device, hass_to_lox, lox_to_hass
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class TunableWhiteLight(LoxoneEntity, LightEntity):
+    _attr_max_color_temp_kelvin = 6500
+    _attr_min_color_temp_kelvin = 2000
+
+    _attr_supported_color_modes: set[ColorMode] = {ColorMode.COLOR_TEMP}
+    _attr_available = False
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        """Initialize the Tunable White Light."""
+        self._attr_state = STATE_UNKNOWN
+        self._attr_is_on = STATE_UNKNOWN
+        self._attr_unique_id = self.uuidAction
+        self._attr_color_mode = ColorMode.UNKNOWN
+        self._color_uuid = kwargs.get("states", {}).get("color", None)
+
+        self._async_add_devices = kwargs["async_add_devices"]
+        self._light_controller_id = kwargs.get("lightcontroller_id", None)
+        self._light_controller_name = kwargs.get("lightcontroller_name", None)
+
+        self._name = self._attr_name
+        if self._light_controller_name:
+            self._attr_name = f"{self._light_controller_name}-{self._attr_name}"
+
+        if self._light_controller_id:
+            self.type = "LightControllerV2"
+            self._attr_entity_registry_enabled_default = kwargs.get("enabled_default", True)
+            self._attr_device_info = get_or_create_device(
+                self._light_controller_id, self.name, self.type, self.room
+            )
+        else:
+            self.type = "ColorPickerV2"
+            self._attr_device_info = get_or_create_device(
+                self._light_controller_id, self.name, self.type, self.room
+            )
+
+    @cached_property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._attr_unique_id
+
+    @property
+    def is_on(self) -> bool:
+        return True if self._attr_brightness and self._attr_brightness > 0 else False
+
+    async def async_turn_off(self) -> None:
+        self.hass.bus.async_fire(
+            SENDDOMAIN, dict(uuid=self.uuidAction, value="setBrightness/0")
+        )
+        self.async_schedule_update_ha_state()
+
+    async def async_turn_on(self, **kwargs) -> None:
+        if ATTR_COLOR_TEMP_KELVIN in kwargs:
+            self._attr_color_temp_kelvin = kwargs[ATTR_COLOR_TEMP_KELVIN]
+            self.hass.bus.async_fire(
+                SENDDOMAIN,
+                dict(
+                    uuid=self.uuidAction,
+                    value="temp({},{})".format(
+                        hass_to_lox(self._attr_brightness), self._attr_color_temp_kelvin
+                    ),
+                ),
+            )
+        elif ATTR_BRIGHTNESS in kwargs:
+            self._attr_brightness = kwargs[ATTR_BRIGHTNESS]
+            self.hass.bus.async_fire(
+                SENDDOMAIN,
+                dict(
+                    uuid=self.uuidAction,
+                    value="temp({},{})".format(
+                        hass_to_lox(self._attr_brightness), self._attr_color_temp_kelvin
+                    ),
+                ),
+            )
+        else:
+            self.hass.bus.async_fire(SENDDOMAIN, dict(uuid=self.uuidAction, value="On"))
+
+    async def event_handler(self, e):
         request_update = False
         if self._color_uuid in e.data:
             _color = e.data[self._color_uuid]
