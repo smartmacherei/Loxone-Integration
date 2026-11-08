@@ -174,12 +174,6 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
         self.async_schedule_update_ha_state()
 
     async def async_turn_on(self, **kwargs) -> None:
-        # Scene activation can provide brightness and color in the same call.
-        # Use the requested brightness instead of the previous entity state.
-        brightness = kwargs.get(ATTR_BRIGHTNESS)
-        if brightness is None:
-            brightness = self._attr_brightness or 255
-
         if ATTR_HS_COLOR in kwargs:
             r, g, b = color_util.color_hs_to_RGB(
                 kwargs[ATTR_HS_COLOR][0], kwargs[ATTR_HS_COLOR][1]
@@ -190,7 +184,9 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
                 dict(
                     uuid=self.uuidAction,
                     value="hsv({},{},{})".format(
-                        h, s, hass_to_lox(brightness)
+                        h, s, hass_to_lox(
+				kwargs.get(ATTR_BRIGHTNESS) or self._attr_brightness or 255
+			)
                     ),
                 ),
             )
@@ -201,7 +197,7 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
                 dict(
                     uuid=self.uuidAction,
                     value="temp({},{})".format(
-                        hass_to_lox(brightness), self._attr_color_temp_kelvin
+                        hass_to_lox(kwargs.get(ATTR_BRIGHTNESS) or self._attr_brightness or 255), self._attr_color_temp_kelvin
                     ),
                 ),
             )
@@ -216,7 +212,7 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
                         value="hsv({},{},{})".format(
                             self.hs_color[0],
                             self.hs_color[1],
-                            hass_to_lox(self._attr_brightness),
+                            hass_to_lox(kwargs.get(ATTR_BRIGHTNESS) or self._attr_brightness or 255),
                         ),
                     ),
                 )
@@ -232,7 +228,31 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
                     ),
                 )
         else:
-            self.hass.bus.async_fire(SENDDOMAIN, dict(uuid=self.uuidAction, value="On"))
+            # Restore the last known color and brightness when turning on
+            # without explicit light parameters (e.g. from an HA light group).
+            brightness = self._attr_brightness or 255
+
+            if self._attr_color_mode == ColorMode.HS and self.hs_color:
+                value = "hsv({},{},{})".format(
+                    self.hs_color[0],
+                    self.hs_color[1],
+                    hass_to_lox(brightness),
+                )
+            elif (
+                self._attr_color_mode == ColorMode.COLOR_TEMP
+                and self._attr_color_temp_kelvin
+            ):
+                value = "temp({},{})".format(
+                    hass_to_lox(brightness),
+                    self._attr_color_temp_kelvin,
+                )
+            else:
+                value = "On"
+
+            self.hass.bus.async_fire(
+                SENDDOMAIN,
+                dict(uuid=self.uuidAction, value=value),
+            )
 
     async def event_handler(self, e):
         request_update = False
