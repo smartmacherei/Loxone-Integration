@@ -50,6 +50,12 @@ async def async_setup_entry(
         new_number = LoxoneNumber(**number_entity)
         entities.append(new_number)
 
+    # Block parameters: read from the program, never UDP and never polled.
+    from .const import DOMAIN
+    from .param_number import BlockParameterNumber
+    for param in hass.data.get(DOMAIN + "_parameters", {}).get(config_entry.entry_id, []):
+        entities.append(BlockParameterNumber(config_entry.entry_id, loxconfig, param))
+
     async_add_entities(entities)
 
 

@@ -6,6 +6,23 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+- Neu: Bausteinparameter in HA. Jeder Funktionsbaustein bringt seine Parameter (z. B. Fahrzeit
+  auf/ab der Beschattung, Nachlaufzeit der Präsenz) als Zahl-Entitäten unter „Konfiguration“ an
+  sein Gerät. Welche Anschlüsse Parameter sind, steht in `block_parameters.json`, erzeugt mit
+  `scripts/build_block_parameters.py` aus der Bausteindoku von Loxone Config 17.2.10.21. Gelesen
+  wird der Wert aus dem Programm, das HA beim Laden und danach einmal täglich per HTTP holt: kein
+  UDP, keine 30-Sekunden-Abfrage, keine Anrechnung auf `udp_max_signals`. Vom Anwender verdrahtete
+  Parameter fehlen. Parameter von Bausteinen mit Visu-Häkchen sind aktiv, die von reinen
+  Logikbausteinen deaktiviert angelegt.
+- Neu (ungeprüft an echter Hardware): Parameter aus HA verstellen über Weg 3. Bekommt eine
+  Parameter-Entität das Label `loxone` und wird „HA-Werte ins Programm übernehmen“ gedrückt,
+  legt die Integration je Parameter einen Wert- und einen Übernahmebefehl am Weg-3-Eingang an
+  und verdrahtet auf der Seite des Bausteins: Wert → Analogspeicher (Remanenz an) → Parameter.
+  HA sendet Wert, dann `<key>.set=1` und `<key>.set=0`; die Flanke übernimmt den Wert. Der
+  Speicher hält ihn über einen Neustart des Miniservers, auch ohne HA. Label entfernen und Knopf
+  drücken entfernt die Verdrahtung; dann gilt wieder der Wert aus dem Programm. Nur
+  Einzelanlagen, kein Gateway/Client. Ohne Verdrahtung lehnt die Entität Änderungen mit Hinweis
+  ab. Die übernommenen Parameter zählen wie jeder Weg-3-Wert zur Grenze `udp_max_signals`.
 - Verbessert: Scheitert die UDP-Einrichtung an einer eigenen Prüfung, nennen Status, Log und
   Diagnose diese Prüfung jetzt als `reason`, zum Beispiel `Ambiguous or missing VirtualInCaption`
   oder `Foreign object uses the HA values short name`. Der Status zeigt sie auch als

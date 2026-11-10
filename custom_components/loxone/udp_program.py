@@ -467,11 +467,16 @@ def _stamp_structure(content: bytes, date: str) -> bytes:
 def prepare(raw: bytes, target: str, selected: set[str], gateway: bool = False, ha_values=None) -> tuple[bytes, dict]:
     """``ha_values``: wish list for the HA -> Loxone input (Weg 3); ``None`` leaves it alone."""
     from .ha_values_program import patch_ha_values
+    from .param_wiring import patch_parameter_wiring
 
     def with_ha_values(patched, report):
         if ha_values is None:
             return patched
         patched, extra = patch_ha_values(patched, ha_values)
+        report.update(extra)
+        # Block parameters controlled from HA (single Miniserver only, see param_wiring).
+        # A Gateway/Client project and its partials get no wiring (and lose earlier ones).
+        patched, extra = patch_parameter_wiring(patched, [] if member == PROJECT else ha_values)
         report.update(extra)
         return patched
 
