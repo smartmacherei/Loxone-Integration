@@ -22,20 +22,26 @@ import xml.etree.ElementTree as ET
 REFRESH_HOURS = 24
 
 
+def _uid(doc_id: str, connector: str, label: str) -> str:
+    value = uuid.uuid5(uuid.NAMESPACE_URL, f"{doc_id}/smartmacherei/param/{connector.lower()}/{label}").hex
+    return f"{value[:8]}-{value[8:12]}-{value[12:16]}-{doc_id[-16:]}"
+
+
+def object_ids(doc_id: str, connector: str) -> dict[str, str]:
+    """UUIDs of the three objects param_wiring adds for one parameter connector."""
+    return {name: _uid(doc_id, connector, name) for name in ("memory", "value_ref", "set_ref")}
+
+
 def ids(doc_id: str, connector: str) -> dict[str, str]:
     """Deterministic UUIDs of what param_wiring adds for one parameter connector."""
     connector = connector.lower()
-
-    def uid(label):
-        value = uuid.uuid5(uuid.NAMESPACE_URL, f"{doc_id}/smartmacherei/param/{connector}/{label}").hex
-        return f"{value[:8]}-{value[8:12]}-{value[12:16]}-{doc_id[-16:]}"
     tail = uuid.uuid5(uuid.NAMESPACE_URL, doc_id + "/param/" + connector).hex[-12:]
-    result = {"memory": uid("memory"), "value_ref": uid("value_ref"), "set_ref": uid("set_ref")}
+    result = object_ids(doc_id, connector)
     for n, k in enumerate(("Input", "Trigger", "Reset", "Remanence", "AQ")):
-        result["memory_" + k] = uid("memory/" + k)[:19] + f"{n:02x}ff" + tail
+        result["memory_" + k] = _uid(doc_id, connector, "memory/" + k)[:19] + f"{n:02x}ff" + tail
     for ref in ("value_ref", "set_ref"):
         for n, k in enumerate(("AI", "I", "AQ", "Q")):
-            result[f"{ref}_{k}"] = uid(f"{ref}/{k}")[:19] + f"{n:02x}ff" + tail
+            result[f"{ref}_{k}"] = _uid(doc_id, connector, f"{ref}/{k}")[:19] + f"{n:02x}ff" + tail
     return result
 
 

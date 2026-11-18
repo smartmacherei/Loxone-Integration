@@ -69,6 +69,17 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   Veröffentlichung (z. B. 1.8.5b2), ihre Diagnosen ließen sich davon nicht unterscheiden. Jetzt
   tragen sie eine Entwicklungsversion der nächsten (z. B. 1.8.5b3.dev5); die nächste
   Veröffentlichung wird weiter als Update angeboten.
+- Behoben: Nach dem Umbenennen einer verdrahteten Parameter-Entität in HA zeigten die beiden
+  Eingangsverweise im hochgeladenen Programm noch auf die gelöschten UDP-Befehle, und HA zeigte
+  den Parameter trotzdem als von HA gesteuert. „HA-Werte ins Programm übernehmen“ verdrahtet ihn
+  jetzt neu mit den Befehlen der umbenannten Entität.
+- Behoben: Hatte man in Loxone Config nur den Analogspeicher der Integration gelöscht, scheiterte
+  danach jede Prüfung mit `Duplicate UUID in patched program`. Hatte man nur die beiden
+  Eingangsverweise gelöscht, galt der Parameter weiter als verdrahtet und wurde nie
+  wiederhergestellt. Jetzt entfernt die Integration die übrigen eigenen Objekte und baut die
+  Verdrahtung neu auf; steuert HA den Parameter nicht mehr, entfernt sie auch die Reste.
+- Verbessert: Fehlt beim Verdrahten der Anschluss eines Parameters, nennt der UDP-Status jetzt
+  die Prüfung (`Cannot locate parameter connector`) statt „Ursache unbestätigt“.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

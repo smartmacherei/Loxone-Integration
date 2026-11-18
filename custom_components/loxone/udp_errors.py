@@ -69,6 +69,7 @@ PROGRAM_REASONS = frozenset({
     "Ambiguous or missing Program",
     "Ambiguous or missing VirtualInCaption",
     "Automatic UDP setup currently requires IPv4",
+    "Cannot locate parameter connector",
     "Cannot locate program object",
     "Duplicate UUID in patched program",
     "Duplicate UUID in source program",
