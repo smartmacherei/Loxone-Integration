@@ -9,7 +9,8 @@ import re
 
 from .const import DOMAIN, cfmt
 
-# Initialize a device registry
+# Ein DeviceInfo je Geraet, solange ein Eintrag geladen ist: alle Controls eines Geraets teilen
+# den ersten. release() leert ihn, sonst bliebe ein umbenanntes Geraet bis zum HA-Neustart alt.
 device_registry = {}
 
 # control_uuid (lowercase) -> (device_uuid, device_name)
@@ -21,6 +22,27 @@ device_map = {}
 # control_uuid -> Initialwert (per HTTP geholt). Fuer auto-entdeckte Klemmen,
 # deren Wert der Miniserver nicht ueber den WS-Stream pusht (z.B. Konfig-Analog).
 initial_values = {}
+
+# entry_id -> [(map, keys)] das ein Eintrag in device_map/initial_values gelegt hat
+_published = {}
+
+
+def publish(entry_id, shared, values):
+    """Merge one entry's values into a shared map in place (UUIDs are unique across Miniservers).
+
+    Rebinding the map let a second Miniserver starting at the same time replace the
+    first one's values before its platforms had read them.
+    """
+    shared.update(values)
+    _published.setdefault(entry_id, []).append((shared, list(values)))
+
+
+def release(entry_id):
+    """Unload: drop the entry's keys and rebuild device names on the next setup."""
+    for shared, keys in _published.pop(entry_id, ()):
+        for key in keys:
+            shared.pop(key, None)
+    device_registry.clear()
 
 
 def get_or_create_device(device_uuid, device_name, device_type, device_room):
@@ -60,22 +82,6 @@ def hass_to_lox(level):
 def lox_to_hass(lox_val):
     """Convert the given Loxone (0.0-100.0) light level to HASS (0-255)."""
     return (lox_val / 100.0) * 255.0
-
-
-def lox2lox_mapped(x, min_v, max_v):
-    if x <= min_v:
-        return 0
-    if x >= max_v:
-        return max_v
-    return x
-
-
-def lox2hass_mapped(x, min_v, max_v):
-    if x <= min_v:
-        return 0
-    if x >= max_v:
-        return lox_to_hass(max_v)
-    return lox_to_hass(x)
 
 
 # def to_hass_color_temp(temp: float):

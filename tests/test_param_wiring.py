@@ -181,6 +181,7 @@ def test_value_goes_out_before_the_trigger_edge():
               loop=NS(call_later=lambda delay, func, *args: later.append((delay, func, args))))
     sender = values.HaValuesSender(hass, [ENTRY], "ms.invalid", 55556)
     sender.socket = Socket()
+    sender.address = ("192.0.2.1", 55556)  # resolved at start
     sender.send_all()
     for _, func, args in sorted(later, key=lambda item: item[0]):
         func(*args)

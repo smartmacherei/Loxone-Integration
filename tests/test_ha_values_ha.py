@@ -69,6 +69,7 @@ class HaValuesHATest(unittest.IsolatedAsyncioTestCase):
         entries, _, _ = ha_values.desired(self.hass, 500, "de")
         sender = ha_values.HaValuesSender(self.hass, entries, "127.0.0.1", self.receiver.getsockname()[1])
         sender.start()
+        await self.hass.async_block_till_done()  # the address is resolved off the loop first
         self.assertEqual(self.received(5), {"climate.demo_thermo=1", "climate.demo_thermo.current_temperature=34",
                                             "climate.demo_thermo.temperature=23", "climate.demo_thermo.hvac_action=4",
                                             "sensor.demo_pool=21.5"})

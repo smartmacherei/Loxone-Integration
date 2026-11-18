@@ -260,3 +260,16 @@ def test_seeded_slow_key_waits_four_hours_after_startup():
     assert r.due([U, H]) == [H]
     clock[0] = 4 * 3600
     assert set(r.due([U, H])) == {U, H}
+
+
+def test_seeded_value_still_reaches_an_entity_that_missed_it():
+    # A config analog value never changes: if the entity missed the HTTP seed, the
+    # first read afterwards is its only chance to leave "unknown".
+    r, clock, events = router()
+    K = "00000000-0000-0000-0000000000000003"
+    r.seed({K: 12})
+    clock[0] = 31
+    assert r.due([K]) == [K]
+    r.receive("poll", {K: 12})
+    r.receive("poll", {K: 12})
+    assert events == [{K: 12}]

@@ -578,8 +578,15 @@ async def async_fetch_values(session, host, port, username, password, uuids, raw
 
 
 async def async_fetch_program(session, host, port, username, password) -> bytes | None:
-    """Programm vom Miniserver ziehen und zu XML dekodieren. None bei Fehler."""
+    """Programm vom Miniserver ziehen und zu XML dekodieren. None bei Fehler.
+
+    Das Dekodieren (reines Python-LZ4, ~1 s fuer 8 MB) laeuft im Executor, nicht im Event-Loop.
+    """
+    import asyncio
+
     import aiohttp
+
+    loop = asyncio.get_running_loop()
 
     base = "http://{}:{}".format(host, port)
     auth = aiohttp.BasicAuth(str(username), str(password))
@@ -600,9 +607,9 @@ async def async_fetch_program(session, host, port, username, password) -> bytes 
                 return None
             data = await resp.read()
         if fname.endswith(".zip"):
-            return program_from_zip(data)
+            return await loop.run_in_executor(None, program_from_zip, data)
     except Exception as err:  # noqa: BLE001 - best effort
         _LOGGER.warning("Programm-Download fehlgeschlagen: %s", err)
         return None
 
-    return decode_loxcc(data)
+    return await loop.run_in_executor(None, decode_loxcc, data)

@@ -83,6 +83,37 @@ def test_http_wallbox_scaling_placeholders_and_server_error_codes(monkeypatch):
     assert values == {'tiny': 0.00125, 'text': 'hello'}
 
 
+def test_program_is_decoded_off_the_event_loop(monkeypatch):
+    # The pure-Python LZ4 takes about a second for a large program: never in the loop.
+    import sys
+    import threading
+    monkeypatch.setitem(sys.modules, "aiohttp", SimpleNamespace(
+        BasicAuth=lambda *args: args, ClientTimeout=lambda **kwargs: kwargs))
+    threads = []
+
+    def decode(data):
+        threads.append(threading.get_ident())
+        return b"<C/>" if data == b"packed" else None
+    monkeypatch.setattr(top, "decode_loxcc", decode)
+
+    class Reply:
+        status = 200
+        def __init__(self, url): self.url = url
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def text(self): return "sps_7_20260101120000.LoxCC"
+        async def read(self): return b"packed"
+
+    class Session:
+        def get(self, url, **kwargs): return Reply(url)
+
+    async def fetch():
+        return await top.async_fetch_program(Session(), "ms", 80, "user", "pass"), threading.get_ident()
+    program, loop_thread = asyncio.run(fetch())
+    assert program == b"<C/>"
+    assert threads and loop_thread not in threads
+
+
 def test_status_texts_decide_contact_polarity():
     # Loxone: value 1 = "Geschlossen" for a door contact; HA's door class means on = open.
     assert top.text_polarity_inverted({"off": "Offen", "on": "Geschlossen"})

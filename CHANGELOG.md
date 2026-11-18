@@ -142,6 +142,34 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   verfälscht. Jetzt wird genau die gewählte Stimmung aktiviert, die Namen bleiben unverändert.
 - Behoben: Die Seite „Systeminformationen“ brach beim Loxone-Abschnitt mit einem Fehler ab.
   Jetzt zeigt sie Seriennummer, Projektname, lokale URL und Softwareversion des Miniservers.
+- Behoben: Beim Herunterfahren von HA, erstmals nach der Installation und nach jeder täglichen
+  Token-Erneuerung, wurde die Integration mitten im Shutdown neu geladen, samt neuer Verbindung,
+  Programm-Download und UDP-Prüfung. Ohne gültigen Token brach das Beenden mit einem Fehler ab
+  und ließ die Verbindung offen. Jetzt lädt nur eine Änderung der Optionen neu, und die
+  Verbindung wird immer geschlossen.
+- Behoben (Weg 2, Issue #17): Nach einem Token-Fehler lief neben dem markierten Neuladen ein
+  zweites, unmarkiertes, das die Sperre „nach Verbindungsabbruch kein Upload“ aus 1.8.5b2
+  aushebelte. Ein unerwarteter Fehler der Miniserver-Verbindung ließ alle Entitäten
+  stillschweigend einfrieren. Jetzt lädt jeder Verbindungsfehler genau einmal und markiert neu,
+  also ohne Programm-Upload.
+- Behoben: Lehnte der Miniserver das Token dauerhaft ab, lud die Integration etwa jede Sekunde
+  neu, jedes Mal mit Struktur- und Programm-Download. Jetzt verdoppelt sich die Wartezeit bis
+  höchstens 5 Minuten; das Log nennt den nächsten Versuch, nach einer erfolgreichen Anmeldung
+  beginnt sie wieder bei 1 s.
+- Behoben: Mit zwei Miniservern (zwei Integrationseinträge) bediente jeder Dienstaufruf nur den
+  zuletzt eingerichteten, jeder Entitätsbefehl ging an beide, und das Entladen eines Eintrags
+  entfernte die Dienste des anderen. Starteten beide gleichzeitig, konnten Startwerte und
+  Gerätezuordnung des einen verloren gehen. Jetzt geht jeder Befehl genau einmal an den
+  Miniserver, dem die UUID gehört, die Dienste bleiben bis zum letzten Eintrag, und ein
+  verpasster Startwert kommt spätestens mit der nächsten Abfrage an.
+- Behoben: Beim Start blockierten das Entpacken und das mehrfache Durchsuchen des
+  Miniserver-Programms HA für Sekunden. Jetzt läuft beides im Hintergrund.
+- Behoben (Weg 3): Mit einem Hostnamen statt einer IP löste jeder gesendete HA-Wert eine
+  blockierende DNS-Abfrage aus, drei je Parameteränderung; mit einer Adresse der Form
+  `https://host:port/pfad` kam kein Wert an. Jetzt wird der Name einmal im Hintergrund aufgelöst,
+  nach einem Fehler alle 5 Minuten erneut, mit einer einzigen Warnung.
+- Behoben: Ein in Loxone Config umbenanntes Gerät behielt in HA bis zum Neustart seinen alten
+  Namen. Jetzt reicht ein Neuladen der Integration.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

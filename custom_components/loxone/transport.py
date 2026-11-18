@@ -79,6 +79,8 @@ class SignalRouter:
         self.websocket_connected = False
         self.http_scales = {}
         self.seen_at = {}
+        # Seeded keys not yet confirmed by a read: the next value goes out even if unchanged.
+        self.seeded = set()
 
     def configure(self, xml, port, config=None, terminals=()):
         self.udp_signals, self.heartbeat, self.owners, self.heartbeats = _inventory(xml, port)
@@ -138,7 +140,8 @@ class SignalRouter:
             self.revision[key] = self.revision.get(key, 0) + 1
             self.seen_at[key] = now
             self.sources[key] = source
-            if key not in self.last or self.last[key] != value:
+            if key not in self.last or self.last[key] != value or key in self.seeded:
+                self.seeded.discard(key)
                 self.last[key] = value
                 accepted[original] = value
         if accepted:
@@ -172,11 +175,15 @@ class SignalRouter:
         self.attempted_at[key.lower()] = self.clock()
 
     def seed(self, values):
-        """Initial HTTP values count as a poll, so the first rotation does not read them again."""
+        """Initial HTTP values count as a poll, so the first rotation does not read them again.
+
+        Entities read the seed themselves; one that missed it gets the next read even if unchanged.
+        """
         now = self.clock()
         self.last.update({key.lower(): value for key, value in values.items()})
         self.seen_at.update({key.lower(): now for key in values})
         self.polled_at.update({key.lower(): now for key in values})
+        self.seeded.update(key.lower() for key in values)
 
     def expire(self, keys, max_age=90):
         """Do not display a frozen value as current after all usable paths fail.

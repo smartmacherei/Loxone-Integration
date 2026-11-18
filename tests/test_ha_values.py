@@ -1,6 +1,8 @@
 """Weg 3 value rules: which entities export what, and which number goes out."""
 from types import SimpleNamespace as NS
 
+import pytest
+
 from test_udp_install import module
 
 values = module("ha_values")
@@ -67,6 +69,7 @@ def sender(entries, current=None):
     states = current or {}
     send = values.HaValuesSender(NS(states=NS(get=states.get)), entries, "ms.invalid", 55556)
     send.socket = Socket()
+    send.address = ("192.0.2.1", 55556)  # resolved at start
     return send
 
 
@@ -108,3 +111,89 @@ def test_analog_values_still_follow_every_change_including_attributes():
     send = sender([ANALOG], {"sensor.pool": state("23.5")})
     send._changed(event("sensor.pool", state("23.5", unit="C"), state("23.5")))
     assert send.socket.sent == ["sensor.pool=23.5"]
+
+
+class Resolver:
+    """getaddrinfo stand-in: records each lookup and the thread it ran on."""
+    def __init__(self, failures=0):
+        self.lookups, self.failures = [], failures
+
+    def __call__(self, host, port, family=0, type=0, proto=0, flags=0):
+        import socket
+        import threading
+        self.lookups.append((host, port, threading.get_ident()))
+        if self.failures:
+            self.failures -= 1
+            raise socket.gaierror(11001, "getaddrinfo failed")
+        return [(socket.AF_INET, socket.SOCK_DGRAM, 17, "", ("192.0.2.7", port))]
+
+
+class AddressedSocket:
+    def __init__(self, *args):
+        self.sent = []
+
+    def setblocking(self, flag):
+        pass
+
+    def sendto(self, data, address):
+        self.sent.append((data.decode(), address))
+
+    def close(self):
+        pass
+
+
+def started(monkeypatch, host, resolver, steps):
+    """Start a sender against ``host`` with HA's event helpers stubbed; run ``steps`` on the loop."""
+    import asyncio
+    import socket
+    import sys
+    import threading
+    import types
+    event = types.ModuleType("homeassistant.helpers.event")
+    event.async_track_state_change_event = lambda hass, ids, action: (lambda: None)
+    event.async_track_time_interval = lambda hass, action, interval: (lambda: None)
+    for name, mod in {"homeassistant": types.ModuleType("homeassistant"),
+                      "homeassistant.helpers": types.ModuleType("homeassistant.helpers"),
+                      "homeassistant.helpers.event": event}.items():
+        monkeypatch.setitem(sys.modules, name, mod)
+    monkeypatch.setattr(socket, "getaddrinfo", resolver)
+    monkeypatch.setattr(values, "socket", NS(socket=AddressedSocket, AF_INET=socket.AF_INET, SOCK_DGRAM=socket.SOCK_DGRAM))
+
+    async def run():
+        loop = asyncio.get_running_loop()
+        hass = NS(loop=loop, async_create_task=loop.create_task, states=NS(get={"sensor.pool": state("23.5")}.get))
+        send = values.HaValuesSender(hass, [ANALOG], host, 55556)
+
+        async def settle():
+            while pending := [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]:
+                await asyncio.gather(*pending)
+        send.start()
+        await settle()
+        for step in steps:
+            step(send)
+            await settle()
+        return send.socket.sent, threading.get_ident()
+
+    return asyncio.run(run())
+
+
+@pytest.mark.parametrize("host", ["miniserver.fritz.box", "https://miniserver.fritz.box:8443/path"])
+def test_host_is_resolved_once_off_the_loop_not_per_datagram(monkeypatch, host):
+    # sendto with a name looked it up synchronously in the event loop for every datagram;
+    # the https form kept by host_option made every send fail silently.
+    resolver = Resolver()
+    change = event("sensor.pool", state("23"), state("23.5"))
+    sent, loop_thread = started(monkeypatch, host, resolver, [lambda s: s._changed(change)] * 3)
+    assert [(h, p) for h, p, _ in resolver.lookups] == [("miniserver.fritz.box", 55556)]
+    assert resolver.lookups[0][2] != loop_thread
+    assert sent == [("sensor.pool=23.5", ("192.0.2.7", 55556))] * 4
+
+
+def test_failed_lookup_logs_once_and_retries_with_the_resend(monkeypatch, caplog):
+    resolver = Resolver(failures=2)
+    tick = lambda s: s._tick(None)
+    with caplog.at_level("DEBUG"):
+        sent, _ = started(monkeypatch, "miniserver.fritz.box", resolver, [tick, tick])
+    assert len(resolver.lookups) == 3
+    assert len([r for r in caplog.records if r.levelname == "WARNING"]) == 1
+    assert sent == [("sensor.pool=23.5", ("192.0.2.7", 55556))]

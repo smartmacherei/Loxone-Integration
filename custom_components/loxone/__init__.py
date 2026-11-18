@@ -15,7 +15,6 @@ from functools import cached_property
 
 import homeassistant.components.group as group
 import voluptuous as vol
-import websockets
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (CONF_HOST, CONF_PASSWORD, CONF_PORT,
                                  CONF_USERNAME, EVENT_COMPONENT_LOADED,
@@ -49,9 +48,7 @@ from .miniserver import MiniServer, get_miniserver_from_hass
 from .pyloxone_api.connection import LoxoneConnection
 from .pyloxone_api.exceptions import (LoxoneConnectionClosedOk,
                                       LoxoneConnectionError, LoxoneException,
-                                      LoxoneOutOfServiceException,
                                       LoxoneServiceUnAvailableError,
-                                      LoxoneTokenError,
                                       LoxoneUnauthorisedError)
 
 REQUIREMENTS = ["websockets", "pycryptodome", "numpy"]
@@ -126,27 +123,15 @@ async def async_unload_entry(hass, config_entry):
                 except Exception as e:
                     _LOGGER.debug(f"Error waiting for listening task to finish: {e}")
 
-            # Remove event listeners (if any still present)
-            if hasattr(coordinator, "listeners") and coordinator.listeners:
-                for listener in coordinator.listeners:
-                    try:
-                        listener()  # Unsubscribe the listener
-                    except Exception:
-                        pass
-                coordinator.listeners = []
-
             hass.data[DOMAIN].pop(config_entry.entry_id, None)
         except Exception as e:
             raise e
 
-    # Services deregistrieren beim Entladen
-    hass.services.async_remove(DOMAIN, "event_websocket_command")
-    hass.services.async_remove(DOMAIN, "event_secured_websocket_command")
-    hass.services.async_remove(DOMAIN, "sync_areas")
-    hass.services.async_remove(DOMAIN, "quick_shade")
-    hass.services.async_remove(DOMAIN, "enable_sun_automation")
-    hass.services.async_remove(DOMAIN, "disable_sun_automation")
-    hass.services.async_remove(DOMAIN, "reload")
+    from . import helpers as _lox_helpers
+    _lox_helpers.release(config_entry.entry_id)
+    # Services and command listeners serve every Miniserver: they go with the last one.
+    if not hass.data.get(DOMAIN):
+        _async_remove_commands(hass)
 
     # Unload
     unload_ok = await hass.config_entries.async_unload_platforms(
@@ -234,7 +219,13 @@ async def async_config_entry_updated(hass, entry) -> None:
     Reload bliebe eine Aenderung im Options-Dialog daher wirkungslos, bis
     jemand HA neu startet - am deutlichsten beim Abschalten von
     CONF_AUTO_DISCOVERY, das sichtbar "nichts tut".
+
+    Nur Optionen loesen den Reload aus: den Token in ``data`` schreiben der HA-Stopp und der
+    Token-Fehler. Ein Reload daraus lief mitten im Shutdown bzw. als zweiter, unmarkierter Reload.
     """
+    coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if coordinator is not None and coordinator.applied_options == dict(entry.options):
+        return
     await hass.config_entries.async_reload(entry.entry_id)
 
 
@@ -286,7 +277,8 @@ async def _async_setup_block_parameters(hass, config_entry, program, loxconfig):
     store = hass.data.setdefault(DOMAIN + "_parameters", {})
     try:
         params = await hass.async_add_executor_job(enumerate_parameters, program)
-        store[config_entry.entry_id] = without_structure_ids(params, loxconfig)
+        # json.dumps of LoxAPP3 plus a regex: not in the event loop either.
+        store[config_entry.entry_id] = await hass.async_add_executor_job(without_structure_ids, params, loxconfig)
     except Exception as err:  # noqa: BLE001 - optional feature
         _LOGGER.warning("Loxone-Bausteinparameter nicht lesbar: %s", err)
         return
@@ -304,6 +296,355 @@ async def _async_setup_block_parameters(hass, config_entry, program, loxconfig):
 
     config_entry.async_on_unload(
         async_track_time_interval(hass, _refresh, timedelta(hours=REFRESH_HOURS)))
+
+
+async def _async_load_topology(hass, config_entry, coordinator, _router):
+    """Program download, device grouping and auto-discovery; returns (program, Miniservers).
+
+    Every XML parse runs in the executor: a large program blocks the event loop for seconds.
+    device_map and initial_values are merged, never rebound: two Miniservers set up at once.
+    """
+    _program = None
+    _servers = []
+    # Physische Geraete-Topologie aus dem Miniserver-Programm laden, damit die
+    # Entities nach echtem Loxone-Geraet (TreeDevice) gruppiert werden statt je
+    # Control ein eigenes HA-Geraet zu erzeugen. Best-effort: bei Fehlern bleibt
+    # das bisherige Verhalten (Fallback in helpers.get_or_create_device).
+    try:
+        from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+        from . import helpers as _lox_helpers
+        from .topology import (async_fetch_program, async_fetch_values,
+                               build_device_map, client_hosts,
+                               enumerate_discoverable, interleave_by_miniserver,
+                               miniservers, pollable_terminals, terminal_owner)
+
+        _program = await async_fetch_program(
+            async_get_clientsession(hass),
+            config_entry.options.get(CONF_HOST),
+            config_entry.options.get(CONF_PORT),
+            config_entry.options.get(CONF_USERNAME),
+            config_entry.options.get(CONF_PASSWORD),
+        )
+        if _program:
+            _udp_port = int(config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT))
+            await hass.async_add_executor_job(_router.configure, _program, _udp_port)
+            # Gateway/Client: the full project lists every Miniserver. Client
+            # terminals are polled at the client itself; the gateway only knows
+            # foreign terminals its own program uses.
+            _servers = await hass.async_add_executor_job(miniservers, _program)
+            hass.data.setdefault(DOMAIN + "_topology", {})[config_entry.entry_id] = {
+                "miniservers": [{k: m[k] for k in ("name", "role", "index", "host", "port")} for m in _servers],
+                "client_terminals": 0,
+            }
+            def _remove_topology():
+                # No return value: HA runs a truthy hook result as a coroutine.
+                hass.data.get(DOMAIN + "_topology", {}).pop(config_entry.entry_id, None)
+
+            config_entry.async_on_unload(_remove_topology)
+            if len(_servers) > 1:
+                _LOGGER.info("Loxone Gateway/Client: %s Miniserver im Projekt (%s)", len(_servers),
+                             ", ".join(f"{m['name']} [{m['role']}]" for m in _servers))
+            _devices = await hass.async_add_executor_job(build_device_map, _program)
+            _lox_helpers.publish(config_entry.entry_id, _lox_helpers.device_map, _devices)
+            await _async_setup_block_parameters(
+                hass, config_entry, _program, coordinator.miniserver.lox_config.json)
+            _LOGGER.info(
+                "Loxone-Topologie: %s Entities auf %s physische Geraete gemappt",
+                len(_devices),
+                len({v[0] for v in _devices.values()}),
+            )
+            # Auto-Discovery: physische Klemmen OHNE Visu-Haekchen aus dem
+            # Programm als Entities ergaenzen (gruppiert ueber die device_map).
+            try:
+                # Abschaltbar, weil grosse Kundenprojekte sonst hunderte
+                # ungewollte Entities erzeugen. Die Geraete-Gruppierung oben
+                # (device_map) bleibt davon unberuehrt - abgeschaltet wird nur
+                # das Anlegen zusaetzlicher Entities.
+                _auto_disc = config_entry.options.get(
+                    CONF_AUTO_DISCOVERY, DEFAULT_AUTO_DISCOVERY
+                )
+                if not _auto_disc:
+                    _LOGGER.info(
+                        "Loxone Auto-Discovery ist per Option deaktiviert - es "
+                        "entstehen nur Entities fuer Bausteine mit Visu-Haekchen"
+                    )
+                _loxconfig = coordinator.miniserver.lox_config.json
+                if (
+                    _auto_disc
+                    and isinstance(_loxconfig, dict)
+                    and isinstance(_loxconfig.get("controls"), dict)
+                ):
+                    # device_map durchreichen: sie ist oben schon gebaut,
+                    # sonst parst enumerate_discoverable das Programm-XML
+                    # ein zweites Mal.
+                    _new = await hass.async_add_executor_job(
+                        enumerate_discoverable, _program, _loxconfig, _devices
+                    )
+                    # Gateway/Client beta: rotate through the Miniservers so the
+                    # limit below cannot starve the clients.
+                    if config_entry.options.get(CONF_UDP_GATEWAY_BETA) and len(_servers) > 1:
+                        _new = interleave_by_miniserver(
+                            _new, await hass.async_add_executor_job(terminal_owner, _program))
+                    # One limit for entities, polling and UDP loggers: program
+                    # order is stable, so UdpSetup.select picks the same subset.
+                    _limit = int(config_entry.options.get(CONF_UDP_MAX_SIGNALS) or DEFAULT_UDP_MAX_SIGNALS)
+                    if len(_new) > _limit:
+                        _LOGGER.warning(
+                            "Loxone Auto-Discovery: %s Klemmen gefunden, Grenze %s; nur die ersten %s "
+                            "werden angelegt (Option udp_max_signals erhoehen, falls gewuenscht)",
+                            len(_new), _limit, _limit)
+                        _new = _new[:_limit]
+                    await hass.async_add_executor_job(
+                        _router.configure, _program, _udp_port, _loxconfig, [_u for _u, _c in _new])
+                    for _u, _ctrl in _new:
+                        _loxconfig["controls"][_u] = _ctrl
+                    _LOGGER.info(
+                        "Loxone Auto-Discovery: %s zusaetzliche physische Klemmen "
+                        "injiziert",
+                        len(_new),
+                    )
+                    # Initialwerte per HTTP holen (WS pusht Konfig-Analogwerte nicht)
+                    if _new:
+                        _raw_uuids = {_u for _u, _c in _new if _c.get("auto_raw")}
+                        # Disabled entities cost the Miniserver nothing: neither
+                        # the ones a user switched off nor the diagnostics that
+                        # start disabled. Re-read each cycle so changes apply live.
+                        _default_off = {_u for _u, _c in _new if _c.get("auto_enabled_default") is False}
+                        # Battery and device internals are read every few hours and
+                        # never expire; unknown formats keep the normal rate.
+                        _router.slow = {_u.lower() for _u, _c in _new
+                                        if _c.get("auto_diagnostic") and not _c.get("auto_raw")}
+                        _registry = er.async_get(hass)
+
+                        def _pollable(uuids):
+                            known = {e.unique_id: e.disabled_by for e in
+                                     er.async_entries_for_config_entry(_registry, config_entry.entry_id)}
+                            return pollable_terminals(uuids, known, _default_off)
+                        _hosts = await hass.async_add_executor_job(
+                            client_hosts, _program, [_u for _u, _c in _new])
+                        hass.data[DOMAIN + "_topology"][config_entry.entry_id]["client_terminals"] = len(_hosts)
+                        if _hosts:
+                            _LOGGER.info("Loxone Gateway/Client: %s Klemmen werden direkt am Client abgefragt", len(_hosts))
+                        _values = await async_fetch_values(
+                            async_get_clientsession(hass),
+                            config_entry.options.get(CONF_HOST),
+                            config_entry.options.get(CONF_PORT),
+                            config_entry.options.get(CONF_USERNAME),
+                            config_entry.options.get(CONF_PASSWORD),
+                            _pollable([_u for _u, _c in _new]),
+                            _raw_uuids,
+                            http_scales=_router.http_scales,
+                            hosts=_hosts,
+                        )
+                        _lox_helpers.publish(config_entry.entry_id, _lox_helpers.initial_values, _values)
+                        _LOGGER.info(
+                            "Loxone Auto-Discovery: %s Initialwerte via HTTP geholt",
+                            len(_values),
+                        )
+                        _router.seed(_values)
+
+                        # Initial/fallback snapshots and periodic verification share
+                        # one bounded poll task. A healthy heartbeat permits longer
+                        # intervals without interpreting a quiet value as failure.
+                        _poll_uuids = [_u for _u, _c in _new]
+                        _session = async_get_clientsession(hass)
+                        _opts = config_entry.options
+                        # Rotation period in seconds; a value waiting for its turn
+                        # must not expire as unavailable.
+                        _cycles = -(-len(_poll_uuids) // DISCOVERY_POLL_BATCH)
+                        _period = _cycles * DISCOVERY_POLL_INTERVAL.total_seconds()
+                        _max_age = max(90, 3 * _period)
+
+                        async def _poll_discovered(_now, _uuids=_poll_uuids):
+                            if _poll_discovered.running or _poll_discovered.closed:
+                                return
+                            _poll_discovered.running = True
+                            _connection = getattr(coordinator.api, "connection", None)
+                            _router.websocket_state(getattr(getattr(_connection, "state", None), "name", "") == "OPEN")
+                            snapshot = dict(_router.revision)
+                            active = _pollable(_uuids)
+                            try:
+                                values = await async_fetch_values(
+                                    _session, _opts.get(CONF_HOST), _opts.get(CONF_PORT),
+                                    _opts.get(CONF_USERNAME), _opts.get(CONF_PASSWORD),
+                                    _router.due(active, DISCOVERY_POLL_BATCH), _raw_uuids, _router.attempted, _router.http_scales,
+                                    hosts=_hosts,
+                                )
+                                if not _poll_discovered.closed:
+                                    _router.receive("poll", values, snapshot)
+                                    _router.expire(active, max_age=_max_age)
+                            finally:
+                                _poll_discovered.running = False
+                        _poll_discovered.running = False
+                        _poll_discovered.closed = False
+                        config_entry.async_on_unload(lambda: setattr(_poll_discovered, "closed", True))
+
+                        config_entry.async_on_unload(
+                            async_track_time_interval(
+                                hass, _poll_discovered, DISCOVERY_POLL_INTERVAL
+                            )
+                        )
+                        _LOGGER.info(
+                            "Loxone Auto-Discovery: %s Klemmen werden per HTTP nachgezogen "
+                            "(%s davon als Diagnose deaktiviert angelegt, deaktivierte werden nicht "
+                            "abgefragt), hoechstens %s je %ss, jede Klemme etwa alle %ss",
+                            len(_poll_uuids), len(_default_off), DISCOVERY_POLL_BATCH,
+                            DISCOVERY_POLL_INTERVAL.total_seconds(), _period,
+                        )
+
+            except Exception as _e:  # noqa: BLE001
+                _LOGGER.warning("Loxone Auto-Discovery uebersprungen: %s", _e)
+    except Exception as err:  # noqa: BLE001 - Gruppierung ist optional
+        _LOGGER.warning(
+            "Loxone-Geraete-Topologie nicht ladbar (Fallback aktiv): %s", err
+        )
+    return _program, _servers
+
+
+COMMANDS = DOMAIN + "_commands"
+# Domain services; quick_shade & co. are the cover platform's entity services, shared as well.
+SHARED_SERVICES = ("event_websocket_command", "event_secured_websocket_command", "sync_areas", "reload",
+                   "quick_shade", "enable_sun_automation", "disable_sun_automation")
+
+
+def _owns(config, uuid):
+    for key, control in (config or {}).get("controls", {}).items():
+        if uuid in (key.lower(), str(control.get("uuidAction", "")).lower()):
+            return True
+        for sub_key, sub in (control.get("subControls") or {}).items():
+            if uuid in (sub_key.lower(), str(sub.get("uuidAction", "")).lower()):
+                return True
+    return False
+
+
+def _command_coordinators(hass, uuid):
+    """The Miniserver whose structure has ``uuid``; every one if none has it (UUIDs are unique)."""
+    coordinators = list(hass.data.get(DOMAIN, {}).values())
+    if len(coordinators) > 1:
+        key = str(uuid).lower()
+        owners = [c for c in coordinators if _owns(c.miniserver.lox_config.json, key)]
+        if owners:
+            return owners
+    return coordinators
+
+
+def _call_target(hass, data):
+    """uuid and coordinators of a service call: the entity's own Miniserver, else the uuid's owner."""
+    if data.get(ATTR_DEVICE) is None:
+        entity_uuid = data.get(ATTR_UUID, DEFAULT)
+        return entity_uuid, _command_coordinators(hass, entity_uuid)
+    entity = er.async_get(hass).async_get(data.get(ATTR_DEVICE))
+    coordinator = hass.data.get(DOMAIN, {}).get(entity.config_entry_id)
+    return entity.unique_id, [coordinator] if coordinator else _command_coordinators(hass, entity.unique_id)
+
+
+def _async_setup_commands(hass):
+    """Command services and listeners exist once for all Miniservers.
+
+    Registered per entry, the last entry's closures served every service call and every
+    entity command went to every Miniserver.
+    """
+    if COMMANDS in hass.data:
+        return
+
+    async def handle_websocket_command(call):
+        """Handle websocket command services."""
+        value = call.data.get(ATTR_VALUE, DEFAULT)
+        entity_uuid, coordinators = _call_target(hass, call.data)
+        for coordinator in coordinators:
+            await coordinator.api.send_websocket_command(entity_uuid, value)
+
+    async def handle_secured_websocket_command(call):
+        """Handle websocket command services."""
+        value = call.data.get(ATTR_VALUE, DEFAULT)
+        code = call.data.get(ATTR_CODE, DEFAULT)
+        entity_uuid, coordinators = _call_target(hass, call.data)
+        for coordinator in coordinators:
+            await coordinator.api.send_secured__websocket_command(entity_uuid, value, code)
+
+    async def sync_areas_with_loxone(data={}):
+        create_areas = data.get(ATTR_AREA_CREATE, DEFAULT)
+        if create_areas not in [True, False]:
+            create_areas = False
+        lox_items = []
+        er_registry = er.async_get(hass)
+        ar_registry = ar.async_get(hass)
+        for id, entry in er_registry.entities.items():
+            if entry.platform == DOMAIN:
+                mapper = hass.data.get(DOMAIN + "_area_mapping", {}).get(entry.config_entry_id)
+                if mapper and mapper.is_mapped(entry.unique_id):
+                    continue  # Explicit UUID mapping takes precedence over legacy name sync.
+                state = hass.states.get(entry.entity_id)
+                if hasattr(state, "attributes") and "room" in state.attributes:
+                    area = ar_registry.async_get_area_by_name(state.attributes["room"])
+                    if area is None and create_areas:
+                        area = ar_registry.async_get_or_create(state.attributes["room"])
+                    if area and entry.area_id is None:
+                        lox_items.append((entry.entity_id, area.id))
+
+        for _ in lox_items:
+            er_registry.async_update_entity(_[0], area_id=_[1])
+
+    async def handle_sync_areas_with_loxone(call):
+        await sync_areas_with_loxone(call.data)
+
+    async def handle_reload(call):
+        """Handle the service call to reload the integration."""
+        _LOGGER.info("Reloading Loxone integration via service call")
+        entries = hass.config_entries.async_entries(DOMAIN)
+        unloads = [
+            hass.config_entries.async_unload(entry.entry_id) for entry in entries
+        ]
+        await asyncio.gather(*unloads)
+        loads = [hass.config_entries.async_reload(entry.entry_id) for entry in entries]
+        await asyncio.gather(*loads)
+        _LOGGER.info("Loxone integration reload complete")
+
+    async def loxone_send(event):
+        """Listen for change Events from Loxone Components"""
+        try:
+            if not isinstance(event.data, dict):
+                return
+            value = event.data.get(ATTR_VALUE, DEFAULT)
+            device_uuid = event.data.get(ATTR_UUID, DEFAULT)
+            if value is None:
+                value = DEFAULT
+            if device_uuid is None:
+                device_uuid = DEFAULT
+            for coordinator in _command_coordinators(hass, device_uuid):
+                if event.event_type == SENDDOMAIN:
+                    await coordinator.api.send_websocket_command(device_uuid, value)
+                elif event.event_type == SECUREDSENDDOMAIN:
+                    code = event.data.get(ATTR_CODE, DEFAULT)
+                    await coordinator.api.send_secured__websocket_command(
+                        device_uuid, value, DEFAULT if code is None else code
+                    )
+
+        except Exception as e:
+            _LOGGER.error(e)
+
+    hass.services.async_register(
+        DOMAIN, "event_websocket_command", handle_websocket_command
+    )
+
+    hass.services.async_register(
+        DOMAIN, "event_secured_websocket_command", handle_secured_websocket_command
+    )
+    hass.services.async_register(DOMAIN, "sync_areas", handle_sync_areas_with_loxone)
+    hass.services.async_register(DOMAIN, "reload", handle_reload)
+    hass.data[COMMANDS] = [
+        hass.bus.async_listen(SENDDOMAIN, loxone_send),
+        hass.bus.async_listen(SECUREDSENDDOMAIN, loxone_send),
+    ]
+
+
+def _async_remove_commands(hass):
+    """With the last Miniserver: services, command listeners and the cover entity services."""
+    for unsubscribe in hass.data.pop(COMMANDS, ()):
+        unsubscribe()
+    for service in SHARED_SERVICES:
+        hass.services.async_remove(DOMAIN, service)
 
 
 async def async_setup_entry(hass, config_entry):
@@ -405,8 +746,6 @@ async def _async_setup_entry(hass, config_entry):
     )
 
     advance(hass, config_entry, "topology_discovery")
-    _program = None
-    _servers = []
     from .transport import SignalRouter, StateUpdate
     # Dispatcher instead of a bus event: the recorder would otherwise store
     # every Loxone value (and warn about oversized snapshots).
@@ -418,196 +757,7 @@ async def _async_setup_entry(hass, config_entry):
 
     config_entry.async_on_unload(_remove_transport)
 
-    # Physische Geraete-Topologie aus dem Miniserver-Programm laden, damit die
-    # Entities nach echtem Loxone-Geraet (TreeDevice) gruppiert werden statt je
-    # Control ein eigenes HA-Geraet zu erzeugen. Best-effort: bei Fehlern bleibt
-    # das bisherige Verhalten (Fallback in helpers.get_or_create_device).
-    try:
-        from homeassistant.helpers.aiohttp_client import async_get_clientsession
-
-        from . import helpers as _lox_helpers
-        from .topology import (async_fetch_program, async_fetch_values,
-                               build_device_map, client_hosts,
-                               enumerate_discoverable, interleave_by_miniserver,
-                               miniservers, pollable_terminals, terminal_owner)
-
-        _program = await async_fetch_program(
-            async_get_clientsession(hass),
-            config_entry.options.get(CONF_HOST),
-            config_entry.options.get(CONF_PORT),
-            config_entry.options.get(CONF_USERNAME),
-            config_entry.options.get(CONF_PASSWORD),
-        )
-        if _program:
-            _router.configure(_program, int(config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT)))
-            # Gateway/Client: the full project lists every Miniserver. Client
-            # terminals are polled at the client itself; the gateway only knows
-            # foreign terminals its own program uses.
-            _servers = await hass.async_add_executor_job(miniservers, _program)
-            hass.data.setdefault(DOMAIN + "_topology", {})[config_entry.entry_id] = {
-                "miniservers": [{k: m[k] for k in ("name", "role", "index", "host", "port")} for m in _servers],
-                "client_terminals": 0,
-            }
-            def _remove_topology():
-                # No return value: HA runs a truthy hook result as a coroutine.
-                hass.data.get(DOMAIN + "_topology", {}).pop(config_entry.entry_id, None)
-
-            config_entry.async_on_unload(_remove_topology)
-            if len(_servers) > 1:
-                _LOGGER.info("Loxone Gateway/Client: %s Miniserver im Projekt (%s)", len(_servers),
-                             ", ".join(f"{m['name']} [{m['role']}]" for m in _servers))
-            _lox_helpers.device_map = build_device_map(_program)
-            await _async_setup_block_parameters(
-                hass, config_entry, _program, coordinator.miniserver.lox_config.json)
-            _LOGGER.info(
-                "Loxone-Topologie: %s Entities auf %s physische Geraete gemappt",
-                len(_lox_helpers.device_map),
-                len({v[0] for v in _lox_helpers.device_map.values()}),
-            )
-            # Auto-Discovery: physische Klemmen OHNE Visu-Haekchen aus dem
-            # Programm als Entities ergaenzen (gruppiert ueber die device_map).
-            try:
-                # Abschaltbar, weil grosse Kundenprojekte sonst hunderte
-                # ungewollte Entities erzeugen. Die Geraete-Gruppierung oben
-                # (device_map) bleibt davon unberuehrt - abgeschaltet wird nur
-                # das Anlegen zusaetzlicher Entities.
-                _auto_disc = config_entry.options.get(
-                    CONF_AUTO_DISCOVERY, DEFAULT_AUTO_DISCOVERY
-                )
-                if not _auto_disc:
-                    _LOGGER.info(
-                        "Loxone Auto-Discovery ist per Option deaktiviert - es "
-                        "entstehen nur Entities fuer Bausteine mit Visu-Haekchen"
-                    )
-                _loxconfig = coordinator.miniserver.lox_config.json
-                if (
-                    _auto_disc
-                    and isinstance(_loxconfig, dict)
-                    and isinstance(_loxconfig.get("controls"), dict)
-                ):
-                    # device_map durchreichen: sie ist oben schon gebaut,
-                    # sonst parst enumerate_discoverable das Programm-XML
-                    # ein zweites Mal synchron im Event-Loop.
-                    _new = enumerate_discoverable(
-                        _program, _loxconfig, _lox_helpers.device_map
-                    )
-                    # Gateway/Client beta: rotate through the Miniservers so the
-                    # limit below cannot starve the clients.
-                    if config_entry.options.get(CONF_UDP_GATEWAY_BETA) and len(_servers) > 1:
-                        _new = interleave_by_miniserver(
-                            _new, await hass.async_add_executor_job(terminal_owner, _program))
-                    # One limit for entities, polling and UDP loggers: program
-                    # order is stable, so UdpSetup.select picks the same subset.
-                    _limit = int(config_entry.options.get(CONF_UDP_MAX_SIGNALS) or DEFAULT_UDP_MAX_SIGNALS)
-                    if len(_new) > _limit:
-                        _LOGGER.warning(
-                            "Loxone Auto-Discovery: %s Klemmen gefunden, Grenze %s; nur die ersten %s "
-                            "werden angelegt (Option udp_max_signals erhoehen, falls gewuenscht)",
-                            len(_new), _limit, _limit)
-                        _new = _new[:_limit]
-                    _router.configure(_program, int(config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT)),
-                                      _loxconfig, [_u for _u, _c in _new])
-                    for _u, _ctrl in _new:
-                        _loxconfig["controls"][_u] = _ctrl
-                    _LOGGER.info(
-                        "Loxone Auto-Discovery: %s zusaetzliche physische Klemmen "
-                        "injiziert",
-                        len(_new),
-                    )
-                    # Initialwerte per HTTP holen (WS pusht Konfig-Analogwerte nicht)
-                    if _new:
-                        _raw_uuids = {_u for _u, _c in _new if _c.get("auto_raw")}
-                        # Disabled entities cost the Miniserver nothing: neither
-                        # the ones a user switched off nor the diagnostics that
-                        # start disabled. Re-read each cycle so changes apply live.
-                        _default_off = {_u for _u, _c in _new if _c.get("auto_enabled_default") is False}
-                        # Battery and device internals are read every few hours and
-                        # never expire; unknown formats keep the normal rate.
-                        _router.slow = {_u.lower() for _u, _c in _new
-                                        if _c.get("auto_diagnostic") and not _c.get("auto_raw")}
-                        _registry = er.async_get(hass)
-
-                        def _pollable(uuids):
-                            known = {e.unique_id: e.disabled_by for e in
-                                     er.async_entries_for_config_entry(_registry, config_entry.entry_id)}
-                            return pollable_terminals(uuids, known, _default_off)
-                        _hosts = await hass.async_add_executor_job(
-                            client_hosts, _program, [_u for _u, _c in _new])
-                        hass.data[DOMAIN + "_topology"][config_entry.entry_id]["client_terminals"] = len(_hosts)
-                        if _hosts:
-                            _LOGGER.info("Loxone Gateway/Client: %s Klemmen werden direkt am Client abgefragt", len(_hosts))
-                        _lox_helpers.initial_values = await async_fetch_values(
-                            async_get_clientsession(hass),
-                            config_entry.options.get(CONF_HOST),
-                            config_entry.options.get(CONF_PORT),
-                            config_entry.options.get(CONF_USERNAME),
-                            config_entry.options.get(CONF_PASSWORD),
-                            _pollable([_u for _u, _c in _new]),
-                            _raw_uuids,
-                            http_scales=_router.http_scales,
-                            hosts=_hosts,
-                        )
-                        _LOGGER.info(
-                            "Loxone Auto-Discovery: %s Initialwerte via HTTP geholt",
-                            len(_lox_helpers.initial_values),
-                        )
-                        _router.seed(_lox_helpers.initial_values)
-
-                        # Initial/fallback snapshots and periodic verification share
-                        # one bounded poll task. A healthy heartbeat permits longer
-                        # intervals without interpreting a quiet value as failure.
-                        _poll_uuids = [_u for _u, _c in _new]
-                        _session = async_get_clientsession(hass)
-                        _opts = config_entry.options
-                        # Rotation period in seconds; a value waiting for its turn
-                        # must not expire as unavailable.
-                        _cycles = -(-len(_poll_uuids) // DISCOVERY_POLL_BATCH)
-                        _period = _cycles * DISCOVERY_POLL_INTERVAL.total_seconds()
-                        _max_age = max(90, 3 * _period)
-
-                        async def _poll_discovered(_now, _uuids=_poll_uuids):
-                            if _poll_discovered.running or _poll_discovered.closed:
-                                return
-                            _poll_discovered.running = True
-                            _connection = getattr(coordinator.api, "connection", None)
-                            _router.websocket_state(getattr(getattr(_connection, "state", None), "name", "") == "OPEN")
-                            snapshot = dict(_router.revision)
-                            active = _pollable(_uuids)
-                            try:
-                                values = await async_fetch_values(
-                                    _session, _opts.get(CONF_HOST), _opts.get(CONF_PORT),
-                                    _opts.get(CONF_USERNAME), _opts.get(CONF_PASSWORD),
-                                    _router.due(active, DISCOVERY_POLL_BATCH), _raw_uuids, _router.attempted, _router.http_scales,
-                                    hosts=_hosts,
-                                )
-                                if not _poll_discovered.closed:
-                                    _router.receive("poll", values, snapshot)
-                                    _router.expire(active, max_age=_max_age)
-                            finally:
-                                _poll_discovered.running = False
-                        _poll_discovered.running = False
-                        _poll_discovered.closed = False
-                        config_entry.async_on_unload(lambda: setattr(_poll_discovered, "closed", True))
-
-                        config_entry.async_on_unload(
-                            async_track_time_interval(
-                                hass, _poll_discovered, DISCOVERY_POLL_INTERVAL
-                            )
-                        )
-                        _LOGGER.info(
-                            "Loxone Auto-Discovery: %s Klemmen werden per HTTP nachgezogen "
-                            "(%s davon als Diagnose deaktiviert angelegt, deaktivierte werden nicht "
-                            "abgefragt), hoechstens %s je %ss, jede Klemme etwa alle %ss",
-                            len(_poll_uuids), len(_default_off), DISCOVERY_POLL_BATCH,
-                            DISCOVERY_POLL_INTERVAL.total_seconds(), _period,
-                        )
-
-            except Exception as _e:  # noqa: BLE001
-                _LOGGER.warning("Loxone Auto-Discovery uebersprungen: %s", _e)
-    except Exception as err:  # noqa: BLE001 - Gruppierung ist optional
-        _LOGGER.warning(
-            "Loxone-Geraete-Topologie nicht ladbar (Fallback aktiv): %s", err
-        )
+    _program, _servers = await _async_load_topology(hass, config_entry, coordinator, _router)
 
     # Bind UDP before allowing any program modification. Even a program with no
     # discoverable terminals is monitored so a later Config upload is detected.
@@ -664,117 +814,28 @@ async def _async_setup_entry(hass, config_entry):
         mark_connection_reload(hass)
         await hass.services.async_call("loxone", "reload")
 
+    def _forget_token():
+        # First we delete the invalid token then try to reload
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data={
+                "token": "",
+                "hash_alg": "",
+                "valid_until": "",
+            },
+        )
+
+    from .lifecycle import listener_ended, token_accepted
+
     def handle_task_result(task: asyncio.Task) -> None:
-        try:
-            task.result()
-        except LoxoneTokenError as e:
-            _LOGGER.debug(
-                "Token is not valid anymore. Delete token and try to reloading Loxone integration."
-            )
-            # First we delete the invalid token then try to reload
-            hass.config_entries.async_update_entry(
-                config_entry,
-                data={
-                    "token": "",
-                    "hash_alg": "",
-                    "valid_until": "",
-                },
-            )
-            # Loxone-Integration neu laden
-            hass.async_create_task(_reload_after_delay(1.0))
-        except LoxoneOutOfServiceException as e:
-            _LOGGER.debug(
-                "Loxone LoxoneOutOfServiceException received. Try to reloading Loxone integration."
-            )
-            # Loxone-Integration neu laden
-            hass.async_create_task(_reload_after_delay(1.0))
-        except LoxoneConnectionError as e:
-            _LOGGER.debug(
-                "Loxone LoxoneConnectionError received. Try to reloading Loxone integration."
-            )
-            # Loxone-Integration neu laden
-            hass.async_create_task(_reload_after_delay(1.0))
-        except (
-            LoxoneConnectionClosedOk,
-            websockets.exceptions.ConnectionClosedOK,
-        ) as e:
-            _LOGGER.debug(
-                "Loxone LoxoneConnectionClosedOk received. Mostly a timeout Problem. Try to reloading Loxone integration."
-            )
-            # Loxone-Integration neu laden
-            hass.async_create_task(_reload_after_delay(1.0))
-        except asyncio.exceptions.CancelledError:
-            _LOGGER.debug("Loxone WebSocket listener cancelled during cleanup")
-        except Exception as e:
-            raise e
+        listener_ended(hass, config_entry.entry_id, task,
+                       lambda delay: hass.async_create_task(_reload_after_delay(delay)), _forget_token)
 
     async def message_callback(message):
         """Fire message on HomeAssistant Bus."""
         _LOGGER.debug(f"{message}")
+        token_accepted(hass, config_entry.entry_id, coordinator.api)
         _router.receive("ws", message)
-
-    async def handle_websocket_command(call):
-        """Handle websocket command services."""
-        value = call.data.get(ATTR_VALUE, DEFAULT)
-        if call.data.get(ATTR_DEVICE) is None:
-            entity_uuid = call.data.get(ATTR_UUID, DEFAULT)
-        else:
-            entity_registry = er.async_get(hass)
-            entity_id = call.data.get(ATTR_DEVICE)
-            entity = entity_registry.async_get(entity_id)
-            entity_uuid = entity.unique_id
-        await coordinator.api.send_websocket_command(entity_uuid, value)
-
-    async def handle_secured_websocket_command(call):
-        """Handle websocket command services."""
-        value = call.data.get(ATTR_VALUE, DEFAULT)
-        code = call.data.get(ATTR_CODE, DEFAULT)
-        if call.data.get(ATTR_DEVICE) is None:
-            entity_uuid = call.data.get(ATTR_UUID, DEFAULT)
-        else:
-            entity_registry = er.async_get(hass)
-            entity_id = call.data.get(ATTR_DEVICE)
-            entity = entity_registry.async_get(entity_id)
-            entity_uuid = entity.unique_id
-        await coordinator.api.send_secured__websocket_command(entity_uuid, value, code)
-
-    async def sync_areas_with_loxone(data={}):
-        create_areas = data.get(ATTR_AREA_CREATE, DEFAULT)
-        if create_areas not in [True, False]:
-            create_areas = False
-        lox_items = []
-        er_registry = er.async_get(hass)
-        ar_registry = ar.async_get(hass)
-        for id, entry in er_registry.entities.items():
-            if entry.platform == DOMAIN:
-                mapper = hass.data.get(DOMAIN + "_area_mapping", {}).get(entry.config_entry_id)
-                if mapper and mapper.is_mapped(entry.unique_id):
-                    continue  # Explicit UUID mapping takes precedence over legacy name sync.
-                state = hass.states.get(entry.entity_id)
-                if hasattr(state, "attributes") and "room" in state.attributes:
-                    area = ar_registry.async_get_area_by_name(state.attributes["room"])
-                    if area is None and create_areas:
-                        area = ar_registry.async_get_or_create(state.attributes["room"])
-                    if area and entry.area_id is None:
-                        lox_items.append((entry.entity_id, area.id))
-
-        for _ in lox_items:
-            er_registry.async_update_entity(_[0], area_id=_[1])
-
-    async def handle_sync_areas_with_loxone(call):
-        await sync_areas_with_loxone(call.data)
-
-    async def handle_reload(call):
-        """Handle the service call to reload the integration."""
-        _LOGGER.info("Reloading Loxone integration via service call")
-        entries = hass.config_entries.async_entries(DOMAIN)
-        unloads = [
-            hass.config_entries.async_unload(entry.entry_id) for entry in entries
-        ]
-        await asyncio.gather(*unloads)
-        loads = [hass.config_entries.async_reload(entry.entry_id) for entry in entries]
-        await asyncio.gather(*loads)
-        _LOGGER.info("Loxone integration reload complete")
 
     async def loxone_discovered(event):
         _LOGGER.info("Creating groups")
@@ -923,72 +984,15 @@ async def _async_setup_entry(hass, config_entry):
             raise e
 
     async def stop_event(_):
+        from .lifecycle import save_token_and_close
         _router.websocket_state(False)
-        token = coordinator.api.get_token_dict()
-        hass.config_entries.async_update_entry(
-            config_entry,
-            data={
-                **config_entry.data,  # preserve existing data
-                "token": token["token"],
-                "hash_alg": token["hash_alg"],
-                "valid_until": token["valid_until"],
-            },
-        )
-        await coordinator.api.close()
-
-    async def loxone_send(event):
-        """Listen for change Events from Loxone Components"""
-        try:
-            if event.event_type == SENDDOMAIN and isinstance(event.data, dict):
-                value = event.data.get(ATTR_VALUE, DEFAULT)
-                device_uuid = event.data.get(ATTR_UUID, DEFAULT)
-                if value is None:
-                    value = DEFAULT
-                if device_uuid is None:
-                    device_uuid = DEFAULT
-
-                _ = asyncio.create_task(
-                    coordinator.api.send_websocket_command(device_uuid, value)
-                )
-
-            elif event.event_type == SECUREDSENDDOMAIN and isinstance(event.data, dict):
-                value = event.data.get(ATTR_VALUE, DEFAULT)
-                device_uuid = event.data.get(ATTR_UUID, DEFAULT)
-                code = event.data.get(ATTR_CODE, DEFAULT)
-                if code is None:
-                    code = DEFAULT
-                if value is None:
-                    value = DEFAULT
-                if device_uuid is None:
-                    device_uuid = DEFAULT
-                _ = asyncio.create_task(
-                    coordinator.api.send_secured__websocket_command(
-                        device_uuid, value, code
-                    )
-                )
-
-        except Exception as e:
-            _LOGGER.error(e)
-
-    hass.services.async_register(
-        DOMAIN, "event_websocket_command", handle_websocket_command
-    )
-
-    hass.services.async_register(
-        DOMAIN, "event_secured_websocket_command", handle_secured_websocket_command
-    )
-    hass.services.async_register(DOMAIN, "sync_areas", handle_sync_areas_with_loxone)
-    hass.services.async_register(DOMAIN, "reload", handle_reload)
+        await save_token_and_close(hass, config_entry, coordinator.api)
 
     from .lifecycle import listen_once
     listen_once(hass, config_entry, EVENT_HOMEASSISTANT_STOP, stop_event)
     listen_once(hass, config_entry, EVENT_HOMEASSISTANT_STARTED, loxone_discovered)
 
-    # Store listeners for cleanup
-    coordinator.listeners = [
-        hass.bus.async_listen(SENDDOMAIN, loxone_send),
-        hass.bus.async_listen(SECUREDSENDDOMAIN, loxone_send),
-    ]
+    _async_setup_commands(hass)
 
     await start_event()
 
