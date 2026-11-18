@@ -270,6 +270,42 @@ async def create_group_for_loxone_entities(hass, entities, name, object_id):
         )
 
 
+async def _async_setup_block_parameters(hass, config_entry, program, loxconfig):
+    """Block parameters as diagnostic entities, refreshed daily over HTTP.
+
+    Separate from the terminal values on purpose: no UDP logger, no polling,
+    not counted against udp_max_signals. Best effort, never blocks setup.
+    """
+    from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+    from .block_parameters import (REFRESH_HOURS, enumerate_parameters, parameter_values,
+                                   without_structure_ids)
+    from .param_number import SIGNAL_PARAMETERS
+    from .topology import async_fetch_program
+
+    store = hass.data.setdefault(DOMAIN + "_parameters", {})
+    try:
+        params = await hass.async_add_executor_job(enumerate_parameters, program)
+        store[config_entry.entry_id] = without_structure_ids(params, loxconfig)
+    except Exception as err:  # noqa: BLE001 - optional feature
+        _LOGGER.warning("Loxone-Bausteinparameter nicht lesbar: %s", err)
+        return
+    config_entry.async_on_unload(lambda: store.pop(config_entry.entry_id, None) and None)
+    _LOGGER.info("Loxone-Bausteinparameter: %s", len(store[config_entry.entry_id]))
+
+    async def _refresh(_now):
+        options = config_entry.options
+        fresh = await async_fetch_program(
+            async_get_clientsession(hass), options.get(CONF_HOST), options.get(CONF_PORT),
+            options.get(CONF_USERNAME), options.get(CONF_PASSWORD))
+        if fresh:
+            async_dispatcher_send(hass, SIGNAL_PARAMETERS.format(config_entry.entry_id),
+                                  await hass.async_add_executor_job(parameter_values, fresh))
+
+    config_entry.async_on_unload(
+        async_track_time_interval(hass, _refresh, timedelta(hours=REFRESH_HOURS)))
+
+
 async def async_setup_entry(hass, config_entry):
     from .startup_trace import tracked_setup
     return await tracked_setup(hass, config_entry, _async_setup_entry)
@@ -421,6 +457,8 @@ async def _async_setup_entry(hass, config_entry):
                 _LOGGER.info("Loxone Gateway/Client: %s Miniserver im Projekt (%s)", len(_servers),
                              ", ".join(f"{m['name']} [{m['role']}]" for m in _servers))
             _lox_helpers.device_map = build_device_map(_program)
+            await _async_setup_block_parameters(
+                hass, config_entry, _program, coordinator.miniserver.lox_config.json)
             _LOGGER.info(
                 "Loxone-Topologie: %s Entities auf %s physische Geraete gemappt",
                 len(_lox_helpers.device_map),

@@ -10,6 +10,7 @@ import socket
 from datetime import timedelta
 
 from .ha_values_program import PORT
+from .param_wiring import SET_SUFFIX
 
 try:
     from .const import DOMAIN
@@ -27,6 +28,7 @@ LABEL_ICON, LABEL_COLOR = "mdi:alpha-l-box", "green"
 STATUS_UNIQUE_SUFFIX = "-ha_connected"
 KEY = DOMAIN + "_ha_values"
 RESEND = timedelta(minutes=5)
+PARAM_TRIGGER_DELAY = 0.3  # seconds between a parameter value and its trigger edge
 UNKNOWN = {None, "", "unknown", "unavailable"}
 BOOL = {"on": 1, "off": 0, "true": 1, "false": 0, "open": 1, "closed": 0, "locked": 1, "unlocked": 0,
         "home": 1, "not_home": 0, "wet": 1, "dry": 0, "detected": 1, "clear": 0}
@@ -98,7 +100,27 @@ def format_number(value):
 
 
 def program_entries(entries):
-    return [{"key": e["key"], "title": e["title"], "digital": e["digital"]} for e in entries]
+    """Commands for the program. A block parameter (``target``) also gets its trigger command."""
+    result = []
+    for e in entries:
+        result.append({"key": e["key"], "title": e["title"], "digital": e["digital"],
+                       **({"target": e["target"]} if e.get("target") else {})})
+        if e.get("target"):
+            result.append({"key": e["key"] + SET_SUFFIX, "title": e["title"] + " setzen", "digital": False})
+    return result
+
+
+def mark_parameters(hass, entries):
+    """Entries of this integration's parameter numbers carry their connector as ``target``."""
+    from homeassistant.helpers import entity_registry as er
+    registry = er.async_get(hass)
+    known = {p["unique_id"] for params in hass.data.get(DOMAIN + "_parameters", {}).values() for p in params}
+    for entry in entries:
+        item = registry.async_get(entry["entity_id"])
+        if (item is not None and item.platform == DOMAIN and item.domain == "number"
+                and item.unique_id in known and entry["attribute"] is None):
+            entry["target"] = item.unique_id
+    return entries
 
 
 def desired(hass, limit, language):
@@ -203,10 +225,21 @@ class HaValuesSender:
             value = value_of(entry, self.hass.states.get(entry["entity_id"]))
             if value is None:
                 continue
-            try:
-                self.socket.sendto(f"{entry['key']}={format_number(value)}".encode(), (self.host, self.port))
-            except OSError as err:
-                _LOGGER.debug("Loxone HA values: send failed: %s", err)
+            self._send(f"{entry['key']}={format_number(value)}")
+            if entry.get("target"):
+                # A block parameter: a rising edge on the trigger, after the value, makes the
+                # remanent Analog Memory take it over (see param_wiring).
+                key = entry["key"] + SET_SUFFIX
+                self.hass.loop.call_later(PARAM_TRIGGER_DELAY, self._send, f"{key}=1")
+                self.hass.loop.call_later(2 * PARAM_TRIGGER_DELAY, self._send, f"{key}=0")
+
+    def _send(self, text):
+        if self.socket is None:
+            return
+        try:
+            self.socket.sendto(text.encode(), (self.host, self.port))
+        except OSError as err:
+            _LOGGER.debug("Loxone HA values: send failed: %s", err)
 
     def stop(self):
         for unsub in self.unsub:
@@ -256,6 +289,7 @@ async def async_apply(hass, entry):
     german = str(getattr(hass.config, "language", "en")).lower().startswith("de")
     limit = int(entry.options.get("udp_max_signals") or 500)
     entries, unsupported, beyond = desired(hass, limit, hass.config.language)
+    mark_parameters(hass, entries)
     store = _store(hass, entry.entry_id)
     await store.async_save({**((await store.async_load()) or {}), "entries": entries})
     state = hass.data.setdefault(KEY, {}).setdefault(entry.entry_id, {"entries": [], "sender": None})

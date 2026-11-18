@@ -58,6 +58,22 @@ passende programmierte Quellverbindungen; reine Erkennung genügt nicht für Ech
 Visu-Zustände nutzen WebSocket; nicht belegte HTTP-Endpunkte
 für deren Zustands-UUIDs werden nicht vorausgesetzt.
 
+## Bausteinparameter
+
+Parameter von Funktionsbausteinen (Fahrzeiten, Nachlaufzeiten, Grenzwerte) erscheinen
+als Zahl-Entitäten unter „Konfiguration“ am Gerät des Bausteins. Welche Anschlüsse
+Parameter sind, kommt aus der Bausteindoku von Loxone Config (`block_parameters.json`,
+neu erzeugen mit `scripts/build_block_parameters.py` bei einer neuen Config-Version).
+Der Wert ist der im Programm gesetzte; HA liest das Programm beim Laden und einmal
+täglich per HTTP. UDP, die regelmäßige Abfrage und die Signalgrenze bleiben davon
+unberührt. Vom Anwender verdrahtete Parameter fehlen. Bausteine ohne Visu-Häkchen
+liefern ihre Parameter deaktiviert.
+
+Verstellen aus HA (noch nicht an echter Hardware geprüft): Label `loxone` an die
+Entität, dann „HA-Werte ins Programm übernehmen“. Die Integration verdrahtet den
+Parameter über Weg 3 mit einem Analogspeicher mit Remanenz; HA sendet den Wert und
+danach eine Übernahmeflanke (`<key>.set`). Nur Einzelanlagen.
+
 ## Geprüfter Stand
 
 Am übergebenen Testprojekt wurden mit der installierten HA-Laufzeit 2026.7.2 in

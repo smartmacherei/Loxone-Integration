@@ -68,6 +68,21 @@ accepted. Diagnostics report heartbeat health and observed source counts. Existi
 visualization state sensors use WebSocket; no unsupported state-UUID HTTP endpoint
 is assumed as a fallback.
 
+## Block parameters
+
+Function block parameters (travel times, overrun times, thresholds) appear as number
+entities under "Configuration" on the block's device. Which connectors are parameters
+comes from Loxone Config's block documentation (`block_parameters.json`, regenerate
+with `scripts/build_block_parameters.py` for a new Config version). The value is the
+one set in the program; HA reads the program at load and once a day over HTTP. UDP,
+regular polling and the signal limit are not involved. Parameters wired by the user
+are left out. Blocks without the Visu flag provide their parameters disabled.
+
+Changing from HA (not yet tested on real hardware): add the label `loxone` to the
+entity, then press "Apply HA values to program". The integration wires the parameter
+through Weg 3 via a remanent Analog Memory; HA sends the value followed by a trigger
+edge (`<key>.set`). Single Miniserver only.
+
 ## Validation performed
 
 The supplied September 9 test project contains 58 Air and 37 Tree devices plus Link

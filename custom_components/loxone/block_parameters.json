@@ -1,0 +1,6084 @@
+{
+ "source": "Loxone Config TechDoc tdc_DEV.LxRes",
+ "config_version": "17.2.10.21",
+ "blocks": {
+  "2Point": {
+   "name": "2 Position Controller",
+   "parameters": [
+    {
+     "key": "Target",
+     "label": "Setpoint",
+     "short": "SP",
+     "default": 5.0
+    },
+    {
+     "key": "Hysteresis",
+     "label": "Hysteresis",
+     "short": "Hys",
+     "step": 0.1,
+     "default": 0.5
+    },
+    {
+     "key": "Inv",
+     "label": "Inverted",
+     "short": "Inv"
+    }
+   ]
+  },
+  "3Point": {
+   "name": "3 Position Controller",
+   "parameters": [
+    {
+     "key": "Target1",
+     "label": "Setpoint 1",
+     "short": "SP1",
+     "default": 3.0
+    },
+    {
+     "key": "Target2",
+     "label": "Setpoint 2",
+     "short": "SP2",
+     "default": 7.0
+    }
+   ]
+  },
+  "AMemory": {
+   "name": "Analog Memory",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "AMinmax": {
+   "name": "Analog MinMax Limiter",
+   "parameters": [
+    {
+     "key": "Min",
+     "label": "Minimum",
+     "short": "Min",
+     "default": 0.0
+    },
+    {
+     "key": "Max",
+     "label": "Maximum",
+     "short": "Max",
+     "default": 10.0
+    }
+   ]
+  },
+  "AalEmergency": {
+   "name": "Emergency Alarm",
+   "parameters": [
+    {
+     "key": "ParTimeAlarm",
+     "label": "Push & hold time alarm",
+     "short": "Ta",
+     "min": 1.0,
+     "max": 10.0,
+     "default": 4.0,
+     "unit": "s"
+    },
+    {
+     "key": "ParTimeConfirm",
+     "label": "Push & hold time confirmation",
+     "short": "Tc",
+     "min": 1.0,
+     "max": 10.0,
+     "default": 2.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "AalSmartAlarm": {
+   "name": "AAL Smart Alarm",
+   "parameters": [
+    {
+     "key": "Time Throughfare Alarm",
+     "label": "Time transit room",
+     "short": "Tt",
+     "min": 1.0,
+     "default": 15.0,
+     "unit": "min"
+    },
+    {
+     "key": "Time Recreational Room Alarm",
+     "label": "Time common room",
+     "short": "Tc",
+     "min": 1.0,
+     "default": 60.0,
+     "unit": "min"
+    },
+    {
+     "key": "Time Bedroom Alarm",
+     "label": "Time bedroom",
+     "short": "Tb",
+     "min": 1.0,
+     "default": 420.0,
+     "unit": "min"
+    },
+    {
+     "key": "Delay Alarm Level 2",
+     "label": "Alarm level 2 delay",
+     "short": "D",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "AcControl": {
+   "name": "AC Unit Controller",
+   "parameters": [
+    {
+     "key": "parPause",
+     "label": "Pause timer duration",
+     "short": "Ptd",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 7200.0,
+     "unit": "s"
+    },
+    {
+     "key": "parHyst",
+     "label": "Hysteresis",
+     "short": "Hys",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.5,
+     "unit": "°"
+    },
+    {
+     "key": "parOff",
+     "label": "Target Offset",
+     "short": "O",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "°"
+    },
+    {
+     "key": "minTemp",
+     "label": "Minimum Target Temperature",
+     "short": "minT",
+     "default": 1.0,
+     "unit": "°"
+    },
+    {
+     "key": "maxTemp",
+     "label": "Maximum Target Temperature",
+     "short": "maxT",
+     "default": 40.0,
+     "unit": "°"
+    }
+   ]
+  },
+  "Access": {
+   "name": "Access Controller",
+   "parameters": [
+    {
+     "key": "TrTime",
+     "label": "Duration Access Controller selected",
+     "short": "Dsel",
+     "default": 0.0
+    },
+    {
+     "key": "PulseTime",
+     "label": "Pulse duration",
+     "short": "Pd",
+     "default": 3.0
+    }
+   ]
+  },
+  "Add": {
+   "name": "Add (2-way)",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "Add4": {
+   "name": "Add (4-way)",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "Alarm": {
+   "name": "Burglar Alarm",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Delay",
+     "label": "Arming delay",
+     "short": "Ard",
+     "min": 0.0,
+     "default": 600.0,
+     "unit": "s"
+    },
+    {
+     "key": "TQ1",
+     "label": "Silent alarm delay",
+     "short": "Sad",
+     "min": 0.0,
+     "default": 0.0,
+     "unit": "s"
+    },
+    {
+     "key": "TQ2",
+     "label": "Audible alarm delay",
+     "short": "Aad",
+     "min": 0.0,
+     "default": 20.0,
+     "unit": "s"
+    },
+    {
+     "key": "TQ3",
+     "label": "Visual alarm delay",
+     "short": "Vad",
+     "min": 0.0,
+     "default": 40.0,
+     "unit": "s"
+    },
+    {
+     "key": "TQ4",
+     "label": "Internal alarm delay",
+     "short": "Iad",
+     "min": 0.0,
+     "default": 90.0,
+     "unit": "s"
+    },
+    {
+     "key": "TQ5",
+     "label": "External alarm delay",
+     "short": "Ead",
+     "min": 0.0,
+     "default": 150.0,
+     "unit": "s"
+    },
+    {
+     "key": "TQ6",
+     "label": "Remote alarm delay",
+     "short": "Rad",
+     "min": 0.0,
+     "default": 300.0,
+     "unit": "s"
+    },
+    {
+     "key": "TI",
+     "label": "Extension of alarm input pulses",
+     "short": "Eip",
+     "min": 0.0,
+     "default": 0.0,
+     "unit": "s"
+    },
+    {
+     "key": "WI2",
+     "label": "Second presence sensor time window",
+     "short": "Spt",
+     "min": 0.0,
+     "default": 900.0,
+     "unit": "s"
+    },
+    {
+     "key": "TM",
+     "label": "Alarm test mode",
+     "short": "Atm"
+    },
+    {
+     "key": "MaxDurOut",
+     "label": "Maximum alarm duration",
+     "short": "MaxA",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 900.0,
+     "unit": "s"
+    },
+    {
+     "key": "AutoConfirm",
+     "label": "Silent alarm confirmation",
+     "short": "Sac"
+    },
+    {
+     "key": "IInit",
+     "label": "Arm open contact",
+     "short": "Aoc"
+    }
+   ]
+  },
+  "AlarmChain": {
+   "name": "Alarm Chain",
+   "parameters": [
+    {
+     "key": "Time",
+     "label": "Reaction time",
+     "short": "Rt",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "MaxRuns",
+     "label": "Maximum repetitions",
+     "short": "MaxR",
+     "min": 0.0,
+     "default": 4.0
+    }
+   ]
+  },
+  "AlarmClock": {
+   "name": "Alarm Clock",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "AlarmTime",
+     "label": "Maximum alarm duration",
+     "short": "MaxA",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 120.0,
+     "unit": "s"
+    },
+    {
+     "key": "PrepTime",
+     "label": "Pre-alarm time",
+     "short": "Pat",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 180.0,
+     "unit": "s"
+    },
+    {
+     "key": "SnoozeTime",
+     "label": "Snooze duration",
+     "short": "Sd",
+     "min": 60.0,
+     "max": 1800.0,
+     "step": 60.0,
+     "default": 300.0,
+     "unit": "s"
+    },
+    {
+     "key": "BrightInact",
+     "label": "Touch Nightlight display brightness inactive",
+     "short": "Bri",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 0.0,
+     "unit": "%"
+    },
+    {
+     "key": "BrightAct",
+     "label": "Touch Nightlight display brightness active",
+     "short": "Bra",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 50.0,
+     "unit": "%"
+    },
+    {
+     "key": "ParWakeAlarmSound",
+     "label": "Alarm sound (Touch Nightlight)",
+     "short": "As",
+     "min": 1.0,
+     "max": 5.0,
+     "default": 1.0
+    },
+    {
+     "key": "ParWakeAlarmVolume",
+     "label": "Alarm sound volume (Touch Nightlight)",
+     "short": "Asv",
+     "min": 5.0,
+     "max": 100.0,
+     "default": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "ParWakeAlarmSloping",
+     "label": "Alarm sound fade-in (Touch Nightlight)",
+     "short": "Asf"
+    }
+   ]
+  },
+  "AnalogComparator": {
+   "name": "Comparator",
+   "parameters": [
+    {
+     "key": "On",
+     "label": "On-value",
+     "short": "Von",
+     "default": 5.0
+    },
+    {
+     "key": "Off",
+     "label": "Off-value",
+     "short": "Voff",
+     "default": 1.0
+    }
+   ]
+  },
+  "AnalogDiffTrigger": {
+   "name": "Differential Threshold Switch",
+   "parameters": [
+    {
+     "key": "On",
+     "label": "Threshold",
+     "short": "T",
+     "default": 5.0
+    },
+    {
+     "key": "Delta",
+     "label": "Difference",
+     "short": "D",
+     "default": 2.0
+    },
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "AnalogMultiplexer": {
+   "name": "Analog Multiplexer (4-way)",
+   "parameters": [
+    {
+     "key": "Select",
+     "label": "Select value",
+     "short": "Sel",
+     "min": 0.0,
+     "max": 4.0,
+     "default": 1.0
+    }
+   ]
+  },
+  "AnalogMultiplexer2": {
+   "name": "Analog Multiplexer (2-way)",
+   "parameters": [
+    {
+     "key": "Select",
+     "label": "Select value",
+     "short": "Sel"
+    }
+   ]
+  },
+  "AnalogScaler": {
+   "name": "Scaler",
+   "parameters": [
+    {
+     "key": "Src1",
+     "label": "Value 1",
+     "short": "V1",
+     "default": 0.0
+    },
+    {
+     "key": "Dst1",
+     "label": "Scaled value 1",
+     "short": "Sv1",
+     "default": 0.0
+    },
+    {
+     "key": "Src2",
+     "label": "Value 2",
+     "short": "V2",
+     "default": 10.0
+    },
+    {
+     "key": "Dst2",
+     "label": "Scaled value 2",
+     "short": "Sv2",
+     "default": 10.0
+    }
+   ]
+  },
+  "AnalogStepper": {
+   "name": "Stepper",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Dir",
+     "label": "Direction",
+     "short": "Dir"
+    },
+    {
+     "key": "Step",
+     "label": "Step size",
+     "short": "Sts",
+     "default": 1.0
+    },
+    {
+     "key": "Max",
+     "label": "Maximum",
+     "short": "M",
+     "default": 10.0
+    }
+   ]
+  },
+  "AnalogThresholdTrigger": {
+   "name": "Threshold Switch",
+   "parameters": [
+    {
+     "key": "On",
+     "label": "Value output (O) turns on",
+     "short": "Von",
+     "default": 5.0
+    },
+    {
+     "key": "Off",
+     "label": "Value output (O) turns off",
+     "short": "Voff",
+     "default": 1.0
+    },
+    {
+     "key": "PulseTime",
+     "label": "Pulse duration",
+     "short": "Pd",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    },
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "AnalogWatchdog": {
+   "name": "Analog Value Monitor",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Threshold",
+     "label": "Upper threshold",
+     "short": "TU",
+     "default": 7.0
+    },
+    {
+     "key": "Threshold2",
+     "label": "Lower threshold",
+     "short": "TL",
+     "default": 3.0
+    }
+   ]
+  },
+  "AutoJalousie": {
+   "name": "Automatic Shading",
+   "parameters": [
+    {
+     "key": "Type",
+     "label": "Shading type",
+     "short": "Type",
+     "min": 0.0,
+     "max": 6.0,
+     "default": 0.0
+    },
+    {
+     "key": "SO",
+     "label": "Wind alarm position",
+     "short": "Wap"
+    },
+    {
+     "key": "AutoShadeEnd",
+     "label": "Sun position automatic end action",
+     "short": "Spe",
+     "min": 0.0,
+     "max": 3.0,
+     "default": 1.0
+    },
+    {
+     "key": "MinPulse",
+     "label": "Time long-click",
+     "short": "Tlc",
+     "min": 0.0,
+     "default": 3.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeEnd",
+     "label": "Opening duration",
+     "short": "Opd",
+     "min": 0.0,
+     "default": 75.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeEndDown",
+     "label": "Closing duration",
+     "short": "Cld",
+     "min": 0.0,
+     "default": 70.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeBlock",
+     "label": "Motor lock duration",
+     "short": "Mld",
+     "min": 0.0,
+     "default": 0.5,
+     "unit": "s"
+    },
+    {
+     "key": "DblClk",
+     "label": "Time double-click",
+     "short": "Tdc",
+     "min": 0.0,
+     "default": 0.3,
+     "unit": "s"
+    },
+    {
+     "key": "Back",
+     "label": "Return duration",
+     "short": "Rd",
+     "min": 0.1,
+     "step": 0.1,
+     "default": 0.8,
+     "unit": "s"
+    },
+    {
+     "key": "TurnOffset",
+     "label": "Backlash duration opposite",
+     "short": "Bldo",
+     "min": 0.0,
+     "default": 0.15,
+     "unit": "s"
+    },
+    {
+     "key": "Deadtime",
+     "label": "Backlash duration",
+     "short": "Bld",
+     "min": 0.0,
+     "default": 0.0,
+     "unit": "s"
+    },
+    {
+     "key": "MinMove",
+     "label": "Minimum travel duration",
+     "short": "minTd",
+     "min": 0.0,
+     "default": 0.4,
+     "unit": "s"
+    },
+    {
+     "key": "Dir",
+     "label": "Compass direction",
+     "short": "Dir",
+     "min": -1.0,
+     "max": 360.0,
+     "default": -1.0,
+     "unit": "°"
+    },
+    {
+     "key": "DirTol",
+     "label": "Direction tolerance start",
+     "short": "Dts",
+     "min": 0.0,
+     "max": 90.0,
+     "default": 85.0,
+     "unit": "°"
+    },
+    {
+     "key": "DirTol2",
+     "label": "Direction tolerance end",
+     "short": "Dte",
+     "min": 0.0,
+     "max": 90.0,
+     "default": 85.0,
+     "unit": "°"
+    },
+    {
+     "key": "Width",
+     "label": "Slat width",
+     "short": "Sw",
+     "min": 0.0,
+     "default": 70.0,
+     "unit": "mm"
+    },
+    {
+     "key": "Space",
+     "label": "Slat distance",
+     "short": "Sd",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "mm"
+    },
+    {
+     "key": "AutMode",
+     "label": "Sun position automatic mode",
+     "short": "Spm",
+     "min": 0.0,
+     "max": 3.0,
+     "default": 1.0
+    },
+    {
+     "key": "AutoShadeTime",
+     "label": "Sun position automatic interval",
+     "short": "Spi",
+     "min": 1.0,
+     "max": 180.0,
+     "default": 120.0,
+     "unit": "min"
+    },
+    {
+     "key": "SRoff",
+     "label": "Sun position automatic start offset",
+     "short": "Spos",
+     "min": -90.0,
+     "max": 90.0,
+     "default": 30.0,
+     "unit": "min"
+    },
+    {
+     "key": "SSoff",
+     "label": "Sun position automatic end offset",
+     "short": "Spoe",
+     "min": -90.0,
+     "max": 90.0,
+     "default": -30.0,
+     "unit": "min"
+    },
+    {
+     "key": "Rdd",
+     "label": "Reference Drive Down",
+     "short": "Rdd"
+    }
+   ]
+  },
+  "Average": {
+   "name": "Average",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "Avg": {
+   "name": "Moving Average",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Time",
+     "label": "Polling cycle",
+     "short": "C",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "Max",
+     "label": "Number of readings",
+     "short": "N",
+     "min": 0.0,
+     "max": 1000.0,
+     "default": 60.0
+    }
+   ]
+  },
+  "BrightnessControl": {
+   "name": "Constant Brightness Controller",
+   "parameters": [
+    {
+     "key": "Target",
+     "label": "Target brightness",
+     "short": "TB",
+     "unit": "lx"
+    },
+    {
+     "key": "Hysteresis",
+     "label": "Hysteresis",
+     "short": "Hys",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 10.0,
+     "unit": "%"
+    },
+    {
+     "key": "StepMax",
+     "label": "Step size",
+     "short": "Sts",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 5.0,
+     "unit": "%"
+    }
+   ]
+  },
+  "CallGen": {
+   "name": "Call Generator",
+   "parameters": [
+    {
+     "key": "Td",
+     "label": "Trigger Delay",
+     "short": "Td",
+     "min": 0.0,
+     "max": 2147483647.0,
+     "default": 0.0,
+     "unit": "ms"
+    },
+    {
+     "key": "Tu",
+     "label": "Update Interval",
+     "short": "Tu",
+     "min": 0.0,
+     "max": 2147483647.0,
+     "default": 0.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "CarCharger": {
+   "name": "Wallbox Gen. 1",
+   "parameters": [
+    {
+     "key": "LimitMode",
+     "label": "Charging power limit mode",
+     "short": "M",
+     "min": 0.0,
+     "max": 2.0,
+     "default": 2.0
+    },
+    {
+     "key": "LimitReset",
+     "label": "Remember mode",
+     "short": "Mr"
+    },
+    {
+     "key": "AutoStart",
+     "label": "Start of charging process",
+     "short": "Sc"
+    },
+    {
+     "key": "Profile",
+     "label": "Select profile",
+     "short": "Profile",
+     "min": 0.0,
+     "max": 1.0,
+     "default": 0.0
+    }
+   ]
+  },
+  "CentralFancoil": {
+   "name": "Fan Coil Central Controller",
+   "parameters": [
+    {
+     "key": "Mode",
+     "label": "Mode",
+     "short": "Mode",
+     "min": 0.0,
+     "max": 3.0,
+     "default": 1.0
+    },
+    {
+     "key": "SotH",
+     "label": "Switch on threshold for Heating",
+     "short": "SotH",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 30.0,
+     "unit": "%"
+    },
+    {
+     "key": "SotC",
+     "label": "Switch on threshold for Cooling",
+     "short": "SotC",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 30.0,
+     "unit": "%"
+    },
+    {
+     "key": "MinHrt",
+     "label": "Minimum Heating Runtime",
+     "short": "MinHrt",
+     "min": 0.0,
+     "default": 0.0,
+     "unit": "min"
+    },
+    {
+     "key": "MinCrt",
+     "label": "Minimum Cooling Runtime",
+     "short": "MinCrt",
+     "min": 0.0,
+     "default": 0.0,
+     "unit": "min"
+    },
+    {
+     "key": "TOm",
+     "label": "Outdoor Temperature Mode",
+     "short": "Otm",
+     "min": 0.0,
+     "max": 3.0
+    },
+    {
+     "key": "TLimH",
+     "label": "Temperature Limit Heating",
+     "short": "ϑLimH",
+     "default": 18.0,
+     "unit": "°"
+    },
+    {
+     "key": "TLimC",
+     "label": "Temperature Limit Cooling",
+     "short": "ϑLimC",
+     "default": 15.0,
+     "unit": "°"
+    },
+    {
+     "key": "Vd",
+     "label": "Valve Delay",
+     "short": "Vd",
+     "min": 0.0,
+     "default": 0.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "CentralMusic": {
+   "name": "Audio Central",
+   "parameters": [
+    {
+     "key": "DblClk",
+     "label": "Time double-click",
+     "short": "Tdc",
+     "min": 0.0,
+     "max": 10.0,
+     "unit": "s"
+    },
+    {
+     "key": "IgnoreROff",
+     "label": "Ignore room off command",
+     "short": "Roff"
+    }
+   ]
+  },
+  "CentralPresence": {
+   "name": "Presence Central",
+   "parameters": [
+    {
+     "key": "ParamTAbsence",
+     "label": "Duration of inactivity before absence",
+     "short": "Ta",
+     "min": 0.0,
+     "unit": "h"
+    }
+   ]
+  },
+  "ClimateControllerUS": {
+   "name": "HVAC Controller",
+   "parameters": [
+    {
+     "key": "TimeOffPump",
+     "label": "Minimum OFF time",
+     "short": "minO",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 300.0,
+     "unit": "s"
+    },
+    {
+     "key": "OnThreshold",
+     "label": "Switch-on threshold",
+     "short": "Sot",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 30.0,
+     "unit": "%"
+    },
+    {
+     "key": "FanDelay",
+     "label": "Fan overrun time",
+     "short": "Fot",
+     "min": 0.0,
+     "default": 90.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeAddional",
+     "label": "Time to second stage",
+     "short": "Tt2s",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 300.0,
+     "unit": "s"
+    },
+    {
+     "key": "TempDelta",
+     "label": "Delta temperature second stage",
+     "short": "∆ϑ",
+     "min": 0.0,
+     "default": 2.0,
+     "unit": "°"
+    },
+    {
+     "key": "TempLimitC",
+     "label": "Minimum outdoor temperature cooling",
+     "short": "mioϑc",
+     "default": 15.0,
+     "unit": "°"
+    },
+    {
+     "key": "TempLimitH",
+     "label": "Maximum outdoor temperature heating",
+     "short": "maoϑh",
+     "default": 18.0,
+     "unit": "°"
+    },
+    {
+     "key": "TPMin",
+     "label": "Protection temperature minimum cooling",
+     "short": "ϑpmic",
+     "default": 12.0,
+     "unit": "°"
+    },
+    {
+     "key": "TPMinH",
+     "label": "Protection temperature minimum heating",
+     "short": "ϑpmih",
+     "default": 0.0,
+     "unit": "°"
+    },
+    {
+     "key": "TPMax",
+     "label": "Protection temperature maximum heating",
+     "short": "ϑpmah",
+     "default": 19.0,
+     "unit": "°"
+    },
+    {
+     "key": "HTarget",
+     "label": "Humidity setpoint",
+     "short": "Hs",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 45.0,
+     "unit": "%"
+    },
+    {
+     "key": "DirV",
+     "label": "Direction valve",
+     "short": "DirV"
+    },
+    {
+     "key": "TOm",
+     "label": "Outdoor Temperature Mode",
+     "short": "Otm",
+     "min": 0.0,
+     "max": 3.0
+    }
+   ]
+  },
+  "Code1": {
+   "name": "Program",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "Code16": {
+   "name": "Program",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "Code4": {
+   "name": "Program",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "Code8": {
+   "name": "Program",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "Counter": {
+   "name": "Up Counter",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "EndValue",
+     "label": "Limit",
+     "short": "L",
+     "min": 0.0,
+     "max": 2147483647.0,
+     "default": 1000.0
+    },
+    {
+     "key": "Mode",
+     "label": "0 = counter loops automatically, 1 = counter stops at limit",
+     "short": "M"
+    }
+   ]
+  },
+  "DayTimer": {
+   "name": "Schedule",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Manual",
+     "label": "Automatic mode",
+     "short": "Am"
+    },
+    {
+     "key": "Mode",
+     "label": "Manual mode",
+     "short": "Mm",
+     "default": 0.0
+    },
+    {
+     "key": "PulseTime",
+     "label": "On-duration of output (O)",
+     "short": "Don",
+     "min": 0.0,
+     "default": 0.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "DaylightController": {
+   "name": "Daylight control (BETA)",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "NightColorTemperature",
+     "label": "NightColorTemperature",
+     "short": "NCT",
+     "min": 1000.0,
+     "max": 10000.0,
+     "step": 100.0,
+     "default": 2000.0,
+     "unit": "K"
+    },
+    {
+     "key": "DayColorTemperature",
+     "label": "DayColorTemperature",
+     "short": "DCT",
+     "min": 1000.0,
+     "max": 10000.0,
+     "step": 100.0,
+     "default": 6500.0,
+     "unit": "K"
+    }
+   ]
+  },
+  "DbConE": {
+   "name": "Event Database Connector",
+   "parameters": [
+    {
+     "key": "PAR_Td",
+     "label": "Trigger Delay",
+     "short": "Td",
+     "default": 0.0,
+     "unit": "ms"
+    }
+   ]
+  },
+  "DbConS": {
+   "name": "Session Database Connector",
+   "parameters": [
+    {
+     "key": "PAR_Td",
+     "label": "Trigger Delay",
+     "short": "Td",
+     "default": 0.0,
+     "unit": "ms"
+    }
+   ]
+  },
+  "DewPoint": {
+   "name": "Dewpoint Calculator",
+   "parameters": [
+    {
+     "key": "Off",
+     "label": "Output Offset",
+     "short": "O",
+     "unit": "°"
+    }
+   ]
+  },
+  "Div": {
+   "name": "Divide",
+   "parameters": [
+    {
+     "key": "Input1",
+     "label": "Value 1",
+     "short": "V1",
+     "default": 0.0
+    },
+    {
+     "key": "Input2",
+     "label": "Value 2",
+     "short": "V2",
+     "default": 0.0
+    }
+   ]
+  },
+  "Door": {
+   "name": "Garage / Gate",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "PulseOpen",
+     "label": "Opening Duration",
+     "short": "Opd",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "PulseClose",
+     "label": "Closing Duration",
+     "short": "Cld",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "PulseHigh",
+     "label": "Pulse duration",
+     "short": "Pd",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.5,
+     "unit": "s"
+    },
+    {
+     "key": "PulseLow",
+     "label": "Pulse pause duration",
+     "short": "Ppd",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.5,
+     "unit": "s"
+    },
+    {
+     "key": "TimeBlock",
+     "label": "Motor lock duration",
+     "short": "Mld",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.5,
+     "unit": "s"
+    },
+    {
+     "key": "TimeHigh",
+     "label": "Warning light on duration",
+     "short": "Wlon",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeLow",
+     "label": "Warning light off duration",
+     "short": "Wloff",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    },
+    {
+     "key": "Type",
+     "label": "Type",
+     "short": "Type",
+     "min": 0.0,
+     "max": 5.0,
+     "default": 0.0
+    },
+    {
+     "key": "PoPos",
+     "label": "Partially Open Position",
+     "short": "PoPos",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.1,
+     "default": 0.2
+    }
+   ]
+  },
+  "Doorcontroller": {
+   "name": "Door Controller",
+   "parameters": [
+    {
+     "key": "Timeout",
+     "label": "Maximum bell duration",
+     "short": "maxB",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "EFM": {
+   "name": "Energy Flow Monitor",
+   "parameters": [
+    {
+     "key": "Pre",
+     "label": "kWh price export",
+     "short": "Pre",
+     "step": 0.1,
+     "default": 0.2,
+     "unit": "$$STRING::CURRENCY$$"
+    },
+    {
+     "key": "Pri",
+     "label": "kWh price import",
+     "short": "Pri",
+     "step": 0.1,
+     "default": 0.2,
+     "unit": "$$STRING::CURRENCY$$"
+    },
+    {
+     "key": "CO2",
+     "label": "Kg/kWh for CO2 savings",
+     "short": "CO2",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.42,
+     "unit": "Kg/kWh"
+    }
+   ]
+  },
+  "EIBJalousie": {
+   "name": "EIB Shading",
+   "parameters": [
+    {
+     "key": "Time",
+     "label": "Time long-click",
+     "short": "Tlc",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.3,
+     "unit": "s"
+    }
+   ]
+  },
+  "EIBPush": {
+   "name": "EIB push-button",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "EdgeDetection": {
+   "name": "Edge Detection",
+   "parameters": [
+    {
+     "key": "PulseTime",
+     "label": "Pulse duration",
+     "short": "Pd",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "EdgeWipingRelay": {
+   "name": "Edge-Triggered Wiping Relay",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "TimeHigh",
+     "label": "Duration on",
+     "short": "Don",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeLow",
+     "label": "Duration off",
+     "short": "Doff",
+     "min": 0.0,
+     "default": 2.0,
+     "unit": "s"
+    },
+    {
+     "key": "Cycles",
+     "label": "Cycles",
+     "short": "C",
+     "min": 1.0,
+     "default": 10.0
+    }
+   ]
+  },
+  "EibDimmer": {
+   "name": "EIB Dimmer",
+   "parameters": [
+    {
+     "key": "Step",
+     "label": "Step size",
+     "short": "Sts",
+     "default": 5.0
+    },
+    {
+     "key": "Repeat",
+     "label": "Repetition rate",
+     "short": "Rr",
+     "step": 0.1,
+     "default": 0.2
+    }
+   ]
+  },
+  "Energy": {
+   "name": "Utility Meter",
+   "parameters": [
+    {
+     "key": "Factor",
+     "label": "Number of pulses per unit",
+     "short": "Np",
+     "default": 800.0,
+     "unit": "Puls/unit"
+    },
+    {
+     "key": "Time",
+     "label": "Averaging time",
+     "short": "At",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "Offset",
+     "label": "Meter reading offset",
+     "short": "Mro",
+     "default": 0.0
+    },
+    {
+     "key": "Abs",
+     "label": "Absolute value",
+     "short": "Abs",
+     "min": 0.0,
+     "max": 1.0
+    }
+   ]
+  },
+  "EnergyManager": {
+   "name": "Energy Manager Gen. 1",
+   "parameters": [
+    {
+     "key": "Offset",
+     "label": "Offset available energy",
+     "short": "O",
+     "default": 0.0,
+     "unit": "kW"
+    }
+   ]
+  },
+  "EnergyManager2": {
+   "name": "Energy Manager",
+   "parameters": [
+    {
+     "key": "O",
+     "label": "Offset grid power",
+     "short": "O",
+     "default": 0.0,
+     "unit": "kW"
+    },
+    {
+     "key": "MinSoc",
+     "label": "Minimum state of charge",
+     "short": "MinSoc",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 0.0,
+     "unit": "%"
+    },
+    {
+     "key": "MaxSpwr",
+     "label": "Maximum energy storage power",
+     "short": "MaxSpwr",
+     "min": 0.0,
+     "default": 0.0,
+     "unit": "kW"
+    }
+   ]
+  },
+  "Equal": {
+   "name": "Equal",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "Fan": {
+   "name": "Ventilation Controller (in development)",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Ti",
+     "label": "Duration[s] for which manual mode is active",
+     "short": "Tm",
+     "default": 900.0
+    },
+    {
+     "key": "Fsn",
+     "label": "Fan speed [%] night mode",
+     "short": "Sn",
+     "default": 50.0
+    },
+    {
+     "key": "FanManu",
+     "label": "Fan speed manual modes",
+     "short": "Sm",
+     "default": 50.0
+    },
+    {
+     "key": "Tq",
+     "label": "Target air quality",
+     "short": "Ht",
+     "default": 800.0
+    },
+    {
+     "key": "HV",
+     "label": "Air quality hysteresis",
+     "short": "Hv",
+     "default": 100.0
+    },
+    {
+     "key": "MoveTimeout",
+     "label": "Extension after movement",
+     "short": "TH",
+     "default": 100.0
+    },
+    {
+     "key": "MoveMaxSpeed",
+     "label": "Noise reduction",
+     "short": "SMv",
+     "default": 50.0
+    },
+    {
+     "key": "MinSpeed",
+     "label": "Minimum fan speed",
+     "short": "SMin",
+     "default": 5.0
+    },
+    {
+     "key": "TWet",
+     "label": "Duration for de humidification",
+     "short": "Td",
+     "default": 1800.0
+    },
+    {
+     "key": "DtT5",
+     "label": "Max time between pulses",
+     "short": "M",
+     "default": 0.35
+    }
+   ]
+  },
+  "Fancoil": {
+   "name": "Fan Coil Unit Controller",
+   "parameters": [
+    {
+     "key": "Fmax",
+     "label": "Maximum Fan Speed in Auto Mode",
+     "short": "Fmax",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 80.0,
+     "unit": "%"
+    },
+    {
+     "key": "Mode",
+     "label": "Mode",
+     "short": "Mode",
+     "min": 0.0,
+     "max": 4.0,
+     "default": 1.0
+    },
+    {
+     "key": "Ptd",
+     "label": "Pause Timer Duration",
+     "short": "Ptd",
+     "min": 0.0,
+     "default": 7200.0,
+     "unit": "s"
+    },
+    {
+     "key": "FTKP",
+     "label": "Proportional Gain (Fan)",
+     "short": "FϑKP",
+     "min": 0.0,
+     "default": 50.0
+    },
+    {
+     "key": "FTKI",
+     "label": "Integral Gain (Fan)",
+     "short": "FϑKI",
+     "min": 0.0,
+     "default": 0.01
+    },
+    {
+     "key": "FTSt",
+     "label": "Sample Time (Fan)",
+     "short": "FϑSt",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "FancoilFreshAir": {
+   "name": "Fan Coil Fresh Air Unit Controller",
+   "parameters": [
+    {
+     "key": "CO2t",
+     "label": "Target CO2",
+     "short": "CO2t",
+     "min": 0.0,
+     "default": 600.0,
+     "unit": "ppm"
+    },
+    {
+     "key": "Fmax",
+     "label": "Maximum Fan Speed in Auto Mode",
+     "short": "Fmax",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 80.0,
+     "unit": "%"
+    },
+    {
+     "key": "Mode",
+     "label": "Mode",
+     "short": "Mode",
+     "min": 0.0,
+     "max": 4.0,
+     "default": 1.0
+    },
+    {
+     "key": "Ptd",
+     "label": "Pause Timer Duration",
+     "short": "Ptd",
+     "min": 0.0,
+     "default": 7200.0,
+     "unit": "s"
+    },
+    {
+     "key": "FTKP",
+     "label": "Proportional Gain (Fan Temp)",
+     "short": "FϑKP",
+     "min": 0.0,
+     "default": 50.0
+    },
+    {
+     "key": "FTKI",
+     "label": "Integral Gain (Fan Temp)",
+     "short": "FϑKI",
+     "min": 0.0,
+     "default": 0.01
+    },
+    {
+     "key": "FTSt",
+     "label": "Sample Time (Fan Temp)",
+     "short": "FϑSt",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "Fco2KP",
+     "label": "Proportional Gain (Fan CO2)",
+     "short": "Fco2KP",
+     "min": 0.0,
+     "default": 50.0
+    },
+    {
+     "key": "Fco2KI",
+     "label": "Integral Gain (Fan CO2)",
+     "short": "Fco2KI",
+     "min": 0.0,
+     "default": 0.01
+    },
+    {
+     "key": "Fco2St",
+     "label": "Sample Time (Fan CO2)",
+     "short": "Fco2St",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "VKP",
+     "label": "Proportional Gain (Valve)",
+     "short": "VKP",
+     "min": 0.0,
+     "default": 50.0
+    },
+    {
+     "key": "VKI",
+     "label": "Integral Gain (Valve)",
+     "short": "VKI",
+     "min": 0.0,
+     "default": 0.01
+    },
+    {
+     "key": "VSt",
+     "label": "Sample Time (Valve)",
+     "short": "VSt",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "FlipFlop": {
+   "name": "Flipflop",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "Formula": {
+   "name": "Formula",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "I%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "Fronius": {
+   "name": "Energy Monitor",
+   "parameters": [
+    {
+     "key": "PriceDelivery",
+     "label": "kWh price export",
+     "short": "Pre",
+     "step": 0.1,
+     "default": 0.2,
+     "unit": "$$STRING::CURRENCY$$"
+    },
+    {
+     "key": "PriceConsume",
+     "label": "kWh price import",
+     "short": "Pri",
+     "step": 0.1,
+     "default": 0.2,
+     "unit": "$$STRING::CURRENCY$$"
+    },
+    {
+     "key": "CO2Factor",
+     "label": "Kg/kWh for CO2 savings",
+     "short": "CO2",
+     "min": 0.0,
+     "default": 0.42,
+     "unit": "Kg/kWh"
+    },
+    {
+     "key": "Abs",
+     "label": "Absolute value",
+     "short": "Abs"
+    }
+   ]
+  },
+  "Greater": {
+   "name": "Greater",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "GreaterEqual": {
+   "name": "Greater or Equal",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "HVACController": {
+   "name": "Heating and Cooling Controller",
+   "parameters": [
+    {
+     "key": "Mode",
+     "label": "Mode",
+     "short": "Mode",
+     "min": -1.0,
+     "max": 2.0,
+     "default": -2.0
+    },
+    {
+     "key": "TimePump",
+     "label": "Time minimum HVAC Runtime",
+     "short": "MinHr",
+     "default": 0.0,
+     "unit": "min"
+    },
+    {
+     "key": "OnThreshold",
+     "label": "Switch on threshold",
+     "short": "Sot",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 30.0,
+     "unit": "%"
+    },
+    {
+     "key": "ValveDelay",
+     "label": "Valve delay",
+     "short": "Vd",
+     "default": 0.0,
+     "unit": "s"
+    },
+    {
+     "key": "FanDelay",
+     "label": "Fan Overrun Duration",
+     "short": "Fod",
+     "step": 60.0,
+     "default": 120.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimePulseOn",
+     "label": "Duration for On",
+     "short": "Don",
+     "default": 750.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimePulseOff",
+     "label": "Duration for Off",
+     "short": "Doff",
+     "min": 180.0,
+     "step": 60.0,
+     "default": 300.0,
+     "unit": "s"
+    },
+    {
+     "key": "PulseThreshold",
+     "label": "Maximum threshold for pulsing",
+     "short": "MaxTp",
+     "default": 0.0,
+     "unit": "%"
+    },
+    {
+     "key": "TimeFilter",
+     "label": "Days until Filter Change",
+     "short": "Dfc",
+     "default": 0.0,
+     "unit": "$$STRING::DAYS$$"
+    },
+    {
+     "key": "TimeAddional",
+     "label": "Time to second stage",
+     "short": "Tt2s",
+     "default": 60.0,
+     "unit": "min"
+    },
+    {
+     "key": "TempAdditional",
+     "label": "Minimum Temperature Stage 2",
+     "short": "ϑminS2",
+     "default": -6.0,
+     "unit": "°"
+    },
+    {
+     "key": "TempMin",
+     "label": "Minimum Temperature Heat Pump",
+     "short": "ϑminHP",
+     "default": -22.0,
+     "unit": "°"
+    },
+    {
+     "key": "Average",
+     "label": "Average",
+     "short": ""
+    },
+    {
+     "key": "TempLimitC",
+     "label": "Temperature Limit Heating",
+     "short": "ϑLimH",
+     "default": 18.0,
+     "unit": "°"
+    },
+    {
+     "key": "TempLimitH",
+     "label": "Temperature Limit Cooling",
+     "short": "ϑLimC",
+     "default": 15.0,
+     "unit": "°"
+    }
+   ]
+  },
+  "HeatCentral": {
+   "name": "Central Heating (BETA)",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "HeatIRoomController2": {
+   "name": "Intelligent Room Controller",
+   "parameters": [
+    {
+     "key": "TComfort",
+     "label": "Temperature comfort heating",
+     "short": "ϑch",
+     "default": 22.5,
+     "unit": "°"
+    },
+    {
+     "key": "TComfortC",
+     "label": "Temperature comfort cooling",
+     "short": "ϑcc",
+     "default": 24.5,
+     "unit": "°"
+    },
+    {
+     "key": "TComfortHC",
+     "label": "Temperature comfort heating and cooling",
+     "short": "ϑchc",
+     "default": 22.0,
+     "unit": "°"
+    },
+    {
+     "key": "TDiff",
+     "label": "Allowed Deviation",
+     "short": "ϑd",
+     "min": 0.5,
+     "max": 5.0,
+     "default": 1.5,
+     "unit": "°"
+    },
+    {
+     "key": "TSaveL",
+     "label": "Temperature eco heating",
+     "short": "ϑeh",
+     "min": 0.5,
+     "default": 3.0,
+     "unit": "°"
+    },
+    {
+     "key": "TSaveU",
+     "label": "Temperature eco cooling",
+     "short": "ϑec",
+     "min": 0.5,
+     "default": 3.0,
+     "unit": "°"
+    },
+    {
+     "key": "TSave",
+     "label": "Allowed Deviation eco mode",
+     "short": "ϑe",
+     "min": 0.5,
+     "default": 2.0,
+     "unit": "°"
+    },
+    {
+     "key": "TShadeHeat",
+     "label": "Temperature shading heating",
+     "short": "ϑsh",
+     "default": 27.5,
+     "unit": "°"
+    },
+    {
+     "key": "TShadeCool",
+     "label": "Temperature shading cooling",
+     "short": "ϑsc",
+     "default": 23.5,
+     "unit": "°"
+    },
+    {
+     "key": "TDeepSleep",
+     "label": "Temperature frost protection",
+     "short": "ϑfp",
+     "default": 5.0,
+     "unit": "°"
+    },
+    {
+     "key": "TMax",
+     "label": "Temperature heat protection",
+     "short": "ϑhp",
+     "default": 28.0,
+     "unit": "°"
+    },
+    {
+     "key": "TimeMove",
+     "label": "Valve standstill",
+     "short": "Vs",
+     "default": 14.0,
+     "unit": "d"
+    },
+    {
+     "key": "TimeC",
+     "label": "Comfort extend time",
+     "short": "Cet",
+     "step": 60.0,
+     "default": 3600.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeS",
+     "label": "Eco / Building protection extend time",
+     "short": "EBpet",
+     "step": 60.0,
+     "default": 3600.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeMv",
+     "label": "Presence extend time",
+     "short": "Pet",
+     "step": 60.0,
+     "default": 1800.0,
+     "unit": "s"
+    },
+    {
+     "key": "THCelvin",
+     "label": "Heating up speed",
+     "short": "Hs",
+     "default": 120.0,
+     "unit": "min/°C"
+    },
+    {
+     "key": "TCCelvin",
+     "label": "Cooling down speed",
+     "short": "Cs",
+     "default": 60.0,
+     "unit": "min/°C"
+    },
+    {
+     "key": "TPWM",
+     "label": "PWM interval",
+     "short": "Pwm",
+     "min": 0.0,
+     "max": 1440.0,
+     "default": 0.0,
+     "unit": "min"
+    },
+    {
+     "key": "TWin",
+     "label": "Delay door/window contact",
+     "short": "Ddwc",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 300.0,
+     "unit": "s"
+    },
+    {
+     "key": "TExcess",
+     "label": "Temperature offset Excess Heating/Cooling",
+     "short": "ϑExc",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "°"
+    }
+   ]
+  },
+  "Heatcurve": {
+   "name": "Heating Curve",
+   "parameters": [
+    {
+     "key": "Transconductance",
+     "label": "Slope",
+     "short": "S",
+     "min": 0.05,
+     "max": 2.5,
+     "step": 0.1,
+     "default": 1.3
+    },
+    {
+     "key": "Translate",
+     "label": "Offset",
+     "short": "O",
+     "default": 0.0
+    },
+    {
+     "key": "Min",
+     "label": "Minimum flow temperature",
+     "short": "minFt",
+     "default": 15.0,
+     "unit": "°"
+    },
+    {
+     "key": "Max",
+     "label": "Maximum flow temperature",
+     "short": "maxFt",
+     "default": 65.0,
+     "unit": "°"
+    }
+   ]
+  },
+  "Heatmixer": {
+   "name": "Mixing Valve Controller",
+   "parameters": [
+    {
+     "key": "Time",
+     "label": "Travel duration mixing valve",
+     "short": "Td",
+     "min": 0.0,
+     "default": 150.0,
+     "unit": "s"
+    },
+    {
+     "key": "Sample",
+     "label": "Sampling time",
+     "short": "St",
+     "min": 0.0,
+     "default": 40.0,
+     "unit": "s"
+    },
+    {
+     "key": "Kp",
+     "label": "Gain",
+     "short": "Kp%",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 2.0,
+     "unit": "%"
+    },
+    {
+     "key": "Ki",
+     "label": "Integral part",
+     "short": "Ki%",
+     "min": 0.0,
+     "max": 100.0,
+     "step": 0.01,
+     "default": 0.03,
+     "unit": "%"
+    },
+    {
+     "key": "StopMode",
+     "label": "Off mode",
+     "short": "Offm",
+     "min": 0.0,
+     "max": 2.0,
+     "default": 2.0
+    },
+    {
+     "key": "Mode",
+     "label": "Mode",
+     "short": "Mode"
+    },
+    {
+     "key": "Min",
+     "label": "Minimum Position",
+     "short": "MinP",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 0.0,
+     "unit": "%"
+    },
+    {
+     "key": "Max",
+     "label": "Maximum Position",
+     "short": "MaxP",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "Inv",
+     "label": "Invert",
+     "short": "Inv"
+    },
+    {
+     "key": "TimeMove",
+     "label": "Valve standstill",
+     "short": "Vs",
+     "default": 14.0,
+     "unit": "d"
+    }
+   ]
+  },
+  "Heatmixer2": {
+   "name": "Flow Temperature Calculator",
+   "parameters": [
+    {
+     "key": "Min",
+     "label": "Minimum",
+     "short": "Min",
+     "default": 5.0
+    },
+    {
+     "key": "Max",
+     "label": "Maximum",
+     "short": "Max",
+     "default": 40.0
+    },
+    {
+     "key": "BufferInc",
+     "label": "Buffer Target Temperature Offset",
+     "short": "B",
+     "default": 5.0
+    },
+    {
+     "key": "Transconductance",
+     "label": "Slope",
+     "short": "S",
+     "step": 0.1,
+     "default": 0.5
+    },
+    {
+     "key": "Translate",
+     "label": "Offset",
+     "short": "N",
+     "default": 0.0
+    },
+    {
+     "key": "Treshold",
+     "label": "Switch-On Threshold",
+     "short": "Str",
+     "default": 35.0
+    },
+    {
+     "key": "Gain",
+     "label": "Gain",
+     "short": "G",
+     "default": 1.0
+    },
+    {
+     "key": "PrevInc",
+     "label": "Target temperature increase / decrease",
+     "short": "I",
+     "default": 2.0
+    },
+    {
+     "key": "TimeActive",
+     "label": "Pump standstill",
+     "short": "Ps",
+     "default": 0.0,
+     "unit": "d"
+    }
+   ]
+  },
+  "HourCounter": {
+   "name": "Runtime Counter",
+   "parameters": [
+    {
+     "key": "Unit",
+     "label": "Time unit",
+     "short": "Tu",
+     "min": 0.0,
+     "max": 3.0,
+     "default": 0.0
+    },
+    {
+     "key": "Maintenance",
+     "label": "Maintenance interval",
+     "short": "Mi",
+     "default": 0.0
+    }
+   ]
+  },
+  "HvacAC": {
+   "name": "AC Central Controller",
+   "parameters": [
+    {
+     "key": "Mode",
+     "label": "Mode",
+     "short": "Mode",
+     "min": 0.0,
+     "max": 3.0,
+     "default": -1.0
+    },
+    {
+     "key": "TimeMaintenance",
+     "label": "Maintenance Interval",
+     "short": "Dm",
+     "default": 0.0,
+     "unit": "$$STRING::DAYS$$"
+    },
+    {
+     "key": "TempLimitC",
+     "label": "Temperature Limit Heating",
+     "short": "ϑLimH",
+     "default": 18.0,
+     "unit": "°"
+    },
+    {
+     "key": "TempLimitH",
+     "label": "Temperature Limit Cooling",
+     "short": "ϑLimC",
+     "default": 15.0,
+     "unit": "°"
+    },
+    {
+     "key": "TOm",
+     "label": "Outdoor Temperature Mode",
+     "short": "Otm",
+     "min": 0.0,
+     "max": 3.0
+    }
+   ]
+  },
+  "IRoomcontrol": {
+   "name": "Intelligent Room Controller V1",
+   "parameters": [
+    {
+     "key": "TSave",
+     "label": "Economy temperature",
+     "short": "Ts",
+     "default": 3.0
+    },
+    {
+     "key": "TComfort",
+     "label": "Comfort temperature heating",
+     "short": "Tch",
+     "default": 22.5
+    },
+    {
+     "key": "TComfortC",
+     "label": "Comfort temperature cooling",
+     "short": "Tcc",
+     "default": 23.0
+    },
+    {
+     "key": "TParty",
+     "label": "Party temperature",
+     "short": "Tp",
+     "default": 1.0
+    },
+    {
+     "key": "TMore",
+     "label": "Cozy temperature",
+     "short": "Th",
+     "default": 1.0
+    },
+    {
+     "key": "TDeepSleep",
+     "label": "Frost protection temperature",
+     "short": "Td",
+     "default": 5.0
+    },
+    {
+     "key": "TMax",
+     "label": "Overheat protection temperature",
+     "short": "Tm",
+     "default": 25.5
+    },
+    {
+     "key": "TimeMove",
+     "label": "Valve movement heating",
+     "short": "Tsm",
+     "default": 14.0
+    },
+    {
+     "key": "TimeMoveC",
+     "label": "Valve movement cooling",
+     "short": "Tcm",
+     "default": 14.0
+    },
+    {
+     "key": "TimeC",
+     "label": "Comfort timer",
+     "short": "Tsc",
+     "step": 60.0,
+     "default": 1800.0
+    },
+    {
+     "key": "TimeS",
+     "label": "Economy timer",
+     "short": "Tss",
+     "step": 60.0,
+     "default": 1800.0
+    },
+    {
+     "key": "TimeMv",
+     "label": "Extension of Comfort Temperature Entry",
+     "short": "Tmv",
+     "step": 60.0,
+     "default": 1800.0
+    },
+    {
+     "key": "THCelvin",
+     "label": "Heating up speed",
+     "short": "Ths",
+     "default": 0.0
+    },
+    {
+     "key": "TCCelvin",
+     "label": "Cooling down speed",
+     "short": "Tcs",
+     "default": 0.0
+    }
+   ]
+  },
+  "Int": {
+   "name": "Integer",
+   "parameters": [
+    {
+     "key": "Input",
+     "label": "Value",
+     "short": "V",
+     "default": 0.0
+    },
+    {
+     "key": "Mode",
+     "label": "Round",
+     "short": "Ro"
+    }
+   ]
+  },
+  "Intercom": {
+   "name": "Intercom",
+   "parameters": [
+    {
+     "key": "Timeout",
+     "label": "Maximum bell duration",
+     "short": "maxB",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "Lbr",
+     "label": "Button brightness",
+     "short": "Bbr",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 20.0,
+     "unit": "%"
+    },
+    {
+     "key": "Lon",
+     "label": "Activate bell button light",
+     "short": "Bbl"
+    },
+    {
+     "key": "Tp",
+     "label": "ON duration of custom outputs (O1-3)",
+     "short": "Qon",
+     "min": 0.0,
+     "default": 3.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "Irrigation": {
+   "name": "Irrigation",
+   "parameters": [
+    {
+     "key": "MaxP",
+     "label": "Maximum precipitation in the next set hours",
+     "short": "MaxR",
+     "min": 0.0,
+     "unit": "l/m²"
+    },
+    {
+     "key": "MaxR",
+     "label": "Maximum rain duration in the last 24 hours",
+     "short": "MaxRa",
+     "min": 0.0,
+     "step": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "Tv%d",
+     "label": "Valve Time %d-%e",
+     "short": "Tv%d-%e",
+     "min": 0.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "JalousieUpDown2": {
+   "name": "Blinds",
+   "parameters": [
+    {
+     "key": "MinPulse",
+     "label": "Minimum input pulse duration [s] for a complete motion",
+     "short": "Tc",
+     "default": 3.0
+    },
+    {
+     "key": "TimeEnd",
+     "label": "Duration [s] output pulse completely UP",
+     "short": "Tu",
+     "default": 75.0
+    },
+    {
+     "key": "TimeEndDown",
+     "label": "Duration [s] output pulse completely DOWN",
+     "short": "Td",
+     "default": 70.0
+    },
+    {
+     "key": "TimeBlock",
+     "label": "Time [s] motor lock",
+     "short": "TI",
+     "default": 0.5
+    },
+    {
+     "key": "DblClk",
+     "label": "Double-click interval [s]",
+     "short": "Tdc",
+     "default": 0.3
+    },
+    {
+     "key": "Back",
+     "label": "Duration [s] for return motion",
+     "short": "Tr",
+     "default": 0.8
+    },
+    {
+     "key": "MinMove",
+     "label": "Minimum travel time",
+     "short": "M",
+     "default": 0.4
+    },
+    {
+     "key": "Type",
+     "label": "Type",
+     "short": "T",
+     "default": 0.0
+    }
+   ]
+  },
+  "Jalousiemotor": {
+   "name": "Automatic Shading integrated",
+   "parameters": [
+    {
+     "key": "SO",
+     "label": "Wind alarm position",
+     "short": "Wap"
+    },
+    {
+     "key": "AutoShadeEnd",
+     "label": "Sun position automatic end action",
+     "short": "Spe",
+     "min": 0.0,
+     "max": 3.0,
+     "default": 1.0
+    },
+    {
+     "key": "AutMode",
+     "label": "Sun position automatic mode",
+     "short": "Spm",
+     "min": 0.0,
+     "max": 3.0,
+     "default": 1.0
+    },
+    {
+     "key": "MinPulse",
+     "label": "Time long-click",
+     "short": "Tlc",
+     "default": 3.0
+    },
+    {
+     "key": "DblClk",
+     "label": "Time double-click",
+     "short": "Tdc",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.3,
+     "unit": "s"
+    },
+    {
+     "key": "Dir",
+     "label": "Compass direction",
+     "short": "Dir",
+     "min": -1.0,
+     "max": 360.0,
+     "default": -1.0
+    },
+    {
+     "key": "DirTol",
+     "label": "Direction tolerance start",
+     "short": "Dts",
+     "min": 0.0,
+     "max": 90.0,
+     "default": 85.0,
+     "unit": "°"
+    },
+    {
+     "key": "DirTol2",
+     "label": "Direction tolerance end",
+     "short": "Dte",
+     "min": 0.0,
+     "max": 90.0,
+     "default": 85.0,
+     "unit": "°"
+    },
+    {
+     "key": "AutoShadeTime",
+     "label": "Sun position automatic interval",
+     "short": "Spi",
+     "min": 1.0,
+     "default": 60.0,
+     "unit": "min"
+    },
+    {
+     "key": "SRoff",
+     "label": "Sun position automatic start offset",
+     "short": "Spos",
+     "min": -90.0,
+     "max": 90.0,
+     "default": 30.0,
+     "unit": "min"
+    },
+    {
+     "key": "SSoff",
+     "label": "Sun position automatic end offset",
+     "short": "Spoe",
+     "min": -90.0,
+     "max": 90.0,
+     "default": -30.0,
+     "unit": "min"
+    },
+    {
+     "key": "ShadePos",
+     "label": "Slightly open position",
+     "short": "Sop",
+     "min": 0.0,
+     "max": 1.0,
+     "default": 0.8
+    },
+    {
+     "key": "Width",
+     "label": "Slat width",
+     "short": "Sw",
+     "min": 0.0,
+     "default": 70.0,
+     "unit": "mm"
+    },
+    {
+     "key": "Space",
+     "label": "Slat distance",
+     "short": "Sd",
+     "min": 0.0,
+     "default": 60.0,
+     "unit": "mm"
+    },
+    {
+     "key": "MovePosition",
+     "label": "Slat position upwards movement",
+     "short": "Spu",
+     "min": 0.0,
+     "max": 50.0,
+     "default": 0.0,
+     "unit": "%"
+    }
+   ]
+  },
+  "Leaf": {
+   "name": "Leaf Ventilation",
+   "parameters": [
+    {
+     "key": "IN_H_MAX",
+     "label": "Maximum humidity",
+     "short": "Hmax",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 60.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_A_MAX",
+     "label": "Maximum CO2 (air pollution)",
+     "short": "CO2max",
+     "min": 0.0,
+     "default": 1000.0,
+     "unit": "ppm"
+    },
+    {
+     "key": "IN_P_H",
+     "label": "Presence extend time",
+     "short": "Pet",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 1800.0,
+     "unit": "s"
+    },
+    {
+     "key": "IN_S_H",
+     "label": "Sleep mode timeout",
+     "short": "Smt",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 7200.0,
+     "unit": "s"
+    },
+    {
+     "key": "IN_V_MAX",
+     "label": "Intensive ventilation absence",
+     "short": "Iva",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_V_MIN",
+     "label": "Basic ventilation absence",
+     "short": "Bva",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 10.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_V_P_MAX",
+     "label": "Intensive ventilation presence",
+     "short": "Ivp",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 30.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_V_P_MIN",
+     "label": "Basic ventilation presence",
+     "short": "Bvp",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 20.0,
+     "unit": "%"
+    }
+   ]
+  },
+  "Less": {
+   "name": "Less",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "LessEqual": {
+   "name": "Less or Equal",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "LightController": {
+   "name": "Lighting Controller V1",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "MaxP",
+     "label": "Double click speed",
+     "short": "Tdc",
+     "step": 0.1,
+     "default": 0.35
+    },
+    {
+     "key": "Step",
+     "label": "Step size",
+     "short": "SI",
+     "default": 2.0
+    },
+    {
+     "key": "Steptime",
+     "label": "Step rate",
+     "short": "ST",
+     "default": 0.2
+    },
+    {
+     "key": "Min",
+     "label": "Minimum value",
+     "short": "Min",
+     "default": 0.0
+    },
+    {
+     "key": "Max",
+     "label": "Maximum value",
+     "short": "Max",
+     "default": 100.0
+    },
+    {
+     "key": "Wrap",
+     "label": "Up/Down mode",
+     "short": "W"
+    },
+    {
+     "key": "NoLast",
+     "label": "Do not set last value",
+     "short": "L"
+    },
+    {
+     "key": "MoveOn",
+     "label": "Duration [s] On",
+     "short": "TH",
+     "default": 900.0
+    },
+    {
+     "key": "MoveIgnore",
+     "label": "Delay of the Motion Sensor",
+     "short": "Ti",
+     "default": 300.0
+    },
+    {
+     "key": "Learntime",
+     "label": "Learn period",
+     "short": "LT",
+     "default": 5.0
+    },
+    {
+     "key": "MoveScene",
+     "label": "Motion sensor scene",
+     "short": "MS",
+     "default": 0.0
+    },
+    {
+     "key": "MoveTimeout",
+     "label": "Timeout for the automatic switching off of lights after no motion [s]",
+     "short": "MT",
+     "default": 3600.0
+    },
+    {
+     "key": "RGBalt",
+     "label": "Alternative operation I1-I12 when output is RGB",
+     "short": "Ra"
+    },
+    {
+     "key": "AlarmPeriod",
+     "label": "Flashing interval during the alarm[s]",
+     "short": "Ta",
+     "default": 4.0
+    },
+    {
+     "key": "BrightnessLimit",
+     "label": "Brightness threshold [lux]",
+     "short": "T",
+     "default": 30.0
+    },
+    {
+     "key": "AlarmBrightness",
+     "label": "Maximum brightness level for Alarm",
+     "short": "Ba",
+     "default": 50.0
+    }
+   ]
+  },
+  "LightController2": {
+   "name": "Lighting Controller",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "MaxP",
+     "label": "Time double-click",
+     "short": "Tdc",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.35,
+     "unit": "s"
+    },
+    {
+     "key": "Step",
+     "label": "Step size brightness",
+     "short": "Sts",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 2.0,
+     "unit": "%"
+    },
+    {
+     "key": "Steptime",
+     "label": "Step rate brightness",
+     "short": "Str",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.2,
+     "unit": "s"
+    },
+    {
+     "key": "Min",
+     "label": "Minimum brightness (0 to 50%)",
+     "short": "MinBr",
+     "min": 0.0,
+     "max": 50.0,
+     "default": 0.0,
+     "unit": "%"
+    },
+    {
+     "key": "Max",
+     "label": "Maximum brightness (50 to 100%)",
+     "short": "MaxBr",
+     "min": 50.0,
+     "max": 100.0,
+     "default": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "Wrap",
+     "label": "Dim mode",
+     "short": "Dm"
+    },
+    {
+     "key": "NoLast",
+     "label": "Last value output Lc1-4",
+     "short": "Lv"
+    },
+    {
+     "key": "MoveOn",
+     "label": "Motion extend time",
+     "short": "Moet",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 900.0,
+     "unit": "s"
+    },
+    {
+     "key": "MoveIgnore",
+     "label": "Presence automatic timeout",
+     "short": "Pto",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 300.0,
+     "unit": "s"
+    },
+    {
+     "key": "MoveScene",
+     "label": "Presence mood",
+     "short": "Pm",
+     "default": 0.0
+    },
+    {
+     "key": "MoveTimeout",
+     "label": "Manual operation extend time",
+     "short": "Met",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 3600.0,
+     "unit": "s"
+    },
+    {
+     "key": "RGBalt",
+     "label": "Alternative operation Lc1-4",
+     "short": "Ao"
+    },
+    {
+     "key": "AlarmPeriod",
+     "label": "Alarm flashing interval",
+     "short": "Afi",
+     "min": 0.1,
+     "default": 4.0,
+     "unit": "s"
+    },
+    {
+     "key": "AlarmClockPeriod",
+     "label": "Fading time buzzer",
+     "short": "Fbu",
+     "min": 0.0,
+     "max": 60.0,
+     "default": 3.0,
+     "unit": "min"
+    },
+    {
+     "key": "BrightnessLimit",
+     "label": "Brightness threshold",
+     "short": "Brt",
+     "min": 0.0,
+     "default": 30.0,
+     "unit": "lux"
+    },
+    {
+     "key": "SceneMixTime",
+     "label": "Mixing moods duration",
+     "short": "Mmd",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    },
+    {
+     "key": "FadingTime",
+     "label": "Fading time",
+     "short": "Ft",
+     "min": 0.0,
+     "max": 1800.0,
+     "default": 1.0,
+     "unit": "s"
+    },
+    {
+     "key": "AlarmBrightness",
+     "label": "Maximum alarm brightness",
+     "short": "MaxAbr",
+     "min": 10.0,
+     "max": 100.0,
+     "default": 50.0,
+     "unit": "%"
+    },
+    {
+     "key": "DayMinTemp",
+     "label": "Minimum color temperature",
+     "short": "MinCt",
+     "min": 2000.0,
+     "max": 4000.0,
+     "step": 100.0,
+     "default": 2700.0,
+     "unit": "K"
+    },
+    {
+     "key": "DayMaxTemp",
+     "label": "Maximum color temperature",
+     "short": "MaxCt",
+     "min": 4000.0,
+     "max": 12000.0,
+     "step": 100.0,
+     "default": 6500.0,
+     "unit": "K"
+    }
+   ]
+  },
+  "LightControllerH": {
+   "name": "Hotel Lighting Controller",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Mode",
+     "label": "Service staff mode",
+     "short": "MS",
+     "default": 2.0
+    },
+    {
+     "key": "DurMode",
+     "label": "Duration of Service Staff mode",
+     "short": "TM",
+     "default": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "LongTime",
+     "label": "Duration press and hold for 'All off'",
+     "short": "To",
+     "default": 2.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeLeave",
+     "label": "Timeout for leaving room",
+     "short": "Tl",
+     "default": 60.0,
+     "unit": "s"
+    },
+    {
+     "key": "MaxP",
+     "label": "Max time between pulses",
+     "short": "M",
+     "default": 0.35,
+     "unit": "s"
+    },
+    {
+     "key": "Step",
+     "label": "Step",
+     "short": "SI",
+     "default": 2.0,
+     "unit": "%"
+    },
+    {
+     "key": "Steptime",
+     "label": "Step rate",
+     "short": "ST",
+     "default": 0.2,
+     "unit": "s"
+    },
+    {
+     "key": "Min",
+     "label": "Minimum value",
+     "short": "Min",
+     "default": 15.0,
+     "unit": "%"
+    },
+    {
+     "key": "Max",
+     "label": "Maximum value",
+     "short": "Max",
+     "default": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "NoLast",
+     "label": "Do not set last value",
+     "short": "L"
+    },
+    {
+     "key": "MoveOn",
+     "label": "Duration On",
+     "short": "TH",
+     "default": 180.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "Lightscene": {
+   "name": "Scene",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "LightsceneLearn": {
+   "name": "Lighting scene",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Max",
+     "label": "Max time between pulses",
+     "short": "M",
+     "default": 0.35,
+     "unit": "s"
+    }
+   ]
+  },
+  "LightsceneRGB": {
+   "name": "RGB Lighting Controller",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "LoadShed": {
+   "name": "Load Manager",
+   "parameters": [
+    {
+     "key": "maxP",
+     "label": "Maximum power",
+     "short": "MaxP",
+     "min": 0.0,
+     "default": 20.0,
+     "unit": "kW"
+    },
+    {
+     "key": "Hysteresis",
+     "label": "Hysteresis",
+     "short": "Hys",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "kW"
+    },
+    {
+     "key": "maxTp",
+     "label": "Maximum technical power",
+     "short": "MaxTp",
+     "min": 0.0,
+     "default": 40.0,
+     "unit": "kW"
+    }
+   ]
+  },
+  "LongClick": {
+   "name": "Long Click",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Max",
+     "label": "Interval",
+     "short": "TI",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.35,
+     "unit": "s"
+    },
+    {
+     "key": "Time",
+     "label": "Duration output pulse",
+     "short": "D",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.1,
+     "unit": "s"
+    },
+    {
+     "key": "V1",
+     "label": "Value 1",
+     "short": "V1",
+     "default": 1.0
+    },
+    {
+     "key": "V2",
+     "label": "Value 2",
+     "short": "V2",
+     "default": 2.0
+    },
+    {
+     "key": "V3",
+     "label": "Value 3",
+     "short": "V3",
+     "default": 3.0
+    },
+    {
+     "key": "V4",
+     "label": "Value 4",
+     "short": "V4",
+     "default": 4.0
+    }
+   ]
+  },
+  "MPGroup": {
+   "name": "Audio Player Fixed Group",
+   "parameters": [
+    {
+     "key": "DblClk",
+     "label": "Time double-click",
+     "short": "Tdc",
+     "min": 0.0,
+     "max": 10.0,
+     "step": 0.1,
+     "unit": "s"
+    },
+    {
+     "key": "IgnoreROff",
+     "label": "Ignore room off command",
+     "short": "Roff"
+    },
+    {
+     "key": "EnBT",
+     "label": "Bluetooth pairing",
+     "short": "BTp"
+    }
+   ]
+  },
+  "MailGen": {
+   "name": "Mail Generator",
+   "parameters": [
+    {
+     "key": "Td",
+     "label": "Trigger Delay",
+     "short": "Td",
+     "min": 0.0,
+     "max": 2147483647.0,
+     "default": 0.0,
+     "unit": "ms"
+    },
+    {
+     "key": "Tu",
+     "label": "Update Interval",
+     "short": "Tu",
+     "min": 0.0,
+     "max": 2147483647.0,
+     "default": 0.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "Media": {
+   "name": "Media Controller",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "TimeNum",
+     "label": "Numpad send timeout",
+     "short": "Nst",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 3000.0,
+     "unit": "ms"
+    },
+    {
+     "key": "DblClk",
+     "label": "Time double-click",
+     "short": "Tdc",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.35,
+     "unit": "s"
+    }
+   ]
+  },
+  "MediaClient": {
+   "name": "Music Server Zone",
+   "parameters": [
+    {
+     "key": "DblClk",
+     "label": "Double click interval",
+     "short": "Tdc",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.35,
+     "unit": "s"
+    },
+    {
+     "key": "VolumeStep",
+     "label": "Volume step size",
+     "short": "Sv",
+     "default": 3.0
+    },
+    {
+     "key": "RepeatFirst",
+     "label": "First recurrence",
+     "short": "Rf",
+     "step": 0.1,
+     "default": 0.5
+    },
+    {
+     "key": "RepeatRate",
+     "label": "Repeat interval",
+     "short": "Rr",
+     "step": 0.1,
+     "default": 0.2
+    },
+    {
+     "key": "MoveTimeout",
+     "label": "Automatic switch off motion",
+     "short": "MT",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 3600.0,
+     "unit": "s"
+    },
+    {
+     "key": "MoveOn",
+     "label": "Duration On",
+     "short": "TH",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 900.0,
+     "unit": "s"
+    },
+    {
+     "key": "MoveIgnore",
+     "label": "Delay of the Motion Sensor",
+     "short": "Ti",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 300.0,
+     "unit": "s"
+    },
+    {
+     "key": "MaxVol",
+     "label": "Maximum volume level",
+     "short": "Vm",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 100.0
+    },
+    {
+     "key": "DefVol",
+     "label": "Startup volume",
+     "short": "Vd",
+     "min": -1.0,
+     "max": 100.0,
+     "default": 10.0
+    },
+    {
+     "key": "AlarmVol",
+     "label": "Alarm volume",
+     "short": "Va",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 75.0
+    },
+    {
+     "key": "AlarmVol",
+     "label": "Alarm volume",
+     "short": "Va",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 75.0
+    },
+    {
+     "key": "BellVol",
+     "label": "Doorbell volume",
+     "short": "Vbe",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 20.0
+    },
+    {
+     "key": "BellVol",
+     "label": "Doorbell volume",
+     "short": "Vbe",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 20.0
+    },
+    {
+     "key": "BuzzVol",
+     "label": "Alarm clock volume",
+     "short": "Vbu",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 10.0
+    },
+    {
+     "key": "BuzzVol",
+     "label": "Alarm clock volume",
+     "short": "Vbu",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 10.0
+    },
+    {
+     "key": "TTSVol",
+     "label": "TTS volume",
+     "short": "Vt",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 20.0
+    },
+    {
+     "key": "TTSVol",
+     "label": "TTS minimum volume",
+     "short": "Vtmin",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 20.0
+    },
+    {
+     "key": "TimeSleep",
+     "label": "Sleep timer duration [s]",
+     "short": "Ts",
+     "default": 300.0
+    },
+    {
+     "key": "TimeEvent",
+     "label": "Event playback duration [s]",
+     "short": "Te",
+     "default": 8.0
+    },
+    {
+     "key": "TimeOutOff",
+     "label": "Delay of Qoff [s]",
+     "short": "Tqo",
+     "default": 30.0
+    },
+    {
+     "key": "FRoomOff",
+     "label": "Ignore room off command",
+     "short": "ROff"
+    }
+   ]
+  },
+  "MeterAbsBi": {
+   "name": "Meter Bidirectional",
+   "parameters": [
+    {
+     "key": "Mro1",
+     "label": "Meter reading offset consumption",
+     "short": "Mroc"
+    },
+    {
+     "key": "Mro2",
+     "label": "Meter reading offset delivery",
+     "short": "Mrod"
+    }
+   ]
+  },
+  "MeterAbsSt": {
+   "name": "Meter for Storage",
+   "parameters": [
+    {
+     "key": "Mro1",
+     "label": "Meter reading offset consumption",
+     "short": "Mroc"
+    },
+    {
+     "key": "Mro2",
+     "label": "Meter reading offset delivery",
+     "short": "Mrod"
+    }
+   ]
+  },
+  "MeterAbsUni": {
+   "name": "Meter",
+   "parameters": [
+    {
+     "key": "Mro",
+     "label": "Mro",
+     "short": ""
+    }
+   ]
+  },
+  "MeterDig": {
+   "name": "Fixed Value Meter",
+   "parameters": [
+    {
+     "key": "Mro",
+     "label": "Mro",
+     "short": ""
+    },
+    {
+     "key": "Ppwr",
+     "label": "Power rating or nominal flow",
+     "short": "Pf",
+     "min": 0.0,
+     "default": 1.0
+    }
+   ]
+  },
+  "MeterPBi": {
+   "name": "Pulse Meter Bidirectional",
+   "parameters": [
+    {
+     "key": "Np1",
+     "label": "Np1",
+     "short": "Npc"
+    },
+    {
+     "key": "Np2",
+     "label": "Np2",
+     "short": "Npd"
+    },
+    {
+     "key": "Mro1",
+     "label": "Meter reading offset consumption",
+     "short": "Mroc"
+    },
+    {
+     "key": "Mro2",
+     "label": "Meter reading offset delivery",
+     "short": "Mrod"
+    }
+   ]
+  },
+  "MeterPSt": {
+   "name": "Pulse Meter for Storage",
+   "parameters": [
+    {
+     "key": "Np1",
+     "label": "Np1",
+     "short": "Npd"
+    },
+    {
+     "key": "Np2",
+     "label": "Np2",
+     "short": "Npc"
+    },
+    {
+     "key": "Mro1",
+     "label": "Meter reading offset consumption",
+     "short": "Mroc"
+    },
+    {
+     "key": "Mro2",
+     "label": "Meter reading offset delivery",
+     "short": "Mrod"
+    }
+   ]
+  },
+  "MeterPUni": {
+   "name": "Pulse Meter",
+   "parameters": [
+    {
+     "key": "Np",
+     "label": "Number of pulses per unit",
+     "short": "Np",
+     "min": 0.0,
+     "default": 1000.0
+    },
+    {
+     "key": "Mro",
+     "label": "Meter reading offset",
+     "short": "Mro"
+    }
+   ]
+  },
+  "Minmax": {
+   "name": "MinMax",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "Mod": {
+   "name": "Modulo",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "Monoflop": {
+   "name": "Monoflop",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Time",
+     "label": "Duration output pulse",
+     "short": "D",
+     "min": 0.0,
+     "default": 2.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "Mult": {
+   "name": "Multiply",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "MultiClick": {
+   "name": "Multi-Click",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Max",
+     "label": "Time multi-click",
+     "short": "Tmc",
+     "min": 0.0,
+     "step": 0.05,
+     "default": 0.35,
+     "unit": "s"
+    },
+    {
+     "key": "Time",
+     "label": "On-duration of output (1C-4C)",
+     "short": "On",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.1,
+     "unit": "s"
+    },
+    {
+     "key": "V1",
+     "label": "Value for single-click",
+     "short": "V1c",
+     "default": 1.0
+    },
+    {
+     "key": "V2",
+     "label": "Value for double-click",
+     "short": "V2c",
+     "default": 2.0
+    },
+    {
+     "key": "V3",
+     "label": "Value for triple-click",
+     "short": "V3c",
+     "default": 3.0
+    },
+    {
+     "key": "V4",
+     "label": "Value for quad-click",
+     "short": "V4c",
+     "default": 4.0
+    }
+   ]
+  },
+  "MultiFuncSW": {
+   "name": "Comfort Switch",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "TimeHigh",
+     "label": "On-duration of output (O) on pulse",
+     "short": "Don",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 180.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeTrigger",
+     "label": "Time long-click for continious-on",
+     "short": "Tlc",
+     "min": 0.0,
+     "default": 0.5,
+     "unit": "s"
+    },
+    {
+     "key": "TimeWarn",
+     "label": "Switch-off warning time",
+     "short": "Tw",
+     "min": 0.0,
+     "default": 15.0,
+     "unit": "s"
+    },
+    {
+     "key": "WarnTime",
+     "label": "Switch-off warning duration",
+     "short": "Dw",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.5,
+     "unit": "s"
+    }
+   ]
+  },
+  "MusicPlayer": {
+   "name": "Audio Player",
+   "parameters": [
+    {
+     "key": "DefVol",
+     "label": "Power on volume",
+     "short": "Von",
+     "min": -1.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "MaxVol",
+     "label": "Maximum volume",
+     "short": "Vm",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "Step",
+     "label": "Step size volume",
+     "short": "Vsts",
+     "min": 1.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "AlarmVol",
+     "label": "Minimum volume alarm sounds",
+     "short": "Va",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "BellVol",
+     "label": "Minimum volume doorbell",
+     "short": "Vbell",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "BuzzVol",
+     "label": "Minimum volume alarm clock",
+     "short": "Vbuzzer",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "TTSVol",
+     "label": "Minimum volume TTS and announcements",
+     "short": "Vtts",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "DblClk",
+     "label": "Time double-click",
+     "short": "Tdc",
+     "min": 0.0,
+     "max": 10.0,
+     "step": 0.1,
+     "unit": "s"
+    },
+    {
+     "key": "IgnoreROff",
+     "label": "Ignore room off command",
+     "short": "Roff"
+    },
+    {
+     "key": "BuzzerFav",
+     "label": "Alarm clock favorite",
+     "short": "BuzzerFav"
+    },
+    {
+     "key": "EnBT",
+     "label": "Bluetooth pairing",
+     "short": "BTp"
+    },
+    {
+     "key": "volFading",
+     "label": "Volume Fading Time",
+     "short": "Ft",
+     "min": 15.0,
+     "max": 1800.0,
+     "step": 1.0,
+     "default": 0.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "NfcCodeTouch": {
+   "name": "Authentication NFC Code Touch",
+   "parameters": [
+    {
+     "key": "Bg",
+     "label": "Activate bell button light",
+     "short": "Bbl"
+    },
+    {
+     "key": "Lbr",
+     "label": "Button brightness",
+     "short": "Bbr",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 50.0,
+     "unit": "%"
+    },
+    {
+     "key": "PulseTime",
+     "label": "On-duration of outputs (O1-6), (Ad) and (As).",
+     "short": "Don",
+     "min": 0.0,
+     "default": 3.0,
+     "unit": "s"
+    },
+    {
+     "key": "La",
+     "label": "Activate button light at night",
+     "short": "Blan"
+    },
+    {
+     "key": "Lon",
+     "label": "Activate button light",
+     "short": "Bl"
+    },
+    {
+     "key": "Au",
+     "label": "Authentication",
+     "short": "Au",
+     "min": 0.0,
+     "max": 4.0
+    }
+   ]
+  },
+  "NotEqual": {
+   "name": "Unequal",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "OffDelay": {
+   "name": "Switch-Off Delay",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Time",
+     "label": "Delay duration",
+     "short": "Don",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "OnDelay": {
+   "name": "Switch-On Delay",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Time",
+     "label": "Delay duration",
+     "short": "Don",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "OnOffDelay": {
+   "name": "Switch-On and -Off Delay",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "TimeOn",
+     "label": "Duration switch-on delay",
+     "short": "Don",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeOff",
+     "label": "Duration switch-off delay",
+     "short": "Doff",
+     "default": 1.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "OnPulseDelay": {
+   "name": "Delayed Pulse",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Delay",
+     "label": "Duration of delay",
+     "short": "Dd",
+     "min": 0.0,
+     "default": 5.0,
+     "unit": "s"
+    },
+    {
+     "key": "Time",
+     "label": "Duration output pulse",
+     "short": "Dp",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.5,
+     "unit": "s"
+    }
+   ]
+  },
+  "PButtonT": {
+   "name": "Push Button",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Time",
+     "label": "On-duration of output (O)",
+     "short": "Don",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.3,
+     "unit": "s"
+    }
+   ]
+  },
+  "PI": {
+   "name": "PI-Controller",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Target",
+     "label": "Setpoint",
+     "short": "SP",
+     "default": 5.0
+    },
+    {
+     "key": "SampleTime",
+     "label": "Sampling time",
+     "short": "St",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    },
+    {
+     "key": "Trigger",
+     "label": "Threshold",
+     "short": "Th",
+     "default": 1.0
+    },
+    {
+     "key": "P",
+     "label": "Proportional gain",
+     "short": "Kp",
+     "default": 2.0
+    },
+    {
+     "key": "I",
+     "label": "Integral gain",
+     "short": "Ki",
+     "default": 1.0
+    },
+    {
+     "key": "MV",
+     "label": "Manual value",
+     "short": "Mv",
+     "default": 5.0
+    },
+    {
+     "key": "Min",
+     "label": "Minimum",
+     "short": "Min",
+     "default": 0.0
+    },
+    {
+     "key": "Max",
+     "label": "Maximum",
+     "short": "Max",
+     "default": 10.0
+    }
+   ]
+  },
+  "PID": {
+   "name": "PID-Controller",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Target",
+     "label": "Setpoint",
+     "short": "SP",
+     "default": 5.0
+    },
+    {
+     "key": "SampleTime",
+     "label": "Sampling time",
+     "short": "St",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    },
+    {
+     "key": "Trigger",
+     "label": "Threshold",
+     "short": "Th",
+     "default": 1.0
+    },
+    {
+     "key": "P",
+     "label": "Proportional gain",
+     "short": "Kp",
+     "default": 2.0
+    },
+    {
+     "key": "I",
+     "label": "Integral gain",
+     "short": "Ki",
+     "default": 1.0
+    },
+    {
+     "key": "D",
+     "label": "Derivative gain",
+     "short": "Kd",
+     "default": 0.0
+    },
+    {
+     "key": "MV",
+     "label": "Manual value",
+     "short": "Mv",
+     "default": 5.0
+    },
+    {
+     "key": "Min",
+     "label": "Minimum",
+     "short": "Min",
+     "default": 0.0
+    },
+    {
+     "key": "Max",
+     "label": "Maximum",
+     "short": "Max",
+     "default": 10.0
+    }
+   ]
+  },
+  "PVProductionForecast": {
+   "name": "PV Production Forecast",
+   "parameters": [
+    {
+     "key": "Period",
+     "label": "Calculated Period",
+     "short": "Period",
+     "min": 0.0,
+     "max": 72.0,
+     "default": 24.0,
+     "unit": "h"
+    }
+   ]
+  },
+  "PWM": {
+   "name": "Pulse Width Modulation",
+   "parameters": [
+    {
+     "key": "PT",
+     "label": "Period",
+     "short": "P",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "Ping": {
+   "name": "Ping",
+   "parameters": [
+    {
+     "key": "PingTime",
+     "label": "Ping interval",
+     "short": "Pi",
+     "min": 0.0,
+     "default": 10.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeoutTime",
+     "label": "Timeout duration",
+     "short": "Td",
+     "min": 0.0,
+     "default": 30.0,
+     "unit": "s"
+    },
+    {
+     "key": "Timeouts",
+     "label": "Number of unsuccessful pings",
+     "short": "N",
+     "min": 0.0,
+     "default": 5.0
+    }
+   ]
+  },
+  "PoolController": {
+   "name": "Pool Controller",
+   "parameters": [
+    {
+     "key": "Hysteresis",
+     "label": "Hysteresis temperature",
+     "short": "ϑh",
+     "step": 0.1,
+     "default": 0.5
+    },
+    {
+     "key": "ValveDelay",
+     "label": "Filtration pump extend time",
+     "short": "Fpet",
+     "min": 0.0,
+     "max": 1800.0,
+     "default": 0.0,
+     "unit": "s"
+    },
+    {
+     "key": "FilterTime",
+     "label": "Filtration cycle duration",
+     "short": "Fid",
+     "min": 0.0,
+     "default": 18000.0,
+     "unit": "s"
+    },
+    {
+     "key": "BackwashTime",
+     "label": "Backwash cycle duration",
+     "short": "Bwd",
+     "min": 20.0,
+     "max": 600.0,
+     "default": 120.0,
+     "unit": "s"
+    },
+    {
+     "key": "RinseTime",
+     "label": "Rinsing cycle duration",
+     "short": "Rid",
+     "min": 20.0,
+     "max": 300.0,
+     "default": 30.0,
+     "unit": "s"
+    },
+    {
+     "key": "CirculateTime",
+     "label": "Circulation cycle duration",
+     "short": "Cid",
+     "min": 0.0,
+     "default": 43200.0,
+     "unit": "s"
+    },
+    {
+     "key": "DrainTime",
+     "label": "Draining cycle duration",
+     "short": "Drd",
+     "min": 0.0,
+     "default": 3600.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "Presence": {
+   "name": "User Interface Presence",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Time",
+     "label": "Delay duration",
+     "short": "T",
+     "min": 10.0,
+     "default": 900.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "PresenceController": {
+   "name": "Presence Sensor (obsolete)",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "TVi",
+     "label": "Duration by which presence is extended when enabled through UI",
+     "short": "T",
+     "default": 60.0
+    },
+    {
+     "key": "TMv",
+     "label": "Duration by which pulses from motion sensors are extended in seconds",
+     "short": "TMv",
+     "default": 60.0
+    },
+    {
+     "key": "TW",
+     "label": "Input pulse extension door/window contact",
+     "short": "TW",
+     "default": 60.0
+    },
+    {
+     "key": "TC",
+     "label": "Duration by which pulses on the user defined input are extended in seconds",
+     "short": "TC",
+     "default": 60.0
+    },
+    {
+     "key": "TL",
+     "label": "Duration by which signal on the lighting input is extended in seconds",
+     "short": "TL",
+     "default": 60.0
+    },
+    {
+     "key": "TM",
+     "label": "Duration by which signal on the music input is extended in seconds",
+     "short": "TM",
+     "default": 60.0
+    },
+    {
+     "key": "TP",
+     "label": "Duration by which signal on the power input is extended in seconds",
+     "short": "TP",
+     "default": 60.0
+    },
+    {
+     "key": "TCO",
+     "label": "Parameter - Duration by which signal on the CO2 input is extended in seconds",
+     "short": "TCO",
+     "default": 60.0
+    },
+    {
+     "key": "TT",
+     "label": "Extension duration of the T5 input",
+     "short": "TT",
+     "default": 60.0
+    },
+    {
+     "key": "dP",
+     "label": "Power Threshold",
+     "short": "Sp",
+     "default": 0.1
+    },
+    {
+     "key": "dC",
+     "label": "CO2 threshold",
+     "short": "Dc",
+     "default": 500.0
+    }
+   ]
+  },
+  "PresenceDetector": {
+   "name": "Presence",
+   "parameters": [
+    {
+     "key": "ParamTOn",
+     "label": "Presence extend time",
+     "short": "Pet",
+     "min": 2.0,
+     "unit": "s"
+    },
+    {
+     "key": "ParamTWarn",
+     "label": "Switch-off warning time",
+     "short": "Tw",
+     "min": 0.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "PulseAt": {
+   "name": "Pulse at",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Time",
+     "label": "On-duration of output (O)",
+     "short": "Don",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "PulseBy": {
+   "name": "Pulse by",
+   "parameters": [
+    {
+     "key": "Time",
+     "label": "Pulse Duration",
+     "short": "Pd",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "PulseGen": {
+   "name": "Pulse Generator",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "TimeHigh",
+     "label": "Duration On",
+     "short": "Don",
+     "min": 0.1,
+     "default": 1.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeLow",
+     "label": "Duration Off",
+     "short": "Doff",
+     "min": 0.1,
+     "default": 1.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "PushButton": {
+   "name": "Switch",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "PushButton2": {
+   "name": "Switch (On/Off)",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "PushButton2Sel": {
+   "name": "Selection Switch (+/-)",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Min",
+     "label": "Minimum value",
+     "short": "Vmin",
+     "default": 1.0
+    },
+    {
+     "key": "Max",
+     "label": "Maximum value",
+     "short": "Vmax",
+     "default": 10.0
+    },
+    {
+     "key": "Step",
+     "label": "Step size",
+     "short": "Sts",
+     "default": 1.0
+    },
+    {
+     "key": "Repeat",
+     "label": "Repetition rate",
+     "short": "Rr",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.2,
+     "unit": "s"
+    },
+    {
+     "key": "Def",
+     "label": "Default value",
+     "short": "Vdef",
+     "default": 1.0
+    }
+   ]
+  },
+  "PushButtonSel": {
+   "name": "Selection Switch (+)",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Min",
+     "label": "Minimum value",
+     "short": "Vmin",
+     "default": 1.0
+    },
+    {
+     "key": "Max",
+     "label": "Maximum value",
+     "short": "Vmax",
+     "default": 10.0
+    },
+    {
+     "key": "Step",
+     "label": "Step size",
+     "short": "Sts",
+     "default": 1.0
+    },
+    {
+     "key": "Repeat",
+     "label": "Repetition rate",
+     "short": "Rr",
+     "min": 0.0,
+     "default": 0.2,
+     "unit": "s"
+    },
+    {
+     "key": "Def",
+     "label": "Default value",
+     "short": "Vdef",
+     "default": 1.0
+    }
+   ]
+  },
+  "PushDimmer": {
+   "name": "Dimmer",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Switchtime",
+     "label": "Delay input",
+     "short": "Di",
+     "step": 0.1,
+     "default": 0.4
+    },
+    {
+     "key": "Step",
+     "label": "Step size",
+     "short": "Sts",
+     "step": 0.1,
+     "default": 0.5
+    },
+    {
+     "key": "Steptime",
+     "label": "Step rate",
+     "short": "Str",
+     "step": 0.1,
+     "default": 0.2
+    },
+    {
+     "key": "Min",
+     "label": "Minimum dim value",
+     "short": "MinD",
+     "default": 0.0
+    },
+    {
+     "key": "Max",
+     "label": "Maximum dim value",
+     "short": "MaxD",
+     "default": 100.0
+    },
+    {
+     "key": "Wrap",
+     "label": "Dim mode",
+     "short": "Dm"
+    },
+    {
+     "key": "NoLast",
+     "label": "Last value",
+     "short": "Lv"
+    }
+   ]
+  },
+  "RSFlipFlop": {
+   "name": "RS Flipflop",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "Radio": {
+   "name": "Radio Buttons",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Max",
+     "label": "Max. outputs",
+     "short": "Max"
+    },
+    {
+     "key": "Mode",
+     "label": "Skip 0",
+     "short": "Sk0"
+    }
+   ]
+  },
+  "Radio2": {
+   "name": "Radio Buttons 16 Inputs",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Max",
+     "label": "Max. outputs",
+     "short": "Max"
+    },
+    {
+     "key": "Mode",
+     "label": "Skip 0",
+     "short": "Sk0"
+    }
+   ]
+  },
+  "Ramp": {
+   "name": "Ramp Controller",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "StartValue",
+     "label": "Start value",
+     "short": "Sv",
+     "default": 5.0
+    },
+    {
+     "key": "Rate",
+     "label": "Step size",
+     "short": "Sts",
+     "min": 0.001,
+     "default": 1.0
+    },
+    {
+     "key": "Level1",
+     "label": "Step 1",
+     "short": "L1",
+     "default": 7.0
+    },
+    {
+     "key": "Level2",
+     "label": "Step 2",
+     "short": "L2",
+     "default": 3.0
+    }
+   ]
+  },
+  "Rand": {
+   "name": "Random Number Generator",
+   "parameters": [
+    {
+     "key": "Minimum",
+     "label": "Minimum value",
+     "short": "Min",
+     "default": 0.0
+    },
+    {
+     "key": "Maximum",
+     "label": "Maximum value",
+     "short": "Max",
+     "default": 10.0
+    }
+   ]
+  },
+  "RandomGen": {
+   "name": "Random Controller",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "TimeOn",
+     "label": "Maximum duration switch-on delay",
+     "short": "Son",
+     "min": 0.0,
+     "default": 100.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeOff",
+     "label": "Maximum duration switch-off delay",
+     "short": "Soff",
+     "min": 0.0,
+     "default": 10.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "RetOnDelay": {
+   "name": "Saving Switch-On Delay",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Time",
+     "label": "Delay duration",
+     "short": "Don",
+     "min": 0.0,
+     "default": 1.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "RoofWindow": {
+   "name": "Window",
+   "parameters": [
+    {
+     "key": "DurationOpen",
+     "label": "Opening duration",
+     "short": "Opd",
+     "min": 0.0,
+     "default": 5.0,
+     "unit": "s"
+    },
+    {
+     "key": "DurationClose",
+     "label": "Closing duration",
+     "short": "Cld",
+     "min": 0.0,
+     "default": 5.0,
+     "unit": "s"
+    },
+    {
+     "key": "MinMove",
+     "label": "Minimum travel time",
+     "short": "minTd",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.4,
+     "unit": "s"
+    },
+    {
+     "key": "Block",
+     "label": "Motor lock duration",
+     "short": "Mld",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.5,
+     "unit": "s"
+    },
+    {
+     "key": "SoPos",
+     "label": "Slightly Open Position",
+     "short": "SoPos",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 50.0,
+     "unit": "%"
+    }
+   ]
+  },
+  "Roomcontrol": {
+   "name": "Room Controller",
+   "parameters": [
+    {
+     "key": "Mode",
+     "label": "Scan duration",
+     "short": "M",
+     "step": 60.0,
+     "default": 600.0,
+     "unit": "s"
+    },
+    {
+     "key": "PwmPeriod",
+     "label": "Duration of PWM period",
+     "short": "P",
+     "step": 60.0,
+     "default": 600.0,
+     "unit": "s"
+    },
+    {
+     "key": "Amplifier",
+     "label": "Gain",
+     "short": "V",
+     "step": 0.1,
+     "default": 1.1
+    }
+   ]
+  },
+  "SRFlipFlop": {
+   "name": "SR Flipflop",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "Sauna": {
+   "name": "Sauna Controller",
+   "parameters": [
+    {
+     "key": "TempCorr",
+     "label": "Temperature deviation",
+     "short": "ϑd",
+     "default": 0.0,
+     "unit": "°"
+    },
+    {
+     "key": "DryTemp",
+     "label": "Drying phase target temperature",
+     "short": "Dryϑ",
+     "default": 70.0,
+     "unit": "°"
+    },
+    {
+     "key": "DryTime",
+     "label": "Drying phase duration",
+     "short": "Dryd",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 1800.0,
+     "unit": "s"
+    },
+    {
+     "key": "Time",
+     "label": "Sand timer duration",
+     "short": "Std",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 900.0,
+     "unit": "s"
+    },
+    {
+     "key": "SafeTemp",
+     "label": "Safety shutdown temperature",
+     "short": "Ssdϑ",
+     "default": 139.0,
+     "unit": "°"
+    },
+    {
+     "key": "SafeTime",
+     "label": "Safety shutdown time",
+     "short": "Ssdt",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 7200.0,
+     "unit": "s"
+    },
+    {
+     "key": "PwmPeriod",
+     "label": "PWM period",
+     "short": "PWMp",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 180.0,
+     "unit": "s"
+    },
+    {
+     "key": "Amplifier",
+     "label": "Gain",
+     "short": "G",
+     "min": 0.001,
+     "default": 1.0
+    },
+    {
+     "key": "Mode",
+     "label": "Phase mode",
+     "short": "Pm"
+    }
+   ]
+  },
+  "SaunaVapor": {
+   "name": "Sauna Controller With Evaporator",
+   "parameters": [
+    {
+     "key": "TempCorr",
+     "label": "Temperature deviation",
+     "short": "ϑd",
+     "default": 0.0,
+     "unit": "°"
+    },
+    {
+     "key": "DryTemp",
+     "label": "Drying phase temperature",
+     "short": "Dryϑ",
+     "default": 70.0,
+     "unit": "°"
+    },
+    {
+     "key": "DryTime",
+     "label": "Drying phase duration",
+     "short": "Dryd",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 1800.0,
+     "unit": "s"
+    },
+    {
+     "key": "Time",
+     "label": "Sand timer duration",
+     "short": "Std",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 600.0,
+     "unit": "s"
+    },
+    {
+     "key": "SafeTemp",
+     "label": "Safety shutdown temperature",
+     "short": "Ssdϑ",
+     "default": 139.0,
+     "unit": "°"
+    },
+    {
+     "key": "SafeTime",
+     "label": "Safety shutdown time",
+     "short": "Ssdt",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 7200.0,
+     "unit": "s"
+    },
+    {
+     "key": "PwmPeriod",
+     "label": "PWM period",
+     "short": "PWMp",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 180.0,
+     "unit": "s"
+    },
+    {
+     "key": "Amplifier",
+     "label": "Gain",
+     "short": "G",
+     "min": 0.001,
+     "default": 1.0
+    },
+    {
+     "key": "Mode",
+     "label": "Phase mode",
+     "short": "Pm",
+     "min": 0.0,
+     "max": 2.0,
+     "default": 2.0
+    }
+   ]
+  },
+  "Sequencer": {
+   "name": "Sequencer",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Max",
+     "label": "Maximum number of used outputs",
+     "short": "Max",
+     "min": 0.0,
+     "max": 8.0,
+     "default": 8.0
+    },
+    {
+     "key": "Def",
+     "label": "Default value",
+     "short": "Dv",
+     "min": 0.0,
+     "max": 8.0,
+     "default": 1.0
+    }
+   ]
+  },
+  "ShadeRoof": {
+   "name": "Roof Window Shading",
+   "parameters": [
+    {
+     "key": "SO",
+     "label": "Wind alarm position",
+     "short": "Wap"
+    },
+    {
+     "key": "TimeFullUp",
+     "label": "Opening duration",
+     "short": "Opd",
+     "min": 0.0,
+     "default": 75.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeFullDown",
+     "label": "Closing duration",
+     "short": "Cld",
+     "min": 0.0,
+     "default": 75.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeBlock",
+     "label": "Motor lock duration",
+     "short": "Mld",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.5,
+     "unit": "s"
+    },
+    {
+     "key": "TDoubleClick",
+     "label": "Time double-click",
+     "short": "Tdc",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.3,
+     "unit": "s"
+    },
+    {
+     "key": "TMinPulse",
+     "label": "Time long-click",
+     "short": "Tlc",
+     "min": 0.0,
+     "default": 3.0,
+     "unit": "s"
+    },
+    {
+     "key": "TMinMove",
+     "label": "Minimum travel duration",
+     "short": "minTd",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.4,
+     "unit": "s"
+    },
+    {
+     "key": "AutoMode",
+     "label": "Sun position automatic mode",
+     "short": "Spm",
+     "min": 0.0,
+     "max": 1.0,
+     "default": 1.0
+    },
+    {
+     "key": "AutoEndState",
+     "label": "Sun position automatic end action",
+     "short": "Spe",
+     "min": 0.0,
+     "max": 2.0,
+     "default": 1.0
+    },
+    {
+     "key": "Dir",
+     "label": "Compass direction",
+     "short": "Dir",
+     "min": -1.0,
+     "max": 359.0,
+     "default": -1.0,
+     "unit": "°"
+    },
+    {
+     "key": "DirTol1",
+     "label": "Direction tolerance start",
+     "short": "Dts",
+     "min": 0.0,
+     "max": 90.0,
+     "default": 85.0,
+     "unit": "°"
+    },
+    {
+     "key": "DirTol2",
+     "label": "Direction tolerance end",
+     "short": "Dte",
+     "min": 0.0,
+     "max": 90.0,
+     "default": 85.0,
+     "unit": "°"
+    },
+    {
+     "key": "Tilt",
+     "label": "Pitch",
+     "short": "Pi",
+     "min": 0.0,
+     "max": 90.0,
+     "default": 30.0,
+     "unit": "°"
+    },
+    {
+     "key": "AutoOffset1",
+     "label": "Sun position automatic start offset",
+     "short": "Spos",
+     "min": -90.0,
+     "max": 90.0,
+     "default": 30.0,
+     "unit": "min"
+    },
+    {
+     "key": "AutoOffset2",
+     "label": "Sun position automatic end offset",
+     "short": "Spoe",
+     "min": -90.0,
+     "max": 90.0,
+     "default": -30.0,
+     "unit": "min"
+    },
+    {
+     "key": "Shadepos",
+     "label": "Slightly open position",
+     "short": "Sop",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 80.0,
+     "unit": "%"
+    }
+   ]
+  },
+  "Shift": {
+   "name": "Shift Register",
+   "parameters": [
+    {
+     "key": "Bit",
+     "label": "Register bit",
+     "short": "Rb",
+     "default": 8.0
+    }
+   ]
+  },
+  "SmokeAlarm": {
+   "name": "Fire and Water Alarm",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "AlarmDelay",
+     "label": "Main alarm delay",
+     "short": "Mad",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 120.0,
+     "unit": "s"
+    },
+    {
+     "key": "MaxTemp",
+     "label": "Maximum temperature",
+     "short": "Maxϑ",
+     "default": 43.0,
+     "unit": "°"
+    },
+    {
+     "key": "MaxDuration",
+     "label": "Maximum alarm duration",
+     "short": "MaxA",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 300.0,
+     "unit": "s"
+    },
+    {
+     "key": "Autoconfirm",
+     "label": "Pre-alarm confirmation",
+     "short": "Pac"
+    },
+    {
+     "key": "Servicemode",
+     "label": "Service mode",
+     "short": "Sm",
+     "min": 0.0,
+     "default": 0.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "Solarpumpcontrol": {
+   "name": "Thermal Solar Controller",
+   "parameters": [
+    {
+     "key": "DOn",
+     "label": "Pump switch-on threshold",
+     "short": "Pon",
+     "default": 8.0,
+     "unit": "°"
+    },
+    {
+     "key": "DOf",
+     "label": "Pump switch-off threshold",
+     "short": "Poff",
+     "default": 4.0,
+     "unit": "°"
+    },
+    {
+     "key": "TColMax",
+     "label": "Max. temperature collector",
+     "short": "Maxϑc",
+     "default": 120.0,
+     "unit": "°"
+    },
+    {
+     "key": "TComf%d",
+     "label": "Min. temperature storage",
+     "short": "Minϑs%d-%e",
+     "default": 60.0,
+     "unit": "°"
+    },
+    {
+     "key": "TMax%d",
+     "label": "Max. temperature storage",
+     "short": "Maxϑs%d-%e",
+     "default": 70.0,
+     "unit": "°"
+    },
+    {
+     "key": "IT",
+     "label": "Circulation duration",
+     "short": "Tf",
+     "default": 15.0,
+     "unit": "s"
+    },
+    {
+     "key": "ST",
+     "label": "Circulation interval for start mode",
+     "short": "Ts",
+     "default": 600.0,
+     "unit": "s"
+    },
+    {
+     "key": "Thf",
+     "label": "Temperature heating surplus",
+     "short": "ϑHs",
+     "default": 5.0,
+     "unit": "°"
+    }
+   ]
+  },
+  "SpotOpt": {
+   "name": "Spot Price Optimizer",
+   "parameters": [
+    {
+     "key": "Tn",
+     "label": "Tn",
+     "short": "Demand",
+     "min": 0.0,
+     "default": 4.0,
+     "unit": "h"
+    },
+    {
+     "key": "Ta",
+     "label": "Ta",
+     "short": "Period",
+     "min": 0.0,
+     "default": 24.0,
+     "unit": "h"
+    },
+    {
+     "key": "Mrt",
+     "label": "Mrt",
+     "short": "Minimum Runtime",
+     "min": 0.0,
+     "max": 12.0,
+     "default": 0.0,
+     "unit": "h"
+    },
+    {
+     "key": "Mvh",
+     "label": "Fixed very high price",
+     "short": "Max",
+     "default": 1.0,
+     "unit": "Currency"
+    },
+    {
+     "key": "Var1",
+     "label": "Variable Input 2",
+     "short": "I2",
+     "default": 0.0
+    },
+    {
+     "key": "Var2",
+     "label": "Variable Input 3",
+     "short": "I3",
+     "default": 0.0
+    }
+   ]
+  },
+  "StairwayLS": {
+   "name": "Stairwell Light Switch",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "TimeHigh",
+     "label": "On-duration of output (O)",
+     "short": "Don",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 180.0,
+     "unit": "s"
+    },
+    {
+     "key": "TimeWarn",
+     "label": "Switch-off warning time",
+     "short": "Tw",
+     "min": 0.0,
+     "default": 15.0,
+     "unit": "s"
+    },
+    {
+     "key": "WarnTime",
+     "label": "Switch-off warning duration",
+     "short": "Dw",
+     "min": 0.0,
+     "step": 0.1,
+     "default": 0.5,
+     "unit": "s"
+    }
+   ]
+  },
+  "SteakThermo": {
+   "name": "Touch & Grill",
+   "parameters": [
+    {
+     "key": "ParDurAlarm",
+     "label": "Maximum alarm duration (s)",
+     "short": "Dm",
+     "min": 1.0,
+     "step": 60.0,
+     "default": 3600.0,
+     "unit": "s"
+    },
+    {
+     "key": "ParDisplayBrightness",
+     "label": "Display-Brightness",
+     "short": "B",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 100.0,
+     "unit": "%"
+    }
+   ]
+  },
+  "StepSel": {
+   "name": "Step Selector",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "Max",
+     "label": "Max. outputs",
+     "short": "Max"
+    },
+    {
+     "key": "Mode",
+     "label": "Skip 0",
+     "short": "Sk0"
+    }
+   ]
+  },
+  "Sub": {
+   "name": "Subtract",
+   "parameters": [
+    {
+     "key": "Input%d",
+     "label": "Value %d-%e",
+     "short": "V%d-%e",
+     "default": 0.0
+    }
+   ]
+  },
+  "TPDC": {
+   "name": "Touch Pure Display Controller",
+   "parameters": [
+    {
+     "key": "ABr",
+     "label": "Automatic Brightness",
+     "short": "ABr"
+    },
+    {
+     "key": "BrMan",
+     "label": "Manual Brightness",
+     "short": "BrMan",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 60.0,
+     "unit": "%"
+    },
+    {
+     "key": "VolDef",
+     "label": "Default Speaker Volume",
+     "short": "VolDef",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 80.0,
+     "unit": "%"
+    },
+    {
+     "key": "BrDelta",
+     "label": "Rest Mode Brightness Delta",
+     "short": "BrDelta",
+     "min": -5.0,
+     "max": 5.0,
+     "default": -2.0,
+     "unit": "Steps"
+    },
+    {
+     "key": "BrGain",
+     "label": "Brightness Gain",
+     "short": "BrGain",
+     "min": -5.0,
+     "max": 5.0,
+     "default": 0.0,
+     "unit": "Steps"
+    }
+   ]
+  },
+  "Tablet": {
+   "name": "Tablet",
+   "parameters": [
+    {
+     "key": "DBr",
+     "label": "Display brightness",
+     "short": "DBr",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "SBr",
+     "label": "Eco brightness",
+     "short": "EBr",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "Lm",
+     "label": "Light mode",
+     "short": "Lm"
+    },
+    {
+     "key": "Hs",
+     "label": "Header style",
+     "short": "Hs"
+    }
+   ]
+  },
+  "TabletDevice": {
+   "name": "Wall Display 10\"",
+   "parameters": [
+    {
+     "key": "DBr",
+     "label": "Display brightness",
+     "short": "DBr",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "SBr",
+     "label": "Eco brightness",
+     "short": "EBr",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "V",
+     "label": "Volume",
+     "short": "V",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "Va",
+     "label": "Volume alarm sounds",
+     "short": "Va",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "Vbell",
+     "label": "Volume doorbell",
+     "short": "Vbell",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "Lm",
+     "label": "Light mode",
+     "short": "Lm"
+    },
+    {
+     "key": "Hs",
+     "label": "Header style",
+     "short": "Hs"
+    },
+    {
+     "key": "ABr",
+     "label": "Adaptive brightness",
+     "short": "ABr"
+    }
+   ]
+  },
+  "TextGenerator": {
+   "name": "Text Generator",
+   "parameters": [
+    {
+     "key": "Td",
+     "label": "Trigger Delay",
+     "short": "Td",
+     "min": 0.0,
+     "max": 2147483647.0,
+     "default": 0.0,
+     "unit": "ms"
+    },
+    {
+     "key": "Tu",
+     "label": "Update Interval",
+     "short": "Tu",
+     "min": 0.0,
+     "max": 2147483647.0,
+     "default": 0.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "TimeMinmax": {
+   "name": "MinMax since Reset",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  },
+  "ToiletFan": {
+   "name": "Toilet Ventilation Controller",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "AiringDelay",
+     "label": "Fan start delay",
+     "short": "Fsd",
+     "min": 0.0,
+     "default": 30.0,
+     "unit": "s"
+    },
+    {
+     "key": "MaxAiringDuration",
+     "label": "Fan / Movement extend time",
+     "short": "FPet",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 180.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "TpfController": {
+   "name": "Touch Pure Flex Controller",
+   "parameters": [
+    {
+     "key": "parsetpoint1",
+     "label": "Dark and Presence Brightness",
+     "short": "BrDP",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 30.0,
+     "unit": "%"
+    },
+    {
+     "key": "parsetpoint2",
+     "label": "Dark and no Presence Brightness",
+     "short": "BrDnP",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "parsetpoint3",
+     "label": "Lighting and Presence Brightness",
+     "short": "BrLP",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 50.0,
+     "unit": "%"
+    },
+    {
+     "key": "parsetpoint4",
+     "label": "Lighting and no Presence Brightness",
+     "short": "BrLnP",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "parsetpoint5",
+     "label": "Bright and Presence Brightness",
+     "short": "BrBP",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 80.0,
+     "unit": "%"
+    },
+    {
+     "key": "parsetpoint6",
+     "label": "Bright and no Presence Brightness",
+     "short": "BrBnP",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "parsetpointFB",
+     "label": "Default Brightness",
+     "short": "BrDef",
+     "min": 0.0,
+     "max": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "maxbrightness",
+     "label": "Brightness threshold",
+     "short": "Brt",
+     "min": 0.0,
+     "default": 30.0,
+     "unit": "lux"
+    }
+   ]
+  },
+  "UpDownCounter": {
+   "name": "Up/Down Counter",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    },
+    {
+     "key": "StartValue",
+     "label": "Start value",
+     "short": "Sv",
+     "default": 0.0
+    },
+    {
+     "key": "OnValue",
+     "label": "On-value",
+     "short": "Von",
+     "default": 10.0
+    },
+    {
+     "key": "OffValue",
+     "label": "Off-value",
+     "short": "Voff",
+     "default": 5.0
+    }
+   ]
+  },
+  "Validator": {
+   "name": "Value Validator",
+   "parameters": [
+    {
+     "key": "mintime",
+     "label": "Minimum Change Interval",
+     "short": "Tmc",
+     "unit": "s"
+    },
+    {
+     "key": "minval",
+     "label": "Minimum Value",
+     "short": "Min"
+    },
+    {
+     "key": "maxval",
+     "label": "Maximum Value",
+     "short": "Max"
+    },
+    {
+     "key": "delay",
+     "label": "Delay",
+     "short": "D",
+     "unit": "s"
+    }
+   ]
+  },
+  "VentInternorm": {
+   "name": "Internorm Fan",
+   "parameters": [
+    {
+     "key": "IN_H_MAX",
+     "label": "Maximum humidity",
+     "short": "Hmax",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 60.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_H_MIN",
+     "label": "Minimum Humidity [%]",
+     "short": "Hmin",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 40.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_A_MAX",
+     "label": "Maximum CO2 (air pollution)",
+     "short": "CO2max",
+     "min": 0.0,
+     "default": 1000.0,
+     "unit": "ppm"
+    },
+    {
+     "key": "IN_P_H",
+     "label": "Presence extend time",
+     "short": "Pet",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 1800.0,
+     "unit": "s"
+    },
+    {
+     "key": "IN_S_H",
+     "label": "Sleep mode timeout",
+     "short": "Smt",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 7200.0,
+     "unit": "s"
+    },
+    {
+     "key": "IN_V_MAX",
+     "label": "Intensive ventilation absence",
+     "short": "Iva",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_V_MIN",
+     "label": "Basic ventilation absence",
+     "short": "Bva",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 10.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_V_P_MAX",
+     "label": "Intensive ventilation presence",
+     "short": "Ivp",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 30.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_V_P_MIN",
+     "label": "Basic ventilation presence",
+     "short": "Bvp",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 22.0,
+     "unit": "%"
+    }
+   ]
+  },
+  "Ventilation": {
+   "name": "Room Ventilation Controller",
+   "parameters": [
+    {
+     "key": "IN_H_MAX",
+     "label": "Maximum humidity",
+     "short": "Hmax",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 60.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_H_MIN",
+     "label": "Minimum Humidity [%]",
+     "short": "Hmin",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 40.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_A_MAX",
+     "label": "Maximum CO2 (air pollution)",
+     "short": "CO2max",
+     "min": 0.0,
+     "default": 1000.0,
+     "unit": "ppm"
+    },
+    {
+     "key": "IN_P_H",
+     "label": "Presence extend time",
+     "short": "Pet",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 1800.0,
+     "unit": "s"
+    },
+    {
+     "key": "IN_S_H",
+     "label": "Sleep mode timeout",
+     "short": "Smt",
+     "min": 0.0,
+     "step": 60.0,
+     "default": 7200.0,
+     "unit": "s"
+    },
+    {
+     "key": "IN_V_MAX",
+     "label": "Intensive ventilation absence",
+     "short": "Iva",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_V_MIN",
+     "label": "Basic ventilation absence",
+     "short": "Bva",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 10.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_V_P_MAX",
+     "label": "Intensive ventilation presence",
+     "short": "Ivp",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 100.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_V_P_MIN",
+     "label": "Basic ventilation presence",
+     "short": "Bvp",
+     "min": 0.0,
+     "max": 100.0,
+     "default": 20.0,
+     "unit": "%"
+    },
+    {
+     "key": "IN_T_F",
+     "label": "Frost protection temperature",
+     "short": "Fpt",
+     "default": -1.0
+    }
+   ]
+  },
+  "WBEM": {
+   "name": "Wallbox Manager",
+   "parameters": [
+    {
+     "key": "PrEco",
+     "label": "Price Eco",
+     "short": "PrEco",
+     "step": 0.1,
+     "default": 0.1,
+     "unit": "$$STRING::CURRENCY$$"
+    },
+    {
+     "key": "PrPrio",
+     "label": "Price Priority",
+     "short": "PrPrio",
+     "step": 0.1,
+     "default": 0.2,
+     "unit": "$$STRING::CURRENCY$$"
+    },
+    {
+     "key": "PrHour",
+     "label": "Connection fee per hour",
+     "short": "Cfp",
+     "default": 0.0,
+     "unit": "$$STRING::CURRENCY$$"
+    }
+   ]
+  },
+  "Wallbox": {
+   "name": "Wallbox",
+   "parameters": [
+    {
+     "key": "modeUnplug",
+     "label": "Mode after unplugging the vehicle",
+     "short": "Muv",
+     "default": 0.0
+    },
+    {
+     "key": "priceHour",
+     "label": "Connection fee per hour",
+     "short": "Cfp",
+     "default": 0.0,
+     "unit": "$$STRING::CURRENCY$$"
+    },
+    {
+     "key": "offset",
+     "label": "Meter reading offset",
+     "short": "Mro",
+     "default": 0.0
+    }
+   ]
+  },
+  "Weed": {
+   "name": "Viking iMow",
+   "parameters": [
+    {
+     "key": "PauseTimeout",
+     "label": "PauseTimeout",
+     "short": "Td",
+     "step": 60.0,
+     "default": 300.0
+    },
+    {
+     "key": "MvOffDelay",
+     "label": "MvOffDelay",
+     "short": "Th",
+     "default": 60.0,
+     "unit": "s"
+    }
+   ]
+  },
+  "Wind": {
+   "name": "Wind Gauge",
+   "parameters": [
+    {
+     "key": "Time",
+     "label": "Averaging-time",
+     "short": "Avgt",
+     "min": 0.0,
+     "default": 10.0,
+     "unit": "min"
+    },
+    {
+     "key": "Factor",
+     "label": "Factor",
+     "short": "F",
+     "default": 1.0
+    },
+    {
+     "key": "Warn",
+     "label": "Wind speed alarm",
+     "short": "W",
+     "min": 1.0,
+     "default": 50.0,
+     "unit": "km/h"
+    }
+   ]
+  },
+  "WindowsMonitor": {
+   "name": "Door and Window Monitor",
+   "parameters": [
+    {
+     "key": "Remanence",
+     "label": "Remanence input",
+     "short": "Rem"
+    }
+   ]
+  }
+ }
+}
