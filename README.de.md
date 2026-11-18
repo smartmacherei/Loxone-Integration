@@ -142,6 +142,9 @@ Nach einer solchen Änderung erneut das Ende des Programmstarts und der Client-V
 abwarten und die Integration zur Kontrolle neu laden. Der UDP-Status weist darauf hin.
 Lädt die Integration nur wegen einer unterbrochenen Verbindung neu, ändert sie das Programm nicht,
 sondern meldet **Anpassung offen, nichts hochgeladen**.
+Hochgeladen wird außerdem nur, wenn der Miniserver und alle Clients im Normalbetrieb sind
+(SPS-Zustand 5); sonst, etwa während der Verteilung an die Clients, meldet sie
+**Anpassung offen, nichts hochgeladen** mit dem Zustand je Miniserver.
 Der Knopf „HA-Werte ins Programm übernehmen“ prüft ebenfalls ausdrücklich das Programm.
 Während der Einrichtung nicht gleichzeitig aus Config speichern. Vor eigenen
 Änderungen das aktuelle Programm **aus dem Miniserver laden**.

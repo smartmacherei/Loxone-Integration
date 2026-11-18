@@ -136,7 +136,9 @@ then reload the Loxone integration in HA. It checks the program and configures r
 updates when needed, which may cause a backup and brief program restart. After such a
 change, wait for program startup and client distribution to finish, then reload again
 to verify activation. The UDP status indicates when this is needed. A reload caused only by a
-lost connection never changes the program; it reports **Change pending, nothing uploaded**. The “Apply HA values
+lost connection never changes the program; it reports **Change pending, nothing uploaded**. It also
+uploads only while the Miniserver and all clients run normally (PLC state 5); otherwise, for example
+during distribution to the clients, it reports the same with the state of each Miniserver. The “Apply HA values
 to program” button also explicitly checks the program. Avoid simultaneous saves from
 Loxone Config while setup is running. Load the current program **from the Miniserver**
 before editing it.
