@@ -19,7 +19,8 @@ if HAS_HA:
     from custom_components.loxone.const import CONF_HVAC_AUTO_MODE, SENDDOMAIN
 
 STATES = {name: f"00000000-0000-0000-00000000000000{index}" for index, name in enumerate(
-    ("operatingMode", "tempTarget", "comfortTemperature", "comfortTemperatureCool", "comfortTemperatureOffset"), 11)}
+    ("operatingMode", "activeMode", "tempTarget", "comfortTemperature", "comfortTemperatureCool",
+     "comfortTemperatureOffset"), 11)}
 
 
 @unittest.skipUnless(HAS_HA, "Run with the installed Home Assistant Python runtime")
@@ -78,11 +79,23 @@ class RoomControllerV2ModesHATest(unittest.IsolatedAsyncioTestCase):
         self.state(operatingMode=5, tempTarget=24)
         assert await self.sent_by(lambda: self.entity.set_temperature(temperature=23)) == ["setManualTemperature/23"]
 
+    async def sent_temperature(self, temperature, **states):
+        self.state(**states)
+        command, = await self.sent_by(lambda: self.entity.set_temperature(temperature=temperature))
+        name, value = command.rsplit("/", 1)
+        return name, float(value)
+
     async def test_temperature_while_cooling_automatically_shifts_the_offset_from_the_current_target(self):
         # The Miniserver takes setComfortModeTemp as the new comfortTemperatureOffset (PyLoxone
         # issue #544). While cooling, the target follows comfortTemperatureCool, not comfortTemperature.
-        self.state(operatingMode=2, comfortTemperature=21, comfortTemperatureCool=24, comfortTemperatureOffset=0,
-                   tempTarget=24)
-        command, = await self.sent_by(lambda: self.entity.set_temperature(temperature=23))
-        name, value = command.rsplit("/", 1)
-        assert (name, float(value)) == ("setComfortModeTemp", -1)
+        assert await self.sent_temperature(23, operatingMode=2, activeMode=1, comfortTemperature=21,
+                                           comfortTemperatureCool=24, comfortTemperatureOffset=0,
+                                           tempTarget=24) == ("setComfortModeTemp", -1)
+
+    async def test_temperature_while_off_or_protecting_sets_the_comfort_temperature(self):
+        # Off (-1, activeMode 4) and building protection (activeMode 2) hold a protection target.
+        # An offset taken from it would store e.g. +16 K (22 °C requested, 6 °C frost protection).
+        for operating_mode, active_mode in ((-1, 4), (0, 2)):
+            assert await self.sent_temperature(22, operatingMode=operating_mode, activeMode=active_mode,
+                                               comfortTemperature=21, comfortTemperatureOffset=0,
+                                               tempTarget=6) == ("setComfortModeTemp", 1)
