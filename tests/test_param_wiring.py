@@ -2,7 +2,7 @@
 from types import SimpleNamespace as NS
 import xml.etree.ElementTree as ET
 
-from test_udp_install import XML, module
+from test_udp_install import XML, module, with_scheme
 from test_ha_values_program import CAPTION, FULL
 
 values_program = module("ha_values_program")
@@ -82,6 +82,13 @@ def test_user_wired_parameter_is_never_rewired():
     xml, report = patch(SINGLE, [{**ENTRY, "target": USER_WIRED}])
     assert report["param_wired"] == 0 and report["param_skipped"] == [USER_WIRED.lower()]
     assert not [el for el in ET.fromstring(xml).iter("C") if el.get("Type") == "AMemory"]
+
+
+def test_system_scheme_references_do_not_block_the_wiring():
+    entries = values.program_entries([ENTRY])
+    xml, _ = values_program.patch_ha_values(SINGLE, entries)
+    wired, report = wiring.patch_parameter_wiring(with_scheme(xml), entries)
+    assert report["param_wired"] == 1 and wired != with_scheme(xml)
 
 
 def test_gateway_projects_are_not_wired():

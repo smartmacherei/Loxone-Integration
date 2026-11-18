@@ -5,6 +5,7 @@ Loxone Config 17.1/17.2. Original XML outside owned objects is kept verbatim.
 """
 from __future__ import annotations
 
+from collections import Counter
 import datetime as dt
 import hashlib
 import io
@@ -205,7 +206,6 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
     # UUID. Only that duplicate is tolerated, and only on the gateway path.
     proxies = set()
     if gateway:
-        from collections import Counter
         counts = Counter(e.get("U").lower() for e in root.iter() if e.tag in {"C", "Co"} and e.get("U"))
         for value, n in counts.items():
             if n < 2:
@@ -416,11 +416,26 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
 
     if not changed:
         return xml, report
-    return stamp_document(text, doc_id, proxies), report
+    return stamp_document(text, doc_id, root), report
 
 
-def stamp_document(text: str, doc_id: str, proxies=frozenset()) -> bytes:
-    """Refresh Date/DateS/NumO on the Document and reject duplicate identities."""
+def identities(root) -> Counter:
+    """How often each object, connector and UUID-valued identity occurs.
+
+    U is also a boolean setting on e.g. MO/AF/FS elements; those are no identities.
+    """
+    return Counter(el.get("U").lower() for el in root.iter()
+                   if el.get("U") and (el.tag in {"C", "Co"} or re.fullmatch(
+                       r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{16}", el.get("U"))))
+
+
+def stamp_document(text: str, doc_id: str, source) -> bytes:
+    """Refresh Date/DateS/NumO on the Document and reject identities the edit duplicated.
+
+    ``source``: the parsed original program. Config itself repeats some UUIDs: the Memory
+    proxies of a partial program, the placed objects of an Anlagenschema (``<SObj U>``).
+    Only an identity that occurs more often than in the original is refused.
+    """
     date = dt.datetime.now().replace(microsecond=0)
     date_s = int((dt.datetime.now(dt.timezone.utc) - dt.datetime(2009, 1, 1, tzinfo=dt.timezone.utc)).total_seconds())
     start, _ = _span(text, doc_id)
@@ -432,12 +447,8 @@ def stamp_document(text: str, doc_id: str, proxies=frozenset()) -> bytes:
         if count != 1:
             raise ValueError("Missing Document attribute " + key)
     result = (text[:start] + tag + text[end:]).encode("utf-8")
-    # U is also a boolean setting on e.g. MO/AF/FS elements. Only object,
-    # connector and UUID-valued attributes belong to the identity namespace.
-    ids = [el.get("U").lower() for el in ET.fromstring(result).iter()
-           if el.get("U") and (el.tag in {"C", "Co"} or re.fullmatch(
-               r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{16}", el.get("U")))]
-    if len(ids) != len(set(ids)) and {value for value in ids if ids.count(value) > 1} - set(proxies):
+    before = identities(source)
+    if any(n > max(1, before[value]) for value, n in identities(ET.fromstring(result)).items()):
         raise ValueError("Duplicate UUID in patched program")
     return result
 

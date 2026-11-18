@@ -29,21 +29,23 @@ from .miniserver import get_miniserver_from_hass
 _LOGGER = logging.getLogger(__name__)
 
 
+# operatingMode: 0/1/2 automatic with heating and cooling / heating only / cooling only (the
+# app's Auto, Heizen, Kühlen), 3/4/5 the same as manual modes, -1 off (the app's Aus).
 OPMODES = {
     None: HVACMode.OFF,
     -1: HVACMode.OFF,
     0: HVACMode.AUTO,
-    1: HVACMode.AUTO,
-    2: HVACMode.AUTO,
+    1: HVACMode.HEAT,
+    2: HVACMode.COOL,
     3: HVACMode.HEAT_COOL,
     4: HVACMode.HEAT,
-    5: HVACMode.HEAT_COOL,
+    5: HVACMode.COOL,
 }
 
 OPMODETOLOXONE = {
     HVACMode.HEAT_COOL: 3,
-    HVACMode.HEAT: 4,
-    HVACMode.COOL: 5,
+    HVACMode.HEAT: 1,
+    HVACMode.COOL: 2,
     HVACMode.OFF: -1,
 }
 

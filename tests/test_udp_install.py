@@ -89,6 +89,35 @@ def test_duplicate_real_ids_still_rejected(tag):
         program.patch_xml(xml, TARGET, {U})
 
 
+# Config's Anlagenschema (SystemScheme) lists every placed object as <SObj U="..."> with
+# that object's UUID: a reference to it, not a second object with the same identity.
+PROGRAM_TAG = b'<C Type="Program" V="178" U="18f7cbc0-0000-0002-ffffa13734b4be2f">'
+SCHEME_PAGE = (f'<C Type="Page" V="178" U="18f7cbc0-0000-0006-ffffa13734b4be2f" Title="Heizung">'
+               f'<C Type="SystemScheme" V="178" U="18f7cbc0-0000-0005-ffffa13734b4be2f" Title="Anlagenschema">'
+               f'<SObjs Num="1"><SObj T="0" Px="336" Py="264" Av="true" U="{U}"/></SObjs></C></C>').encode()
+
+
+def with_scheme(xml):
+    assert PROGRAM_TAG in xml
+    return xml.replace(PROGRAM_TAG, PROGRAM_TAG + SCHEME_PAGE)
+
+
+def test_system_scheme_references_are_not_duplicate_object_ids():
+    changed, report = program.patch_xml(with_scheme(XML), TARGET, {U})
+    assert report["managed"] == 1
+    assert SCHEME_PAGE in changed
+    assert program.patch_xml(changed, TARGET, {U})[0] == changed
+
+
+def test_patch_never_duplicates_an_existing_identity():
+    changed, _ = program.patch_xml(XML, TARGET, {U})
+    ref = next(el.get("U") for el in ET.fromstring(changed).iter("C") if el.get("Type") == "OutputRefLM")
+    # A foreign object already carries the UUID the logger reference would get.
+    foreign = XML.replace(PROGRAM_TAG, PROGRAM_TAG + f'<C Type="Memory" V="178" U="{ref}" Title="Fremd"/>'.encode())
+    with pytest.raises(ValueError, match="Duplicate UUID in patched program"):
+        program.patch_xml(foreign, TARGET, {U})
+
+
 def test_archive_roundtrip_preserves_original_files_and_user_xml():
     original = archive()
     changed, report = program.prepare(original, TARGET, {U})

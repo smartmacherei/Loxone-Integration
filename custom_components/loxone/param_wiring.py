@@ -128,4 +128,4 @@ def patch_parameter_wiring(xml: bytes, entries) -> tuple[bytes, dict]:
         changed = True
     if not changed:
         return xml, report
-    return stamp_document(text, doc_id), report
+    return stamp_document(text, doc_id, root), report
