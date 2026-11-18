@@ -160,6 +160,18 @@ def test_config_proxy_duplicates_are_tolerated_but_real_duplicates_are_not():
         program.prepare(archive(parts=(PART_GW, twin)), TARGET, {GW_IN, CL_IN}, gateway=True)
 
 
+def test_system_scheme_in_a_gateway_project_does_not_block_the_setup():
+    # The Anlagenschema lists its placed objects as <SObj U="..."> with their UUIDs (issue #6).
+    scheme = (f'<C Type="SystemScheme" V="174" U="{GW[:-1]}3" Title="Anlagenschema">'
+              f'<SObjs Num="1"><SObj T="0" Px="336" Py="264" Av="true" U="{GW_IN}"/></SObjs></C>')
+    full = document(live(GW, "Gateway", GW_IN, GATEWAY_OBJ), live(CL, "Client", CL_IN),
+                    prog(GW, "Gateway", scheme), prog(CL, "Client"))
+    part = document(live(GW, "Gateway", GW_IN, GATEWAY_OBJ), prog(GW, "Gateway", scheme))
+    changed, _ = program.prepare(archive(full, parts=(part, PART_CL)), TARGET, {GW_IN, CL_IN}, gateway=True)
+    _, _, refs = managed(program.program_members(changed)["sps0.LoxCC"])
+    assert {on for _, on, _ in refs} == {GW_IN + ";<v>", GW + ";<v>"}
+
+
 def test_format_174_is_only_accepted_on_the_gateway_path():
     single = XML.replace(b'V="178"', b'V="174"')
     with pytest.raises(ValueError) as caught:

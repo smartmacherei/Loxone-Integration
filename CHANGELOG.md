@@ -40,6 +40,23 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   Miniserver ein Programm, das Gateway ist vorhanden und kein Client fehlt. Ein einzelnes
   Teilprogramm galt bisher als vollständiges Projekt und hätte die Einträge der anderen
   Miniserver als gelöscht behandeln können. Das Log nennt jetzt, warum sie übersprungen wurde.
+- Behoben: Die automatische UDP-Einrichtung brach mit `PROGRAM_PREPARE_FAILED` ab
+  (`Duplicate UUID in patched program`), sobald das Projekt ein Anlagenschema mit platzierten
+  Objekten enthielt. Das Anlagenschema führt jedes platzierte Objekt mit dessen UUID
+  (`<SObj U="…">`), und die Prüfung auf doppelte UUIDs hielt diese Verweise für zweite Objekte.
+  Sie lehnt jetzt nur noch UUIDs ab, die durch die Änderung der Integration öfter vorkommen als
+  im Originalprogramm. Betraf ebenso HA-Werte (Weg 3) und Bausteinparameter. Nachgestellt mit
+  dem Programm aus Issue #14 (Einzelanlage); Issue #6 (Gateway/Client) zeigt denselben Verlauf.
+- Behoben: Intelligente Raumregelung. Stand der Regler in der Loxone-App auf „Heizen“ oder
+  „Kühlen“ (Automatik, nur Heizen bzw. nur Kühlen), zeigte HA „Auto“; der manuelle Kühlbetrieb
+  erschien als „Heizen/Kühlen“. HA zeigt jetzt Heizen bzw. Kühlen. „Heizen“ und „Kühlen“ aus HA
+  schalten wie die App in diese Automatik-Betriebsarten statt in die manuellen. Eine in HA
+  gesetzte Temperatur ändert dann die Komforttemperatur bis zum Ende des nächsten
+  Komfortzeitraums, statt eine manuelle Temperatur zu setzen. Im Komfort- und Sparbetrieb
+  verschiebt sie dafür den Komfort-Offset um die gewünschte Änderung des aktuellen Sollwerts, wie
+  in PyLoxone; bisher rechnete sie ihn immer von der Komforttemperatur fürs Heizen aus, auch beim
+  Kühlen. Bei „Aus“ und im Gebäudeschutz bleibt die Komforttemperatur der Bezug, sonst landete
+  der Frostschutz-Sollwert im Offset. Issue #16.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

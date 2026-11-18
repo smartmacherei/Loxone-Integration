@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from test_udp_install import XML, module
+from test_udp_install import XML, module, with_scheme
 from test_gateway_udp import CL, GATEWAY_OBJ, GW, document, prog
 
 values = module("ha_values_program")
@@ -58,6 +58,12 @@ def test_analog_values_carry_the_analog_flag_and_missing_flag_triggers_a_rebuild
     stripped = patched.replace(b' Analog="true"', b'')
     rebuilt, report = values.patch_ha_values(stripped, ENTRIES)
     assert report["ha_values_changed"] and b'Analog="true"' in rebuilt
+
+
+def test_system_scheme_references_do_not_block_the_input():
+    patched, report = values.patch_ha_values(with_scheme(SINGLE), ENTRIES)
+    assert report["ha_values_changed"]
+    assert [title for _, _, _, title, _ in managed(patched)[1]] == ["Tor", "Pool"]
 
 
 def test_input_recreated_by_config_with_new_uuids_is_adopted_not_duplicated():

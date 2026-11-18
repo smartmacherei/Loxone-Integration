@@ -29,21 +29,23 @@ from .miniserver import get_miniserver_from_hass
 _LOGGER = logging.getLogger(__name__)
 
 
+# operatingMode: 0/1/2 automatic with heating and cooling / heating only / cooling only (the
+# app's Auto, Heizen, Kühlen), 3/4/5 the same as manual modes, -1 off (the app's Aus).
 OPMODES = {
     None: HVACMode.OFF,
     -1: HVACMode.OFF,
     0: HVACMode.AUTO,
-    1: HVACMode.AUTO,
-    2: HVACMode.AUTO,
+    1: HVACMode.HEAT,
+    2: HVACMode.COOL,
     3: HVACMode.HEAT_COOL,
     4: HVACMode.HEAT,
-    5: HVACMode.HEAT_COOL,
+    5: HVACMode.COOL,
 }
 
 OPMODETOLOXONE = {
     HVACMode.HEAT_COOL: 3,
-    HVACMode.HEAT: 4,
-    HVACMode.COOL: 5,
+    HVACMode.HEAT: 1,
+    HVACMode.COOL: 2,
     HVACMode.OFF: -1,
 }
 
@@ -407,10 +409,18 @@ class LoxoneRoomControllerV2(LoxoneEntity, ClimateEntity, ABC):
                     value=f'setManualTemperature/{kwargs["temperature"]}',
                 ),
             )
-        else:  # Set comfort temp offset otherwise
-            new_offset = kwargs["temperature"] - self.get_state_value(
-                "comfortTemperature"
-            )
+        else:
+            # The Miniserver takes setComfortModeTemp as the new comfortTemperatureOffset
+            # (PyLoxone issue #544). In economy and comfort (activeMode 0/1) the target follows
+            # the comfort temperature, while cooling comfortTemperatureCool: shift the current
+            # offset by the requested change of the target. Off and building protection hold a
+            # protection target, so there the offset is taken from comfortTemperature itself.
+            if self.get_state_value("activeMode") in (0, 1):
+                new_offset = (kwargs["temperature"] - self.get_state_value("tempTarget")
+                              + (self.get_state_value("comfortTemperatureOffset") or 0))
+            else:
+                new_offset = kwargs["temperature"] - self.get_state_value("comfortTemperature")
+            new_offset = round(new_offset, 2)
             self.hass.bus.fire(
                 SENDDOMAIN,
                 dict(uuid=self.uuidAction, value=f"setComfortModeTemp/{new_offset}"),
