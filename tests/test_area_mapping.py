@@ -81,6 +81,15 @@ def test_entity_rename_preserves_stable_ownership_and_manual_override():
     assert edits == {}
 
 
+def test_modern_device_with_only_config_entry_id_is_moved():
+    module = mapping_module()
+    def devices(owner):
+        return module.plan_mapping("entry", [entity()], [{"id": "device", "area_id": None, "config_entry_id": owner}],
+                                   {"r1": "r1"}, {"r1": "office"}, {"office"}, {}, {"device"})[0]
+    assert devices("entry") == {"device": "office"}
+    assert devices("foreign") == {}
+
+
 def test_room_lookup_uses_ids_for_controls_states_and_subcontrols():
     rooms = mapping_module().room_index({"controls": {
         "controller": {"uuidAction": "controller", "room": "r1", "states": {"state": "state-id"},

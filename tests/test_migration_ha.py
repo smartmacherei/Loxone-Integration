@@ -24,6 +24,7 @@ class MigrationHATest(unittest.IsolatedAsyncioTestCase):
         self.directory = tempfile.TemporaryDirectory(prefix="loxone_migration_test_")
         self.hass = HomeAssistant(self.directory.name)
         self.hass.config_entries = ConfigEntries(self.hass, {})
+        await self.hass.config_entries.async_initialize()
         dr.async_setup(self.hass)
         await asyncio.gather(dr.async_load(self.hass), er.async_load(self.hass))
         options = {"host": "offline.invalid", "port": 80, "username": "test", "password": "FAKE_SECRET",

@@ -76,7 +76,8 @@ danach eine Übernahmeflanke (`<key>.set`). Nur Einzelanlagen.
 
 ## Geprüfter Stand
 
-Am übergebenen Testprojekt wurden mit der installierten HA-Laufzeit 2026.7.2 in
+Am übergebenen Testprojekt wurden mit der installierten HA-Laufzeit 2026.7.2 (die
+automatisierten Tests laufen heute in der GitHub-Actions-CI unter HA 2026.11.2) in
 einem isolierten Prüfprozess 1.213 Klemmen-Entities und 332 zusätzliche
 Zustands-Sensoren erzeugt und mit synthetischen Ereignissen verarbeitet, ohne
 Fehler. Der Offline-Entwurf erzeugt 820 Signalreferenzen plus Lebenszeichen;

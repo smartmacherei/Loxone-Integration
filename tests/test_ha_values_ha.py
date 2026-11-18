@@ -26,6 +26,7 @@ class HaValuesHATest(unittest.IsolatedAsyncioTestCase):
         self.directory = tempfile.TemporaryDirectory(prefix="loxone_ha_values_test_")
         self.hass = HomeAssistant(self.directory.name)
         self.hass.config_entries = ConfigEntries(self.hass, {})
+        await self.hass.config_entries.async_initialize()
         dr.async_setup(self.hass)
         await asyncio.gather(dr.async_load(self.hass), er.async_load(self.hass), lr.async_load(self.hass))
         self.receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

@@ -57,6 +57,18 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   in PyLoxone; bisher rechnete sie ihn immer von der Komforttemperatur fürs Heizen aus, auch beim
   Kühlen. Bei „Aus“ und im Gebäudeschutz bleibt die Komforttemperatur der Bezug, sonst landete
   der Frostschutz-Sollwert im Offset. Issue #16.
+- Neu: Die automatischen Tests laufen in GitHub Actions bei jedem Push und Pull Request, ohne
+  Home Assistant unter Python 3.12 und mit Home Assistant 2026.11.2 unter Python 3.14. Drei
+  HA-Testdateien hingen seit HA 2026.11 im Aufbau, weil die Tests `async_initialize()` der
+  Konfigurationseinträge nicht aufriefen; sie laufen wieder.
+- Behoben: Die Raumzuordnung las die mit HA 2026.11 veraltete Geräte-Eigenschaft
+  `DeviceEntry.config_entries`, die mit HA 2027.10 wegfällt, und behandelte Geräte mit nur
+  `config_entry_id` als geteilt, ordnete sie also keinem Bereich zu. Jetzt liest sie
+  `config_entry_id` und ordnet solche Geräte wieder zu.
+- Behoben: Testpakete aus unveröffentlichten Ständen meldeten die Version der letzten
+  Veröffentlichung (z. B. 1.8.5b2), ihre Diagnosen ließen sich davon nicht unterscheiden. Jetzt
+  tragen sie eine Entwicklungsversion der nächsten (z. B. 1.8.5b3.dev5); die nächste
+  Veröffentlichung wird weiter als Update angeboten.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

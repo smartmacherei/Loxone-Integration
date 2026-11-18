@@ -134,7 +134,8 @@ not a routine installation step. There is no automatic restore/restart loop.
 
 Offline tests cover archive integrity, project preservation, repeat runs, mandatory
 backup verification, interrupted uploads and the activation guard. Import/setup-form
-checks also run in HA 2026.7.2. Backup, upload/restart and the resulting active program
+checks also run against HA 2026.11.2 in the GitHub Actions CI on every push and pull
+request. Backup, upload/restart and the resulting active program
 were verified on the demo Miniserver 17.2.8.28. Live UDP heartbeat reception and
 integration reload were confirmed. Physical device transitions and restoration
 remain untested; see [device coverage and acceptance](device-coverage.md).

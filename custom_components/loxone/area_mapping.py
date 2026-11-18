@@ -63,7 +63,8 @@ def plan_mapping(entry_id, entities, devices, rooms, mapping, valid_areas, owned
             blocked_entities.add(owner_id)
     for device_id, members in grouped.items():
         device = devices.get(device_id)
-        if device and set(device.get("config_entries", [])) != {entry_id}:
+        if device and (set(device.get("config_entries", [])) if "config_entry_id" not in device
+                       else {device["config_entry_id"]}) != {entry_id}:
             continue  # A shared device must not be moved by this entry.
         device_area = device.get("area_id") if device else None
         if device_id in old_devices and device_area != old_devices[device_id]:
@@ -166,7 +167,10 @@ class AreaMapping:
             if self.closed or not self.mapping:
                 return
             devices, entities = dr.async_get(self.hass), er.async_get(self.hass)
-            device_rows = [{"id": d.id, "area_id": d.area_id, "config_entries": d.config_entries}
+            # HA 2026.11 deprecates DeviceEntry.config_entries; config_entry_id replaces it.
+            device_rows = [{"id": d.id, "area_id": d.area_id,
+                            **({"config_entry_id": d.config_entry_id} if hasattr(d, "config_entry_id")
+                               else {"config_entries": d.config_entries})}
                            for d in registry_entries(devices.devices)]
             entity_rows = [{"id": e.id, "entity_id": e.entity_id, "config_entry_id": e.config_entry_id,
                             "platform": e.platform, "unique_id": e.unique_id,
