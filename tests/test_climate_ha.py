@@ -22,7 +22,7 @@ if HAS_HA:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from homeassistant.components.climate import HVACMode
     from homeassistant.core import HomeAssistant, callback
-    from homeassistant.exceptions import HomeAssistantError
+    from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
     from custom_components.loxone.climate import (LoxoneAcControl, LoxoneRoomController,
                                                   LoxoneRoomControllerV2)
     from custom_components.loxone.const import CONF_HVAC_AUTO_MODE, SENDDOMAIN
@@ -34,7 +34,7 @@ IRC_STATES = {name: f"00000000-0000-0000-00000000000000{index}" for index, name 
     ("mode", "serviceMode", "currHeatTempIx", "currCoolTempIx", "tempTarget", "tempActual"), 31)}
 AC_STATES = {name: f"00000000-0000-0000-00000000000000{index}" for index, name in enumerate(
     ("status", "mode", "temperature", "targetTemperature", "fan", "fanspeeds", "ventMode",
-     "airflows"), 51)}
+     "airflows", "minTemp", "maxTemp"), 51)}
 
 
 class ClimateHATestCase(unittest.IsolatedAsyncioTestCase):
@@ -190,6 +190,23 @@ class RoomControllerModesHATest(ClimateHATestCase):
             self.apply(await self.send(hvac_mode))
             assert self.entity.hvac_mode == hvac_mode
 
+    async def test_restricted_controller_offers_only_its_modes(self):
+        # details.restrictedToMode: 0 heating and cooling, 1 cooling only, 2 heating only.
+        both = [HVACMode.OFF, HVACMode.AUTO, HVACMode.HEAT, HVACMode.COOL]
+        for restricted, hidden in ((0, None), (1, HVACMode.HEAT), (2, HVACMode.COOL)):
+            modes = self.create(restrictedToMode=restricted).hvac_modes
+            assert modes == [mode for mode in both if mode != hidden], restricted
+
+    async def test_heating_only_controller_is_not_switched_to_cooling(self):
+        # mode/4 would switch a heating-only controller to automatic cooling.
+        self.entity = self.create(restrictedToMode=2)
+        self.entity.schedule_update_ha_state = lambda *args, **kwargs: None
+        self.state(mode=3, serviceMode=0)
+        for action in (self.entity.async_handle_set_hvac_mode_service, self.entity.set_hvac_mode):
+            with self.assertRaises(ServiceValidationError):
+                await self.sent_by(lambda: action(HVACMode.COOL))
+            assert self.sent == []
+
     async def test_turn_on_leaves_off_without_changing_the_mode(self):
         self.state(mode=4, serviceMode=1)
         assert await self.sent_by(self.entity.async_turn_on) == ["service/0"]
@@ -217,10 +234,10 @@ class RoomControllerModesHATest(ClimateHATestCase):
 class AcControlHATest(ClimateHATestCase):
     states = AC_STATES
 
-    def create(self, **details):
+    def create(self, states=AC_STATES, **details):
         return LoxoneAcControl(
             hass=self.hass, name="Klima", uuidAction="00000000-0000-0000-0000000000000050",
-            type="AcControl", room="", cat="", details=details, states=AC_STATES)
+            type="AcControl", room="", cat="", details=details, states=states)
 
     async def test_off_only_powers_off_and_keeps_the_configured_mode(self):
         assert await self.send(HVACMode.OFF) == ["off"]
@@ -243,6 +260,27 @@ class AcControlHATest(ClimateHATestCase):
             self.state(temperature=77, targetTemperature=68)
             attributes = self.entity.state_attributes
             assert (attributes["current_temperature"], attributes["temperature"]) == expected, details
+
+    def limits(self):
+        attributes = self.entity.capability_attributes
+        return attributes["min_temp"], attributes["max_temp"]
+
+    async def test_target_range_follows_the_limit_states(self):
+        # minTemp/maxTemp since Config 15.3, in the Miniserver's unit.
+        self.state(minTemp=16, maxTemp=30)
+        assert self.limits() == (16, 30)
+        self.entity = self.create(format="%.1f°F")
+        self.state(minTemp=59, maxTemp=86)
+        assert (self.entity.min_temp, self.entity.max_temp) == (59, 86)
+        assert self.limits() == (15, 30)
+
+    async def test_target_range_without_limit_states_is_the_home_assistant_default(self):
+        # Before the states arrive, and on a Miniserver older than 15.3 without them.
+        older = {name: uuid for name, uuid in AC_STATES.items() if name not in ("minTemp", "maxTemp")}
+        for states in (AC_STATES, older):
+            self.entity = self.create(states)
+            self.state(temperature=21, targetTemperature=22)
+            assert self.limits() == (7, 35)
 
 
 @unittest.skipUnless(HAS_HA, "Run with the installed Home Assistant Python runtime")

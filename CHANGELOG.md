@@ -182,6 +182,19 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 - Geändert: Die Prüfung „Clients prüfen“ (`CLIENT_UNREACHABLE`) entfällt. Ein Client, der nicht
   antwortet, verschiebt den Upload jetzt, statt einen Fehler auszulösen. Ein nach einem
   Verbindungsverlust verschobener Upload trägt `deferred_reason: connection_reload`.
+- Behoben: Ein alter Raumregler, der in Loxone auf „nur Heizen“ beschränkt ist, bot in HA
+  trotzdem „Kühlen“ an, und die Auswahl schaltete ihn auf automatisches Kühlen. Jetzt bietet HA
+  nur die erlaubten Betriebsarten an („nur Kühlen“ entsprechend ohne „Heizen“) und lehnt andere
+  ab, ohne einen Befehl zu senden.
+- Behoben: Bei Klimaanlagen (AC Control) ließ HA immer Solltemperaturen von 7 bis 35 °C zu, auch
+  außerhalb des Bereichs, den der Miniserver erlaubt. Jetzt gelten die Grenzen
+  `minTemp`/`maxTemp` des Bausteins (ab Loxone Config 15.3); ohne sie bleibt es bei den
+  Standardgrenzen von HA.
+- Behoben: Mit HA 2026.11 (aiohttp 3.14) warnte jede Anfrage an den Miniserver „BasicAuth is
+  deprecated and will be removed in aiohttp 4.0“; mit aiohttp 4.0 hätte die Anmeldung nicht mehr
+  funktioniert. Jetzt sendet die Integration die Anmeldung als eigenen Authorization-Header, mit
+  derselben Zeichenkodierung wie bisher (latin-1), ohne Warnung und auch mit älteren
+  HA-Versionen.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

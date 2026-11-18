@@ -15,7 +15,7 @@ from homeassistant.components.climate.const import (ClimateEntityFeature,
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from voluptuous import All, Optional, Range
@@ -72,6 +72,9 @@ IRC_MODETOLOXONE = {
 
 IRC_COOLING_MODES = (2, 4, 6)
 IRC_SERVICE_OFF = 1
+# details.restrictedToMode: 0 heating and cooling, 1 cooling only, 2 heating only.
+IRC_COOLING_ONLY = 1
+IRC_HEATING_ONLY = 2
 
 
 def temperature_unit_from_format(format_str: str | None) -> str:
@@ -278,12 +281,13 @@ class LoxoneRoomController(LoxoneEntity, ClimateEntity, ABC):
     @property
     def hvac_modes(self) -> list[HVACMode]:
         """Return the list of available hvac operation modes."""
-        return [
-            HVACMode.OFF,
-            HVACMode.AUTO,
-            HVACMode.HEAT,
-            HVACMode.COOL,
-        ]
+        restricted = self.details.get("restrictedToMode")
+        modes = [HVACMode.OFF, HVACMode.AUTO]
+        if restricted != IRC_COOLING_ONLY:
+            modes.append(HVACMode.HEAT)
+        if restricted != IRC_HEATING_ONLY:
+            modes.append(HVACMode.COOL)
+        return modes
 
     @property
     def native_temperature_unit(self) -> str:
@@ -305,6 +309,9 @@ class LoxoneRoomController(LoxoneEntity, ClimateEntity, ABC):
 
     def set_hvac_mode(self, hvac_mode: str):
         """Set new target hvac mode."""
+        # Like HA's service validation; mode/4 would make a heating-only controller cool.
+        if hvac_mode not in self.hvac_modes:
+            raise ServiceValidationError(f"{self.name}: hvac mode {hvac_mode} is not supported")
         if hvac_mode == HVACMode.OFF:
             self.send(f"service/{IRC_SERVICE_OFF}")
         else:
@@ -567,10 +574,8 @@ class LoxoneAcControl(LoxoneEntity, ClimateEntity, ABC):
         # _LOGGER.debug(f"State attribs after event handling: {self._stateAttribValues}")
 
     def get_state_value(self, name):
-        uuid = self._stateAttribUuids[name]
-        return (
-            self._stateAttribValues[uuid] if uuid in self._stateAttribValues else None
-        )
+        # minTemp and maxTemp are missing before Config 15.3.
+        return self._stateAttribValues.get(self._stateAttribUuids.get(name))
 
     @property
     def extra_state_attributes(self):
@@ -686,6 +691,18 @@ class LoxoneAcControl(LoxoneEntity, ClimateEntity, ABC):
     def target_temperature_step(self) -> float | None:
         """Return the supported step of target temperature."""
         return 0.5
+
+    @property
+    def min_temp(self) -> float:
+        """Lowest target temperature, HA's default before the state minTemp arrives."""
+        value = self.get_state_value("minTemp")
+        return super().min_temp if value is None else value
+
+    @property
+    def max_temp(self) -> float:
+        """Highest target temperature, HA's default before the state maxTemp arrives."""
+        value = self.get_state_value("maxTemp")
+        return super().max_temp if value is None else value
 
     @property
     def fan_mode(self) -> str | None:

@@ -534,8 +534,10 @@ async def async_fetch_values(session, host, port, username, password, uuids, raw
     """
     import aiohttp
 
+    from .pyloxone_api.http_auth import basic_auth_header
+
     hosts = hosts or {}
-    auth = aiohttp.BasicAuth(str(username), str(password))
+    headers = {"Authorization": basic_auth_header(str(username), str(password))}
     timeout = aiohttp.ClientTimeout(total=8)
     import asyncio
     import math
@@ -552,7 +554,7 @@ async def async_fetch_values(session, host, port, username, password, uuids, raw
                 if on_attempt:
                     on_attempt(u)
                 base = "http://{}:{}".format(target_host, target_port)
-                async with session.get(base + "/jdev/sps/io/" + u, auth=auth, timeout=timeout) as resp:
+                async with session.get(base + "/jdev/sps/io/" + u, headers=headers, timeout=timeout) as resp:
                     if resp.status != 200:
                         return
                     data = await resp.json(content_type=None)
@@ -586,13 +588,15 @@ async def async_fetch_program(session, host, port, username, password) -> bytes 
 
     import aiohttp
 
+    from .pyloxone_api.http_auth import basic_auth_header
+
     loop = asyncio.get_running_loop()
 
     base = "http://{}:{}".format(host, port)
-    auth = aiohttp.BasicAuth(str(username), str(password))
+    headers = {"Authorization": basic_auth_header(str(username), str(password))}
     timeout = aiohttp.ClientTimeout(total=20)
     try:
-        async with session.get(base + "/dev/fslist/prog", auth=auth, timeout=timeout) as resp:
+        async with session.get(base + "/dev/fslist/prog", headers=headers, timeout=timeout) as resp:
             if resp.status != 200:
                 _LOGGER.warning("fslist/prog -> HTTP %s (Geraete-Gruppierung faellt zurueck)", resp.status)
                 return None
@@ -601,7 +605,7 @@ async def async_fetch_program(session, host, port, username, password) -> bytes 
         if not fname:
             _LOGGER.warning("Kein sps_*.LoxCC/.zip in /prog gefunden")
             return None
-        async with session.get(base + "/dev/fsget/prog/" + fname, auth=auth, timeout=timeout) as resp:
+        async with session.get(base + "/dev/fsget/prog/" + fname, headers=headers, timeout=timeout) as resp:
             if resp.status != 200:
                 _LOGGER.warning("fsget %s -> HTTP %s", fname, resp.status)
                 return None

@@ -1,16 +1,20 @@
 """Gateway/Client archives: full project, Miniserver ownership, per-client polling."""
 import asyncio
-import importlib.util
+import importlib
 import io
 from pathlib import Path
+import sys
+from types import ModuleType
 import zipfile
 
 from test_udp_install import program
 
 ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "loxone"
-spec = importlib.util.spec_from_file_location("gateway_topology", ROOT / "topology.py")
-top = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(top)
+# A package without its __init__ (HA), so topology's relative imports resolve.
+package = ModuleType("gateway_loxone")
+package.__path__ = [str(ROOT)]
+sys.modules["gateway_loxone"] = package
+top = importlib.import_module("gateway_loxone.topology")
 
 GW, CL = "10000000-0000-0000-ffff000000000001", "20000000-0000-0000-ffff000000000002"
 GW_IN, CL_IN = "10000000-0000-0001-ffff000000000001", "20000000-0000-0001-ffff000000000002"
@@ -88,10 +92,8 @@ def test_client_hosts_only_for_client_terminals():
 
 
 def test_values_are_fetched_from_the_owning_miniserver(monkeypatch):
-    import sys
     from types import SimpleNamespace
-    monkeypatch.setitem(sys.modules, "aiohttp", SimpleNamespace(
-        BasicAuth=lambda user, password: (user, password), ClientTimeout=lambda total: total))
+    monkeypatch.setitem(sys.modules, "aiohttp", SimpleNamespace(ClientTimeout=lambda total: total))
     urls = []
 
     class Response:
