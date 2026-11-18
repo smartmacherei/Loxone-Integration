@@ -4,7 +4,7 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unreleased]
+## [1.8.5b3] - 2026-11-18 (Vorabversion)
 
 - Neu: Bausteinparameter in HA. Jeder Funktionsbaustein bringt seine Parameter (z. B. Fahrzeit
   auf/ab der Beschattung, Nachlaufzeit der Präsenz) als Zahl-Entitäten unter „Konfiguration“ an
