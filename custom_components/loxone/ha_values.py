@@ -165,10 +165,8 @@ def _store(hass, entry_id):
 class HaValuesSender:
     """Sends ``key=value`` datagrams.
 
-    Numbers go out on every change, every 5 minutes, at start and after a program change.
-    A digital value is a pulse on the Loxone side (the command fires on ``key=1``), so it
-    goes out only when the state really changes: a repeat would ring the bell or toggle a
-    light again.
+    Every value, on/off as 1/0 included, goes out on every change, every 5 minutes, at start
+    and after a program change. Its analog command holds the value, so a repeat changes nothing.
     """
 
     def __init__(self, hass, entries, host, port=PORT):
@@ -189,17 +187,14 @@ class HaValuesSender:
     @callback
     def _changed(self, event):
         entity_id = event.data.get("entity_id")
-        old, new = event.data.get("old_state"), event.data.get("new_state")
-        # Unknown predecessors (restart, entity just appeared) and attribute-only updates send no pulse.
-        changed = old is not None and new is not None and old.state not in UNKNOWN and old.state != new.state
-        self.send([e for e in self.entries if e["entity_id"] == entity_id and (changed or not e["digital"])])
+        self.send([e for e in self.entries if e["entity_id"] == entity_id])
 
     @callback
     def _tick(self, _now):
         self.send_all()
 
     def send_all(self):
-        self.send([e for e in self.entries if not e["digital"]])
+        self.send(self.entries)
 
     def send(self, entries):
         if self.socket is None or not self.host:

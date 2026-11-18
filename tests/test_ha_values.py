@@ -78,8 +78,8 @@ DIGITAL = {"key": "input_boolean.klingel", "entity_id": "input_boolean.klingel",
 ANALOG = {"key": "sensor.pool", "entity_id": "sensor.pool", "attribute": None, "title": "Pool", "digital": False}
 
 
-def test_digital_value_is_sent_only_when_the_state_really_changes():
-    # A digital command fires a pulse on "=1", so a repeat would ring the bell again.
+def test_digital_value_follows_every_change_as_one_or_zero():
+    # Its analog command holds the value: Loxone shows "on" for as long as HA does.
     on, off = state("on"), state("off")
     current = {"input_boolean.klingel": on}
     send = sender([DIGITAL], current)
@@ -89,19 +89,19 @@ def test_digital_value_is_sent_only_when_the_state_really_changes():
     assert send.socket.sent == ["input_boolean.klingel=1", "input_boolean.klingel=0"]
 
 
-def test_digital_value_ignores_attribute_changes_and_unknown_predecessors():
+def test_digital_value_is_also_sent_after_restart_and_on_attribute_changes():
     on = state("on", brightness=10)
     send = sender([DIGITAL], {"input_boolean.klingel": on})
-    send._changed(event("input_boolean.klingel", state("on", brightness=5), on))   # attribute only
     send._changed(event("input_boolean.klingel", state("unavailable"), on))        # HA or integration restart
-    send._changed(event("input_boolean.klingel", None, on))                        # entity just appeared
-    assert send.socket.sent == []
+    send._changed(event("input_boolean.klingel", state("on", brightness=5), on))   # attribute only
+    assert send.socket.sent == ["input_boolean.klingel=1", "input_boolean.klingel=1"]
 
 
-def test_resend_after_start_timer_or_program_change_skips_digital_values():
+def test_resend_after_start_timer_or_program_change_includes_digital_values():
+    # A Miniserver restart loses the value; the resend restores the state within 5 minutes.
     send = sender([DIGITAL, ANALOG], {"input_boolean.klingel": state("on"), "sensor.pool": state("23.5")})
     send.send_all()
-    assert send.socket.sent == ["sensor.pool=23.5"]
+    assert send.socket.sent == ["input_boolean.klingel=1", "sensor.pool=23.5"]
 
 
 def test_analog_values_still_follow_every_change_including_attributes():
