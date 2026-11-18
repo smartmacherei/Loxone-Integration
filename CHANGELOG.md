@@ -98,6 +98,26 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   übernimmt sie Schema und Port der Weiterleitung (`wss://`). Issue #12.
 - Behoben: Auf Miniservern mit Firmware vor 10.2 schlug die Token-Verlängerung fehl, weil im
   Befehl ein Schrägstrich fehlte.
+- Behoben: Alte Raumregler (IRoomController) zeigten „Automatik kühlen“, „Manuell heizen“ und
+  „Manuell kühlen“ als „Aus“; „Aus“ schaltete auf Automatik kühlen, und „Heizen“/„Kühlen“
+  schickten Modi, die sich nicht wählen lassen. Jetzt erscheinen die Automatik-Modi als „Auto“,
+  Heiz- und Kühlmodi als „Heizen“/„Kühlen“. „Heizen“/„Kühlen“ wählen Automatik heizen/kühlen,
+  „Aus“ schaltet über den Servicemodus Heizen und Kühlen ab. Die Befehle heißen wie im
+  Structure File (`mode/`, `service/`, `settemp/`).
+- Behoben: Bei alten Raumreglern änderte eine Solltemperatur in „Automatik kühlen“ und
+  „Manuell kühlen“ die Heiztemperatur, und Regler in °F lehnten jede sinnvolle Solltemperatur ab
+  (Bereich 7–35 °F). Jetzt ändert sie in allen Kühlmodi die Kühltemperatur, und der Bereich gilt
+  in °C, umgerechnet in °F.
+- Behoben: „Einschalten“ stellte den Raumregler V2 auf manuell Heizen/Kühlen und Klimaanlagen
+  (AC Control) auf Heizen; „Aus“ setzte bei Klimaanlagen zusätzlich den Modus auf Automatik.
+  Jetzt schaltet „Einschalten“ den Raumregler V2 auf Automatik, alte Raumregler verlassen „Aus“
+  mit ihrem Modus, Klimaanlagen schalten nur ein. „Aus“ behält den eingestellten Modus.
+- Behoben: Klimaanlagen mit °F-Format zeigten Fahrenheit-Werte als Celsius, und HA 2026.11
+  meldete für alle Klima-Entitäten veraltete Temperatur-Eigenschaften, die ab HA 2027.11 nicht
+  mehr wirken. Jetzt wird die Einheit aus dem Format erkannt, und es gelten die neuen
+  Eigenschaften; ältere HA-Versionen funktionieren weiter.
+- Behoben: Eine Solltemperatur am Raumregler V2, bevor seine Zustände vom Miniserver da waren,
+  brach mit einem internen TypeError ab. Jetzt erscheint eine verständliche Fehlermeldung.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

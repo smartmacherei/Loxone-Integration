@@ -15,6 +15,7 @@ from homeassistant.components.climate.const import (ClimateEntityFeature,
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from voluptuous import All, Optional, Range
@@ -48,6 +49,36 @@ OPMODETOLOXONE = {
     HVACMode.COOL: 2,
     HVACMode.OFF: -1,
 }
+
+# IRoomController (legacy) mode: 0 automatic (no heating or cooling period), 1/2 automatic
+# currently heating/cooling (not selectable), 3/4 automatic heating/cooling, 5/6 manual
+# heating/cooling. It has no off mode: service mode 1 switches heating and cooling off,
+# service/0 ends the service mode.
+IRC_MODES = {
+    0: HVACMode.AUTO,
+    1: HVACMode.AUTO,
+    2: HVACMode.AUTO,
+    3: HVACMode.HEAT,
+    4: HVACMode.COOL,
+    5: HVACMode.HEAT,
+    6: HVACMode.COOL,
+}
+
+IRC_MODETOLOXONE = {
+    HVACMode.AUTO: 0,
+    HVACMode.HEAT: 3,
+    HVACMode.COOL: 4,
+}
+
+IRC_COOLING_MODES = (2, 4, 6)
+IRC_SERVICE_OFF = 1
+
+
+def temperature_unit_from_format(format_str: str | None) -> str:
+    """Unit of a Loxone format string such as "%.1f°F"; Celsius unless it names Fahrenheit."""
+    if format_str and "F" in format_str:
+        return UnitOfTemperature.FAHRENHEIT
+    return UnitOfTemperature.CELSIUS
 
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -188,12 +219,12 @@ class LoxoneRoomController(LoxoneEntity, ClimateEntity, ABC):
         }
 
     @property
-    def current_temperature(self):
+    def native_current_temperature(self):
         """Return the current temperature."""
         return self.get_state_value("tempActual")
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self.get_state_value("tempTarget")
 
@@ -203,24 +234,20 @@ class LoxoneRoomController(LoxoneEntity, ClimateEntity, ABC):
         if temp is None:
             return
 
-        # IRoomController uses setTemp with current temperature index
-        # Get the current active temperature index based on mode
-        mode = self.get_state_value("mode")
-
-        # Determine which temperature index to use
+        # settemp/<temperature id>/<value> changes the temperature in use: the cooling one in
+        # the cooling modes, otherwise the heating one.
         temp_idx = self.get_state_value("currHeatTempIx")
-        if mode == 2:  # Cooling mode
+        if self.get_state_value("mode") in IRC_COOLING_MODES:
             cool_idx = self.get_state_value("currCoolTempIx")
             if cool_idx is not None:
                 temp_idx = cool_idx
 
         if temp_idx is not None:
-            # Command format: setTemp/<index>/<value>
             self.hass.bus.fire(
                 SENDDOMAIN,
                 dict(
                     uuid=self.uuidAction,
-                    value=f"setTemp/{int(temp_idx)}/{temp}",
+                    value=f"settemp/{int(temp_idx)}/{temp}",
                 ),
             )
             self.schedule_update_ha_state()
@@ -244,19 +271,9 @@ class LoxoneRoomController(LoxoneEntity, ClimateEntity, ABC):
     @property
     def hvac_mode(self) -> HVACMode | None:
         """Return hvac operation mode."""
-        mode = self.get_state_value("mode")
-
-        # mode: 0=Auto, 1=Heat, 2=Cool, 3=Heat/Cool, 4=Off
-        if mode == 0:
-            return HVACMode.AUTO
-        elif mode == 1:
-            return HVACMode.HEAT
-        elif mode == 2:
-            return HVACMode.COOL
-        elif mode == 3:
-            return HVACMode.HEAT_COOL
-        else:
+        if self.get_state_value("serviceMode") == IRC_SERVICE_OFF:
             return HVACMode.OFF
+        return IRC_MODES.get(self.get_state_value("mode"))
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
@@ -266,59 +283,41 @@ class LoxoneRoomController(LoxoneEntity, ClimateEntity, ABC):
             HVACMode.AUTO,
             HVACMode.HEAT,
             HVACMode.COOL,
-            HVACMode.HEAT_COOL,
         ]
 
     @property
-    def temperature_unit(self) -> str:
+    def native_temperature_unit(self) -> str:
         """Return the unit of measurement used by the platform."""
-        format_str = self.details.get("format")
+        return temperature_unit_from_format(self.details.get("format"))
 
-        if format_str is None:
-            return UnitOfTemperature.CELSIUS
-
-        if "°F" in format_str or "F" in format_str:
-            return UnitOfTemperature.FAHRENHEIT
-
-        if "°C" in format_str or "C" in format_str:
-            return UnitOfTemperature.CELSIUS
-
-        return UnitOfTemperature.CELSIUS
+    # HA before 2026.11 reads the old names.
+    current_temperature = native_current_temperature
+    temperature_unit = native_temperature_unit
+    target_temperature = native_target_temperature
 
     @property
     def target_temperature_step(self) -> float | None:
         """Return the supported step of target temperature."""
         return 0.5
 
-    @property
-    def min_temp(self) -> float:
-        """Return the minimum temperature."""
-        return 7.0
-
-    @property
-    def max_temp(self) -> float:
-        """Return the maximum temperature."""
-        return 35.0
+    def send(self, value):
+        self.hass.bus.fire(SENDDOMAIN, dict(uuid=self.uuidAction, value=value))
 
     def set_hvac_mode(self, hvac_mode: str):
         """Set new target hvac mode."""
-        # Map HVAC mode to Loxone mode
-        mode_map = {
-            HVACMode.OFF: 4,
-            HVACMode.AUTO: 0,
-            HVACMode.HEAT: 1,
-            HVACMode.COOL: 2,
-            HVACMode.HEAT_COOL: 3,
-        }
-
-        target_mode = mode_map.get(hvac_mode, 0)
-
-        self.hass.bus.fire(
-            SENDDOMAIN,
-            dict(uuid=self.uuidAction, value=f"setMode/{target_mode}"),
-        )
+        if hvac_mode == HVACMode.OFF:
+            self.send(f"service/{IRC_SERVICE_OFF}")
+        else:
+            self.turn_on()
+            self.send(f"mode/{IRC_MODETOLOXONE[hvac_mode]}")
 
         self.schedule_update_ha_state()
+
+    def turn_on(self):
+        """Leave the service mode heating and cooling off, keeping the mode."""
+        if self.get_state_value("serviceMode") == IRC_SERVICE_OFF:
+            self.send("service/0")
+            self.schedule_update_ha_state()
 
 
 class LoxoneRoomControllerV2(LoxoneEntity, ClimateEntity, ABC):
@@ -393,15 +392,15 @@ class LoxoneRoomControllerV2(LoxoneEntity, ClimateEntity, ABC):
         return False
 
     @property
-    def current_temperature(self):
+    def native_current_temperature(self):
         """Return the current temperature."""
         return self.get_state_value("tempActual")
 
     def set_temperature(self, **kwargs):
         """Set new target temperature"""
-        if (
-            self.get_state_value("operatingMode") > 2
-        ):  # Set manual temp if any of the manual modes selected
+        operating_mode = self.get_state_value("operatingMode")
+        if operating_mode is not None and operating_mode > 2:
+            # Set manual temp if any of the manual modes selected
             self.hass.bus.fire(
                 SENDDOMAIN,
                 dict(
@@ -409,22 +408,27 @@ class LoxoneRoomControllerV2(LoxoneEntity, ClimateEntity, ABC):
                     value=f'setManualTemperature/{kwargs["temperature"]}',
                 ),
             )
+            return
+        # The Miniserver takes setComfortModeTemp as the new comfortTemperatureOffset
+        # (PyLoxone issue #544). In economy and comfort (activeMode 0/1) the target follows
+        # the comfort temperature, while cooling comfortTemperatureCool: shift the current
+        # offset by the requested change of the target. Off and building protection hold a
+        # protection target, so there the offset is taken from comfortTemperature itself.
+        if self.get_state_value("activeMode") in (0, 1):
+            reference = self.get_state_value("tempTarget")
+            offset = self.get_state_value("comfortTemperatureOffset") or 0
         else:
-            # The Miniserver takes setComfortModeTemp as the new comfortTemperatureOffset
-            # (PyLoxone issue #544). In economy and comfort (activeMode 0/1) the target follows
-            # the comfort temperature, while cooling comfortTemperatureCool: shift the current
-            # offset by the requested change of the target. Off and building protection hold a
-            # protection target, so there the offset is taken from comfortTemperature itself.
-            if self.get_state_value("activeMode") in (0, 1):
-                new_offset = (kwargs["temperature"] - self.get_state_value("tempTarget")
-                              + (self.get_state_value("comfortTemperatureOffset") or 0))
-            else:
-                new_offset = kwargs["temperature"] - self.get_state_value("comfortTemperature")
-            new_offset = round(new_offset, 2)
-            self.hass.bus.fire(
-                SENDDOMAIN,
-                dict(uuid=self.uuidAction, value=f"setComfortModeTemp/{new_offset}"),
-            )
+            reference = self.get_state_value("comfortTemperature")
+            offset = 0
+        if operating_mode is None or reference is None:
+            raise HomeAssistantError(
+                f"{self.name}: the room controller states have not been received from the "
+                "Miniserver yet, try again shortly")
+        new_offset = round(kwargs["temperature"] - reference + offset, 2)
+        self.hass.bus.fire(
+            SENDDOMAIN,
+            dict(uuid=self.uuidAction, value=f"setComfortModeTemp/{new_offset}"),
+        )
 
     @property
     def hvac_action(self) -> HVACAction | None:
@@ -456,30 +460,22 @@ class LoxoneRoomControllerV2(LoxoneEntity, ClimateEntity, ABC):
         ]
 
     @property
-    def temperature_unit(self) -> str:
+    def native_temperature_unit(self) -> str:
         """Return the unit of measurement used by the platform."""
         # The Loxone Config app allows the designer to set an arbitrary
         # format string for the room controller's input temperature sensor.
-        # We assume that the format string contains the unit of temperature,
-        # and default to Celsius if not.
-        format_str = self.details.get("format")
-
-        if format_str is None:
-            return UnitOfTemperature.CELSIUS
-
-        if "°F" in format_str or "F" in format_str:
-            return UnitOfTemperature.FAHRENHEIT
-
-        if "°C" in format_str or "C" in format_str:
-            return UnitOfTemperature.CELSIUS
-
-        return UnitOfTemperature.CELSIUS
+        return temperature_unit_from_format(self.details.get("format"))
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
 
         return self.get_state_value("tempTarget")
+
+    # HA before 2026.11 reads the old names.
+    current_temperature = native_current_temperature
+    temperature_unit = native_temperature_unit
+    target_temperature = native_target_temperature
 
     @property
     def target_temperature_step(self) -> float | None:
@@ -517,9 +513,9 @@ class LoxoneRoomControllerV2(LoxoneEntity, ClimateEntity, ABC):
 
         self.schedule_update_ha_state()
 
-        # if the mode selected is a manual one, we set the target temperature too
-        # if (hvac_mode != HVAC_MODE_AUTO):
-        #    self.set_temperature({"temperature": self.target_temperature})
+    def turn_on(self):
+        """Turn on in the automatic mode; HA would pick the manual HEAT_COOL."""
+        self.set_hvac_mode(HVACMode.AUTO)
 
     def set_preset_mode(self, preset_mode: str):
         """Set new preset mode."""
@@ -588,7 +584,7 @@ class LoxoneAcControl(LoxoneEntity, ClimateEntity, ABC):
         }
 
     @property
-    def current_temperature(self):
+    def native_current_temperature(self):
         """Return the current temperature."""
         return self.get_state_value("temperature")
 
@@ -626,6 +622,10 @@ class LoxoneAcControl(LoxoneEntity, ClimateEntity, ABC):
 
     def set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
+        # Off keeps the configured mode for the next power on.
+        if hvac_mode == HVACMode.OFF:
+            self.hass.bus.fire(SENDDOMAIN, dict(uuid=self.uuidAction, value="off"))
+            return
 
         mode = 1
         match hvac_mode:
@@ -638,14 +638,7 @@ class LoxoneAcControl(LoxoneEntity, ClimateEntity, ABC):
             case HVACMode.FAN_ONLY:
                 mode = 5
 
-        self.hass.bus.fire(
-            SENDDOMAIN,
-            dict(
-                uuid=self.uuidAction,
-                value="off" if hvac_mode == HVACMode.OFF else "on",
-            ),
-        )
-
+        self.turn_on()
         self.hass.bus.fire(
             SENDDOMAIN,
             dict(
@@ -653,6 +646,10 @@ class LoxoneAcControl(LoxoneEntity, ClimateEntity, ABC):
                 value=f"setMode/{mode}",
             ),
         )
+
+    def turn_on(self):
+        """Power on in the configured mode."""
+        self.hass.bus.fire(SENDDOMAIN, dict(uuid=self.uuidAction, value="on"))
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
@@ -670,19 +667,20 @@ class LoxoneAcControl(LoxoneEntity, ClimateEntity, ABC):
         ]
 
     @property
-    def temperature_unit(self) -> str:
+    def native_temperature_unit(self) -> str:
         """Return the unit of measurement used by the platform."""
-        if "format" in self.details:
-            if self.details["format"].find("°"):
-                return UnitOfTemperature.CELSIUS
-            return UnitOfTemperature.FAHRENHEIT
-        return UnitOfTemperature.CELSIUS
+        return temperature_unit_from_format(self.details.get("format"))
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
 
         return self.get_state_value("targetTemperature")
+
+    # HA before 2026.11 reads the old names.
+    current_temperature = native_current_temperature
+    temperature_unit = native_temperature_unit
+    target_temperature = native_target_temperature
 
     @property
     def target_temperature_step(self) -> float | None:
