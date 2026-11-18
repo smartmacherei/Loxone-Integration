@@ -80,6 +80,24 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   Verdrahtung neu auf; steuert HA den Parameter nicht mehr, entfernt sie auch die Reste.
 - Verbessert: Fehlt beim Verdrahten der Anschluss eines Parameters, nennt der UDP-Status jetzt
   die Prüfung (`Cannot locate parameter connector`) statt „Ursache unbestätigt“.
+- Behoben: Ein einzelnes fehlerhaftes Websocket-Paket des Miniservers (unbekannter
+  Nachrichtentyp, ungültiger Header, kaputtes JSON) beendete den Empfang; danach kamen keine
+  Zustandsänderungen mehr an. Jetzt wird es übersprungen, spätere Werte kommen weiter an.
+  Übersprungene und nicht zuordenbare Pakete werden ohne Inhalt protokolliert (nur Typ und
+  Länge), damit keine Token ins Log gelangen. Antworten mit Zeilenumbruch in einem Text (z. B.
+  das Echo einer Texteingabe) werden jetzt verarbeitet statt verworfen.
+- Behoben: Lehnte der Miniserver die Token-Anforderung ab, lieferte er einen leeren Token oder
+  meldete die Token-Anmeldung einen anderen Fehler als 401, blieb die Verbindung ohne Anmeldung
+  offen und lieferte keine Werte. Jetzt verwirft die Integration den Token und verbindet sich neu.
+- Behoben: Ein zweiter gesicherter Befehl (mit Visualisierungspasswort) vor der Antwort auf den
+  ersten ging verloren, und nach einer fehlerhaften Salt-Antwort scheiterten alle weiteren
+  gesicherten Befehle bis zum Neuladen. Jetzt können mehrere gleichzeitig unterwegs sein; jede
+  Antwort gibt genau ihren Befehl frei.
+- Behoben: Beim Fernzugriff über die Weiterleitung der Loxone-Cloud-DNS auf https öffnete die
+  Integration den Websocket mit unverschlüsseltem `ws://` und konnte sich nicht verbinden. Jetzt
+  übernimmt sie Schema und Port der Weiterleitung (`wss://`). Issue #12.
+- Behoben: Auf Miniservern mit Firmware vor 10.2 schlug die Token-Verlängerung fehl, weil im
+  Befehl ein Schrägstrich fehlte.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

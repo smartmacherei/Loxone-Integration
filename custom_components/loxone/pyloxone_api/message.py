@@ -167,7 +167,8 @@ class LLResponse:
 
     def __init__(self, response: str | bytes):
         try:
-            self._parsed: dict = json.loads(response)
+            # strict=False: string values may contain raw control characters
+            self._parsed: dict = json.loads(response, strict=False)
             # Sometimes, Loxone uses "Code", and sometimes "code"
             self.code: int = int(
                 self._parsed.get("LL", {}).get("code", "")

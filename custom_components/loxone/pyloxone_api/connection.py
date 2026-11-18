@@ -195,7 +195,8 @@ class LoxoneBaseConnection:
         self._message_queue: asyncio.Queue[MessageForQueue] = asyncio.Queue(
             maxsize=1000
         )
-        self._secured_queue: asyncio.Queue = asyncio.Queue(maxsize=1)
+        # One entry per getvisusalt request in flight, paired FIFO with the replies
+        self._secured_queue: asyncio.Queue = asyncio.Queue()
         self.message_header = None
 
     def _diagnostic_step(self, step):
@@ -754,30 +755,48 @@ class LoxoneConnection(LoxoneBaseConnection):
                 # Optimization: Removed print(message) - this was the major bottleneck
                 message_length = len(message)
 
-                if message_length == 8:
-                    last_header = parse_header(message)
-                    # Optimization: Check for Out of Service immediately
-                    if last_header.message_type == MessageType.OUT_OF_SERVICE:
-                        raise LoxoneOutOfServiceException
-                    if last_header.message_type == MessageType.KEEPALIVE:
-                        asyncio.create_task(_run_callback(Keepalive("")))
+                try:
+                    if message_length == 8:
+                        last_header = parse_header(message)
+                        # Optimization: Check for Out of Service immediately
+                        if last_header.message_type == MessageType.OUT_OF_SERVICE:
+                            raise LoxoneOutOfServiceException
+                        if last_header.message_type == MessageType.KEEPALIVE:
+                            asyncio.create_task(_run_callback(Keepalive("")))
 
-                elif last_header and last_header.payload_length == message_length:
-                    msg_type = last_header.message_type
+                    elif last_header and last_header.payload_length == message_length:
+                        msg_type = last_header.message_type
 
-                    if msg_type == MessageType.TEXT:
-                        message = check_and_decode_if_needed(message)
+                        if msg_type == MessageType.TEXT:
+                            message = check_and_decode_if_needed(message)
 
-                    parsed_message = parse_message(message, msg_type)
+                        parsed_message = parse_message(message, msg_type)
 
-                    # Fire internal event processing
-                    asyncio.create_task(self._websocket_event(parsed_message))
+                        # Fire internal event processing
+                        asyncio.create_task(self._websocket_event(parsed_message))
 
-                    # Fire external callback if type matches
-                    if callback and msg_type in callback_types:
-                        asyncio.create_task(_run_callback(parsed_message))
-                else:
-                    _LOGGER.error(f"Message not handled: {message}")
+                        # Fire external callback if type matches
+                        if callback and msg_type in callback_types:
+                            asyncio.create_task(_run_callback(parsed_message))
+                    else:
+                        # No payload in the log: replies carry tokens and hashes
+                        _LOGGER.error(
+                            "Message not handled: expected %s with %s bytes, received %s bytes",
+                            getattr(last_header, "message_type", None),
+                            getattr(last_header, "payload_length", None),
+                            message_length,
+                        )
+                except (LoxoneTokenError, LoxoneOutOfServiceException, LoxoneConnectionError):
+                    raise
+                except Exception as e:
+                    # One unparseable frame must not end the listener. No payload in
+                    # the log: replies carry tokens and hashes.
+                    frame = "header" if message_length == 8 else getattr(last_header, "message_type", None)
+                    _LOGGER.warning(
+                        f"Skipping unparseable frame ({frame}, {message_length} bytes): "
+                        f"{type(e).__name__}: {e}"
+                    )
+                    last_header = None
         except asyncio.CancelledError:
             _LOGGER.debug("Listening task cancelled")
             raise
@@ -902,9 +921,10 @@ class LoxoneConnection(LoxoneBaseConnection):
             if not local:
                 try:
                     connector.base_url = str(api_resp.url).replace(CMD_GET_API_KEY, "")
-                    self.url = connector.base_url.replace("https://", "").replace(
-                        "http://", ""
-                    )
+                    # The cloud DNS redirect decides scheme and port of the websocket
+                    redirect = urlparse(connector.base_url)
+                    self.scheme = redirect.scheme or self.scheme
+                    self.url = f"{redirect.netloc}{redirect.path}"
                 except Exception as e:
                     _LOGGER.warning(f"Failed to update URL for remote access: {e}")
 
@@ -1172,12 +1192,12 @@ class LoxoneConnection(LoxoneBaseConnection):
             _LOGGER.debug(f"Call send_secured__websocket_command: {command}")
 
             try:
-                # Use put_nowait with QueueFull exception handling
-                self._secured_queue.put_nowait(
-                    self._send_secure(device_uuid, value, code)
-                )
+                # Request first: if the message queue is full, no command waits for a reply.
                 self._message_queue.put_nowait(
                     MessageForQueue(command=command, flag=True)
+                )
+                self._secured_queue.put_nowait(
+                    self._send_secure(device_uuid, value, code)
                 )
             except asyncio.QueueFull:
                 _LOGGER.error("Queue is full, dropping secured command")
@@ -1317,6 +1337,10 @@ class LoxoneConnection(LoxoneBaseConnection):
             elif (
                 isinstance(mess_obj, TextMessage) and "getvisusalt" in mess_obj.message
             ):
+                # Each reply belongs to the oldest queued secured command (FIFO)
+                awaitable = None
+                if not self._secured_queue.empty():
+                    awaitable = self._secured_queue.get_nowait()
                 try:
                     value_dict = mess_obj.value_as_dict
                     if not isinstance(value_dict, dict):
@@ -1327,20 +1351,17 @@ class LoxoneConnection(LoxoneBaseConnection):
                     key_and_salt.read_user_salt_response(mess_obj.message)
                     key_and_salt.time_elapsed_in_seconds = time_elapsed_in_seconds()
                     self._visual_hash = key_and_salt
-
-                    while not self._secured_queue.empty():
-                        try:
-                            awaitable = self._secured_queue.get_nowait()
-                            if awaitable:
-                                await awaitable
-                            self._secured_queue.task_done()
-                        except asyncio.QueueEmpty:
-                            break
-                        except Exception as e:
-                            _LOGGER.error(f"Error processing secured queue item: {e}")
-
                 except Exception as e:
                     _LOGGER.error(f"Error processing visual salt: {e}")
+                    if awaitable:
+                        # Its request failed: drop the command
+                        awaitable.close()
+                else:
+                    if awaitable:
+                        try:
+                            await awaitable
+                        except Exception as e:
+                            _LOGGER.error(f"Error processing secured queue item: {e}")
 
             # Handle token response
             elif isinstance(mess_obj, TextMessage) and (
@@ -1351,26 +1372,29 @@ class LoxoneConnection(LoxoneBaseConnection):
                     if not isinstance(value_dict, dict):
                         raise ValueError("value_as_dict is not a dictionary")
 
-                    self._token.token = value_dict.get("token")
-                    self._token.valid_until = value_dict.get("validUntil", 0)
-                    self._token.key = value_dict.get("key", "")
-                    self._token.hash_alg = self._hash_alg
+                    if mess_obj.code != 200 or not value_dict.get("token"):
+                        # Not authenticated: reconnect instead of enabling updates
+                        self.authentication_state = "rejected"
+                        _LOGGER.error(f"Token request failed (code {mess_obj.code})")
+                        self.reset_token()
+                        self._reconnect_event.set()
+                    else:
+                        self._token.token = value_dict.get("token")
+                        self._token.valid_until = value_dict.get("validUntil", 0)
+                        self._token.key = value_dict.get("key", "")
+                        self._token.hash_alg = self._hash_alg
 
-                    if "unsecurePass" in value_dict:
-                        self._token.unsecure_password = value_dict.get(
-                            "unsecurePass", False
-                        )
+                        if "unsecurePass" in value_dict:
+                            self._token.unsecure_password = value_dict.get(
+                                "unsecurePass", False
+                            )
 
-                    if not self._token.token:
-                        raise ValueError("Received empty token")
-
-                    if mess_obj.code == 200:
                         self.authentication_state = "accepted"
                         _LOGGER.info("Loxone WebSocket authentication accepted")
 
-                    await self._message_queue.put(
-                        MessageForQueue(f"{CMD_ENABLE_UPDATES}", True)
-                    )
+                        await self._message_queue.put(
+                            MessageForQueue(f"{CMD_ENABLE_UPDATES}", True)
+                        )
 
                 except KeyError as e:
                     _LOGGER.error(f"Missing key in token response: {e}")
@@ -1383,15 +1407,14 @@ class LoxoneConnection(LoxoneBaseConnection):
             elif isinstance(mess_obj, TextMessage) and (
                 "authwithtoken" in mess_obj.message
             ):
-                if mess_obj.code == 401:
+                if mess_obj.code != 200:
                     self.authentication_state = "rejected"
-                    _LOGGER.error("Token authentication failed (401)")
+                    _LOGGER.error(f"Token authentication failed ({mess_obj.code})")
                     self.reset_token()
                     self._reconnect_event.set()
                 else:
-                    if mess_obj.code == 200:
-                        self.authentication_state = "accepted"
-                        _LOGGER.info("Loxone WebSocket authentication accepted")
+                    self.authentication_state = "accepted"
+                    _LOGGER.info("Loxone WebSocket authentication accepted")
                     _LOGGER.debug("Got message authwithtoken")
                     try:
                         await self._message_queue.put(
