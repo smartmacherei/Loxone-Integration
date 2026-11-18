@@ -22,8 +22,14 @@ Lehnt der Miniserver eine HTTP-Anfrage ab, steht die Ursache im Code (seit 1.8.4
 HTTP 401 (Benutzername oder Passwort falsch). Ausnahmetyp ist dann `PermissionError`.
 Nicht freigegebene Exception-Klassennamen werden als `Exception` ausgegeben.
 
+Scheitert ein Schritt an einer eigenen Prüfung ohne eigenen Code, steht deren feste
+Meldung zusätzlich unter `reason`, zum Beispiel `Ambiguous or missing VirtualInCaption`.
+Sie wird nur ausgegeben, wenn sie exakt in `PROGRAM_REASONS` steht (`udp_errors.py`).
+Diese Texte nennen eine Prüfung und nie einen Wert; auch beim Lesen eines Journals wird
+die Liste erneut angewendet. Jeder andere Exception-Text entfällt ersatzlos.
+
 Der UDP-Status und die Integrationsdiagnose enthalten `error_code`, `error_step`,
-`error_timestamp` und die strukturierten Daten unter `error`. Die Uhrzeit ist UTC.
+`error_reason`, `error_timestamp` und die strukturierten Daten unter `error`. Die Uhrzeit ist UTC.
 Nach bestätigter Wiederherstellung verschwinden die aktuellen Fehlerattribute.
 Ein im Speicher erhaltener früherer Fehler steht ausschließlich als
 `last_error` mit `historical: true` zur Verfügung.

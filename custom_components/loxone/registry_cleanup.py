@@ -15,12 +15,39 @@ _LOGGER = logging.getLogger(__name__)
 UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{16}"
 
 
+class IncompleteProject(ValueError):
+    """Only fixed texts, so the log can name the check that kept the cleanup from running."""
+
+
+def require_whole_system(root):
+    """One Program per Miniserver, and no Miniserver of the system missing.
+
+    A partial program of a Gateway/Client system has one Program and one LoxLIVE like a
+    standalone project, but only knows its own Miniserver. Taking it for the project
+    would delete the entities of all the others.
+    """
+    objects = list(root.iter("C"))
+    def of(kind):
+        return [el for el in objects if el.get("Type") == kind]
+    programs, lives, slaves = of("Program"), of("LoxLIVE"), [s for g in of("Gateway") for s in g.findall("SLAVE")]
+    if len(of("Document")) != 1 or not lives or len(programs) != len(lives):
+        raise IncompleteProject("Project is incomplete or ambiguous")
+    if len(lives) == 1:
+        if slaves or of("GatewayClient"):
+            raise IncompleteProject("Project is a partial program of a Gateway/Client system")
+        return
+    # Several Miniservers: only the full project of a Gateway/Client system lists them all.
+    ids = sorted(live.get("U", "").lower() for live in lives)
+    if not of("Gateway") or sorted(p.get("Ref", "").lower() for p in programs) != ids:
+        raise IncompleteProject("Project is incomplete or ambiguous")
+    if any((slave.get("uuid") or "").lower() not in ids for slave in slaves):
+        raise IncompleteProject("Project lacks a client Miniserver")
+
+
 def inventory(program, app):
     """Require a complete project and structure; collect IDs, including states."""
     root = ET.fromstring(program)
-    for kind in ("Document", "Program", "LoxLIVE"):
-        if len([el for el in root.iter("C") if el.get("Type") == kind]) != 1:
-            raise ValueError("Incomplete or ambiguous project")
+    require_whole_system(root)
     if not isinstance(app.get("controls"), dict) or not app.get("msInfo", {}).get("serialNr"):
         raise ValueError("Incomplete Miniserver structure")
     result = {el.get("U", "").lower() for el in root.iter() if el.tag in {"C", "Co"}}
@@ -109,10 +136,12 @@ async def async_cleanup_registry(hass, entry, program, app):
         o = entry.options
         client = ProgramClient(o["host"], o["port"], o["username"], o["password"])
         _, raw = await hass.async_add_executor_job(client.current)
-        _, verified = unpack(raw)
+        # Read only, so no beta option is needed: a Gateway/Client archive gives the full project.
+        _, verified = unpack(raw, gateway=True)
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
             structure = json.loads(archive.read("LoxAPP3.json"))
         if (verified != program or structure.get("msInfo", {}).get("serialNr") != app["msInfo"]["serialNr"]):
+            _LOGGER.debug("Loxone registry cleanup deferred: the archive is not the loaded program of this Miniserver")
             return  # A newer upload will be handled by the next setup.
         known.update(inventory(verified, structure))
         proposed = plan()
@@ -134,6 +163,8 @@ async def async_cleanup_registry(hass, entry, program, app):
             devices.async_remove_device(device_id)
         _LOGGER.info("Removed %s deleted Loxone entities and %s devices; registry backup: %s",
                      len(proposed[0]), len(proposed[1]), backup)
+    except IncompleteProject as err:
+        _LOGGER.warning("Loxone registry cleanup skipped (%s)", err)
     except Exception as err:
         # A missing/failed project download must never empty the HA registries.
-        _LOGGER.warning("Loxone registry cleanup skipped (%s)", type(err).__name__)
+        _LOGGER.warning("Loxone registry cleanup skipped (%s)", getattr(err, "udp_code", type(err).__name__))
