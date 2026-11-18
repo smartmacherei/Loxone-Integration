@@ -12,6 +12,7 @@ import warnings
 import aiohttp
 
 from .const import TIMEOUT
+from .http_auth import basic_auth_header
 from .exceptions import (LoxoneMaxNumOfConnectionsError,
                          LoxoneServiceUnAvailableError,
                          LoxoneUnauthorisedError,
@@ -43,7 +44,6 @@ class LoxoneAsyncHttpClient:
         if session is None:
             self.session = aiohttp.ClientSession()
             self._own_session = True
-        # session.auth = aiohttp.BasicAuth(username, password)
         else:
             if session.closed:
                 raise ValueError("Provided session is already closed")
@@ -75,7 +75,7 @@ class LoxoneAsyncHttpClient:
             _LOGGER.debug(f"Making GET request to: {url}")
             response = await self.session.get(
                 url,
-                auth=aiohttp.BasicAuth(self.username, self.password),
+                headers={"Authorization": basic_auth_header(self.username, self.password)},
                 timeout=aiohttp.ClientTimeout(total=request_timeout),
             )
 

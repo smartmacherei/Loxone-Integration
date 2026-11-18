@@ -29,6 +29,7 @@ from .const import (CONF_AUTO_CONFIGURE_UDP, CONF_AUTO_DISCOVERY, CONF_LIGHTCONT
                     DEFAULT_PORT, DEFAULT_UDP_MAX_SIGNALS, DEFAULT_UDP_PORT, DOMAIN)
 from .area_mapping import CONF_ROOM_MAPPING, CONF_ROOM_UNMAPPED
 from .host_option import normalize_host
+from .pyloxone_api.http_auth import basic_auth_header
 
 
 async def async_load_rooms(hass, options):
@@ -40,7 +41,7 @@ async def async_load_rooms(hass, options):
     url = URL.build(scheme=parsed.scheme or ("https" if port == 443 else "http"),
                     host=parsed.hostname, port=parsed.port or port, path="/data/LoxAPP3.json")
     async with async_get_clientsession(hass).get(
-        url, auth=aiohttp.BasicAuth(options[CONF_USERNAME], options[CONF_PASSWORD]),
+        url, headers={"Authorization": basic_auth_header(options[CONF_USERNAME], options[CONF_PASSWORD])},
         timeout=aiohttp.ClientTimeout(total=15),
     ) as response:
         response.raise_for_status()

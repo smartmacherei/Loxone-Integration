@@ -141,11 +141,21 @@ class InitHATest(unittest.IsolatedAsyncioTestCase):
         await self.hass.async_block_till_done()
         self.assertEqual(b.api.sent, [("uuid-b", "pulse")])
         self.assertTrue(await loxone.async_unload_entry(self.hass, self.entries["b"]))
-        self.assertFalse(self.hass.services.has_service("loxone", "event_websocket_command"))
-        self.assertFalse(self.hass.services.has_service("loxone", "quick_shade"))
+        # A reload unloads the last Miniserver too: scripts calling the services in that
+        # window must not stop with "Action not found".
+        for service in ("event_websocket_command", "quick_shade"):
+            self.assertTrue(self.hass.services.has_service("loxone", service), service)
         self.hass.bus.async_fire(SENDDOMAIN, {"uuid": "uuid-b", "value": "pulse"})
         await self.hass.async_block_till_done()
         self.assertEqual(b.api.sent, [("uuid-b", "pulse")])
+
+    async def test_services_exist_while_no_miniserver_is_loaded(self):
+        # Registered with the integration, not with an entry: the reload after a program upload
+        # removed them, and the demo scripts of the shop window stopped with "Action not found".
+        await loxone.async_setup(self.hass, {})
+        with self.assertLogs("custom_components.loxone", "WARNING"):
+            await self.hass.services.async_call("loxone", "event_websocket_command",
+                                                {"uuid": "uuid-a", "value": "on"}, blocking=True)
 
     async def topology(self, programs, names):
         values_for = {}

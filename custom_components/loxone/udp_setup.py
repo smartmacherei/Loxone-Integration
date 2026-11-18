@@ -114,6 +114,8 @@ class UdpSetup:
         self.status.update(state="checking", step="program_download", backup_verified=False)
         self.status["step_history"] = []
         self.status.pop("backup", None)
+        for key in ("deferred_reason", "plc_states"):
+            self.status.pop(key, None)
         loop = asyncio.get_running_loop()
         active = True
 
@@ -148,6 +150,24 @@ class UdpSetup:
                     if self.language.startswith("de") else
                     "The UDP program was submitted for activation. Wait until the Miniserver and all "
                     "clients have finished, then reload the Loxone integration in HA to verify the active program."
+                )
+            elif result["state"] == "upload_deferred" and result["deferred_reason"] == "miniserver_busy":
+                de = self.language.startswith("de")
+                silent = "keine Antwort" if de else "no answer"
+                states = ", ".join(f"{name}: {silent if state is None else state}"
+                                   for name, state in result["plc_states"].items())
+                self.notify(
+                    "Das Loxone-Programm braucht eine Anpassung durch die Integration. Der Miniserver oder ein "
+                    "Client ist gerade nicht im Normalbetrieb, zum Beispiel während der Verteilung an die Clients. "
+                    "Es wurde nichts hochgeladen. Wenn Loxone Config die Verteilung als abgeschlossen meldet, die "
+                    "Loxone-Integration neu laden oder die Taste „HA-Werte ins Programm übernehmen“ drücken.\n\n"
+                    f"SPS-Zustand (5 = Normalbetrieb): {states}"
+                    if de else
+                    "The Loxone program needs a change by the integration. The Miniserver or a client is not in "
+                    "normal operation right now, for example while distributing to the clients. Nothing was "
+                    "uploaded. When Loxone Config reports the distribution as finished, reload the Loxone "
+                    "integration or press the button “Apply HA values to program”.\n\n"
+                    f"PLC state (5 = normal operation): {states}"
                 )
             elif result["state"] == "upload_deferred":
                 self.notify(

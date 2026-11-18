@@ -1,14 +1,18 @@
 """Discovery preserves generic terminals and extension boundaries."""
 import ast
 import asyncio
-import importlib.util
+import importlib
 from pathlib import Path
-from types import SimpleNamespace
+import sys
+from types import ModuleType, SimpleNamespace
+import warnings
 
 ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "loxone"
-spec = importlib.util.spec_from_file_location("coverage_topology", ROOT / "topology.py")
-top = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(top)
+# A package without its __init__ (HA), so topology's relative imports resolve.
+package = ModuleType("coverage_loxone")
+package.__path__ = [str(ROOT)]
+sys.modules["coverage_loxone"] = package
+top = importlib.import_module("coverage_loxone.topology")
 
 
 def test_link_subdevice_boundaries_and_generic_inputs(monkeypatch):
@@ -60,10 +64,8 @@ def test_actual_binary_name_rules_do_not_confuse_alarm_motion_and_unlock():
 
 
 def test_http_wallbox_scaling_placeholders_and_server_error_codes(monkeypatch):
-    import sys
     import pytest
-    monkeypatch.setitem(sys.modules, "aiohttp", SimpleNamespace(
-        BasicAuth=lambda *args: args, ClientTimeout=lambda **kwargs: kwargs))
+    monkeypatch.setitem(sys.modules, "aiohttp", SimpleNamespace(ClientTimeout=lambda **kwargs: kwargs))
     replies = {"target": {"LL": {"Code": "200", "value": "14296.0kW"}},
                "color": {"LL": {"Code": "200", "value": "<v.col>"}},
                "error": {"LL": {"Code": "404", "value": "1"}},
@@ -85,10 +87,8 @@ def test_http_wallbox_scaling_placeholders_and_server_error_codes(monkeypatch):
 
 def test_program_is_decoded_off_the_event_loop(monkeypatch):
     # The pure-Python LZ4 takes about a second for a large program: never in the loop.
-    import sys
     import threading
-    monkeypatch.setitem(sys.modules, "aiohttp", SimpleNamespace(
-        BasicAuth=lambda *args: args, ClientTimeout=lambda **kwargs: kwargs))
+    monkeypatch.setitem(sys.modules, "aiohttp", SimpleNamespace(ClientTimeout=lambda **kwargs: kwargs))
     threads = []
 
     def decode(data):
@@ -112,6 +112,35 @@ def test_program_is_decoded_off_the_event_loop(monkeypatch):
     program, loop_thread = asyncio.run(fetch())
     assert program == b"<C/>"
     assert threads and loop_thread not in threads
+
+
+def test_requests_send_basic_auth_without_the_deprecated_helper(monkeypatch):
+    # aiohttp 3.14 deprecates BasicAuth (removed in 4.0).
+    def basic_auth(*args):
+        warnings.warn("BasicAuth is deprecated and will be removed in aiohttp 4.0", DeprecationWarning)
+    monkeypatch.setitem(sys.modules, "aiohttp", SimpleNamespace(
+        BasicAuth=basic_auth, ClientTimeout=lambda **kwargs: kwargs))
+    requests = []
+
+    class Reply:
+        status = 404
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+
+    class Session:
+        def get(self, url, **kwargs):
+            requests.append(kwargs)
+            return Reply()
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        asyncio.run(top.async_fetch_values(Session(), "ms", 80, "user", "pässword", ["value"]))
+        asyncio.run(top.async_fetch_program(Session(), "ms", 80, "user", "pässword"))
+    assert [str(warning.message) for warning in caught if "BasicAuth" in str(warning.message)] == []
+    # "user:pässword" in latin-1, like aiohttp's default.
+    assert [request.get("headers") for request in requests] == [
+        {"Authorization": "Basic dXNlcjpw5HNzd29yZA=="}] * 2
+    assert not any("auth" in request for request in requests)
 
 
 def test_status_texts_decide_contact_polarity():

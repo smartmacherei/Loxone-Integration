@@ -42,13 +42,16 @@ class ProgramClient:
         self.username, self.password = username, password
         self.source_address = source_address
 
-    def get(self, path):
+    def _headers(self):
         import base64
         auth = base64.b64encode(f"{self.username}:{self.password}".encode("latin-1")).decode()
+        return {"Authorization": "Basic " + auth}
+
+    def get(self, path):
         conn = http.client.HTTPConnection(self.host, self.port, timeout=30,
                                           source_address=self.source_address)
         try:
-            conn.request("GET", path, headers={"Authorization": "Basic " + auth})
+            conn.request("GET", path, headers=self._headers())
             response = conn.getresponse()
             if response.status in _REFUSED:
                 raise coded_error(_REFUSED[response.status],
@@ -67,31 +70,25 @@ class ProgramClient:
         name = newest_archive(listing.decode())
         return name, self.get("/dev/fsget/prog/" + name)
 
-    def reachable(self, host, port):
-        """Does the Miniserver at host:port answer HTTP at all?
+    def plc_state(self, host, port):
+        """PLC state of the Miniserver at host:port, None if unknown.
 
-        Any HTTP status counts: a redirect or a refused login still proves the
-        client is up. Only a failed connection or a timeout means unreachable.
+        Loxone documents 0 no status, 1 booting, 2 program loaded, 3 PLC started,
+        4 Loxone Link started, 5 running, 6 change, 7 error, 8 update running
+        (Knowledge Base "Web Services", /dev/sps/state). Only 5 is normal operation.
         """
-        import base64
-        auth = base64.b64encode(f"{self.username}:{self.password}".encode("latin-1")).decode()
         conn = http.client.HTTPConnection(host, int(port), timeout=10, source_address=self.source_address)
         try:
-            conn.request("GET", "/jdev/cfg/api", headers={"Authorization": "Basic " + auth})
+            conn.request("GET", "/jdev/sps/state", headers=self._headers())
             response = conn.getresponse()
-            response.read(4096)
-            _LOGGER.debug("Loxone client %s:%s answered HTTP %s", host, port, response.status)
-            return True
-        except (OSError, http.client.HTTPException) as err:
-            _LOGGER.info("Loxone client %s:%s does not answer HTTP: %s", host, port, type(err).__name__)
+            state = int(json.loads(response.read(4096))["LL"]["value"])
+            _LOGGER.debug("Loxone Miniserver %s:%s PLC state %s", host, port, state)
+            return state
+        except (OSError, http.client.HTTPException, ValueError, KeyError, TypeError) as err:
+            _LOGGER.info("Loxone Miniserver %s:%s reports no PLC state: %s", host, port, type(err).__name__)
+            return None
         finally:
             conn.close()
-        # Second chance: a Miniserver always listens for HTTPS; an open TCP port is proof enough.
-        try:
-            with socket.create_connection((host, 443), timeout=5, source_address=self.source_address):
-                return True
-        except OSError:
-            return False
 
     def destination(self, port):
         # TCP route selection to this Miniserver gives HA's reachable source IP.
@@ -209,7 +206,21 @@ def _install(client, directory, udp_port, select, stop: threading.Event, gateway
     if not allow_upload:
         # The gateway may still be distributing a program saved from Config. Write nothing,
         # restart nothing; a deliberate check does the change once the clients are done.
-        return dict(report, state="upload_deferred")
+        return dict(report, state="upload_deferred", deferred_reason="connection_reload")
+    # A deliberate check can fall into that distribution too: upload only while every
+    # Miniserver runs normally (issue #17). A client that does not answer would keep the
+    # old program, so it defers as well.
+    mark("plc_state_check")
+    from .topology import miniservers
+    servers = miniservers(xml)
+    own = next((s["name"] for s in servers if s["role"] != "client" and s["name"]), client.host)
+    states = {own: client.plc_state(client.host, client.port)}
+    if gateway:
+        for server in servers:
+            if server["role"] == "client" and server["host"]:
+                states[server["name"] or server["host"]] = client.plc_state(server["host"], server["port"])
+    if any(state != 5 for state in states.values()):
+        return dict(report, state="upload_deferred", deferred_reason="miniserver_busy", plc_states=states)
     mark("backup_write")
     backup_path = backup(directory, name, original, gateway)
     trace = TRACE.get()
@@ -235,14 +246,6 @@ def _install(client, directory, udp_port, select, stop: threading.Event, gateway
     if stop.is_set():
         return dict(report, state="stopped", backup=backup_path, backup_verified=True)
     _, expected_xml = unpack(candidate, gateway)
-    if gateway:
-        # Like Loxone Config: do not distribute a program while a client is missing,
-        # or that client keeps running the old one afterwards.
-        mark("clients_check")
-        from .topology import miniservers
-        for server in miniservers(expected_xml):
-            if server["role"] == "client" and server["host"] and not client.reachable(server["host"], server["port"]):
-                raise coded_error("CLIENT_UNREACHABLE", "A client Miniserver does not answer; upload not started")
     journal = {"attempt": attempt, "backup": backup_path,
                "expected_xml_sha256": digest(expected_xml), "state": "pending"}
     mark("backup_write")

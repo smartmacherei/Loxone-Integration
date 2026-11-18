@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace as NS
 
+import pytest
+
 from test_udp_diagnostics import manager, reporting  # noqa: F401 (pytest fixture)
 from test_udp_install import archive, XML
 
@@ -103,9 +105,11 @@ def test_load_after_connection_loss_reports_change_without_upload(reporting, tmp
         setup.start(after_connection_loss=True)
         await setup.task
         assert setup.status["state"] == "upload_deferred"
+        assert setup.status["deferred_reason"] == "connection_reload"
         assert setup.client.events == [] and setup.client.calls == 1
         assert list(tmp_path.glob("*.zip")) == []
         assert "nichts hochgeladen" in reporting.messages[-1]
+        assert "Verbindung gerade unterbrochen" in reporting.messages[-1]
         # A deliberate check afterwards (button, reload) may change the program.
         await setup.check()
         assert setup.status["state"] == "reload_required"
@@ -143,6 +147,28 @@ def test_load_without_connection_loss_still_uploads(reporting, tmp_path, monkeyp
         assert setup.status["state"] == "reload_required"
         await setup.close()
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("language,texts", [
+    ("de", ("nicht im Normalbetrieb", "Verteilung an die Clients", "Es wurde nichts hochgeladen",
+            "„HA-Werte ins Programm übernehmen“")),
+    ("en", ("not in normal operation", "distributing to the clients", "Nothing was uploaded",
+            "“Apply HA values to program”")),
+])
+def test_busy_miniserver_notification_names_the_reason(reporting, tmp_path, language, texts):
+    setup = manager(reporting, tmp_path, language)
+    setup.client.plc[setup.client.host] = 6
+    asyncio.run(setup.check())
+    assert setup.status["state"] == "upload_deferred" and setup.status["deferred_reason"] == "miniserver_busy"
+    assert setup.status["plc_states"] == {setup.client.host: 6}
+    message = reporting.messages[-1]
+    assert all(text in message for text in texts), message
+    assert "Verbindung" not in message and "connection" not in message
+    # Once the Miniserver runs normally, the deferral details do not linger.
+    setup.client.plc[setup.client.host] = 5
+    asyncio.run(setup.check())
+    assert setup.status["state"] == "reload_required"
+    assert "deferred_reason" not in setup.status and "plc_states" not in setup.status
 
 
 def test_connection_reload_mark_applies_to_every_entry_once(reporting):
