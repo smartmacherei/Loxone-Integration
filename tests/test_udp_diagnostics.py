@@ -126,6 +126,23 @@ def test_diagnostics_include_safe_setup_error_not_project(reporting, tmp_path):
     assert "TOPSECRET" not in json.dumps(result)
 
 
+def test_diagnostics_and_sensor_show_why_an_upload_was_deferred(reporting, tmp_path):
+    setup = manager(reporting, tmp_path)
+    setup.client.plc[setup.client.host] = None
+    asyncio.run(setup.check())
+    setup.hass.data = {"loxone_udp_setup": {"demo": setup}}
+    result = asyncio.run(reporting.diagnostics.async_get_config_entry_diagnostics(setup.hass, setup.entry))
+    assert result["udp_setup"]["deferred_reason"] == "miniserver_busy"
+    assert result["udp_setup"]["plc_states"] == {setup.client.host: None}
+    assert "TOPSECRET" not in json.dumps(result)
+    sensor = reporting.status.UdpStatusSensor("demo", "serial")
+    sensor.hass = NS(data=setup.hass.data, config_entries=NS(async_get_entry=lambda _: None))
+    asyncio.run(sensor.async_update())
+    assert sensor._attr_native_value == "upload_deferred"
+    assert sensor._attr_extra_state_attributes["deferred_reason"] == "miniserver_busy"
+    assert sensor._attr_extra_state_attributes["plc_states"] == {setup.client.host: None}
+
+
 def test_support_download_contains_exact_failed_bytes_and_no_second_read(reporting, tmp_path, caplog):
     import base64
     setup = manager(reporting, tmp_path)

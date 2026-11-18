@@ -170,6 +170,18 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   nach einem Fehler alle 5 Minuten erneut, mit einer einzigen Warnung.
 - Behoben: Ein in Loxone Config umbenanntes Gerät behielt in HA bis zum Neustart seinen alten
   Namen. Jetzt reicht ein Neuladen der Integration.
+- Behoben (Weg 2, Gateway/Client, Issue #17): Die Integration konnte ein geändertes Programm
+  hochladen und die SPS neu starten, während das Gateway nach „In den Miniserver speichern“ die
+  Teilprogramme noch an die Clients verteilte. Das galt bei manuellem Neuladen, `loxone.reload`,
+  einer Optionsänderung, dem ersten Laden nach einem HA-Neustart und der Taste „HA-Werte ins
+  Programm übernehmen“. Jetzt fragt sie vor jedem Upload den SPS-Zustand des Miniservers und
+  aller Clients ab (`/jdev/sps/state`). Meldet einer nicht „läuft“ (5) oder antwortet nicht,
+  wird nichts hochgeladen und nichts neu gestartet. Der Status zeigt `upload_deferred` mit
+  `deferred_reason: miniserver_busy` und dem Zustand je Miniserver; die Benachrichtigung nennt
+  den Grund.
+- Geändert: Die Prüfung „Clients prüfen“ (`CLIENT_UNREACHABLE`) entfällt. Ein Client, der nicht
+  antwortet, verschiebt den Upload jetzt, statt einen Fehler auszulösen. Ein nach einem
+  Verbindungsverlust verschobener Upload trägt `deferred_reason: connection_reload`.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

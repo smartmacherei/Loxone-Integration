@@ -205,17 +205,21 @@ def test_install_uploads_the_whole_archive_to_the_gateway_only(tmp_path):
     assert len(backups) == 1 and b'Type="Program"' in backups[0].read_bytes()
 
 
-def test_upload_waits_until_every_client_answers(tmp_path):
+@pytest.mark.parametrize("client_state", [6, None], ids=["change", "no_answer"])
+def test_upload_waits_until_every_client_runs_normally(tmp_path, client_state):
+    """Issue #17: an upload while the gateway distributed to the clients left a Gen1 client hanging."""
     client = FakeClient(tmp_path)
     client.raw = archive()
-    client.client_down = True
-    with pytest.raises(OSError) as caught:
-        installer.install(client, str(tmp_path), 55555, lambda raw, xml: {GW_IN, CL_IN}, threading.Event(), gateway=True)
-    assert caught.value.udp_failure["code"] == "CLIENT_UNREACHABLE"
-    assert caught.value.udp_failure["step"] == "clients_check" and client.events == []
-    client.client_down = False
-    result = installer.install(client, str(tmp_path), 55555, lambda raw, xml: {GW_IN, CL_IN}, threading.Event(), gateway=True)
+    client.plc["192.168.9.20"] = client_state
+    select = lambda raw, xml: {GW_IN, CL_IN}
+    result = installer.install(client, str(tmp_path), 55555, select, threading.Event(), gateway=True)
+    assert result["state"] == "upload_deferred" and result["deferred_reason"] == "miniserver_busy"
+    assert result["plc_states"] == {"Gateway": 5, "Client": client_state}
+    assert client.events == [] and list(tmp_path.iterdir()) == []
+    client.plc["192.168.9.20"] = 5
+    result = installer.install(client, str(tmp_path), 55555, select, threading.Event(), gateway=True)
     assert result["state"] == "restarting" and client.events == ["ftp", "upload", "activate", "restart"]
+    assert client.plc_queries == [client.host, "192.168.9.20"] * 2
 
 
 def test_gateway_upload_can_be_withheld_while_clients_may_distribute(tmp_path):
@@ -224,8 +228,8 @@ def test_gateway_upload_can_be_withheld_while_clients_may_distribute(tmp_path):
     client.raw = archive()
     result = installer.install(client, str(tmp_path), 55555, lambda raw, xml: {GW_IN, CL_IN}, threading.Event(),
                                gateway=True, allow_upload=False)
-    assert result["state"] == "upload_deferred"
-    assert client.events == []
+    assert result["state"] == "upload_deferred" and result["deferred_reason"] == "connection_reload"
+    assert client.events == [] and client.plc_queries == []
     assert list(tmp_path.glob("*.zip")) == [] and not (tmp_path / "activation.json").exists()
 
 

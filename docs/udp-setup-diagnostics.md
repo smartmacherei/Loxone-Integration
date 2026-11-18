@@ -7,7 +7,7 @@ unverändert. Es gibt keine automatische Freigabe einer Aktivierungssperre.
 ## Schritte und Fehlerdaten
 
 Die Schritte sind `program_download`, `archive_check`, `program_format`,
-`udp_destination`, `program_prepare`, `backup_write`, `backup_verify`,
+`udp_destination`, `program_prepare`, `plc_state_check`, `backup_write`, `backup_verify`,
 `ftp_connect`, `ftp_tls`, `ftp_login`, `upload`, `upload_verify`,
 `program_activate` und `activation_verify`.
 
@@ -121,7 +121,6 @@ Ab Version 1.4.5 unterscheidet die Archivprüfung folgende Fehler:
 | `ARCHIVE_REQUIRED_FILES_MISSING` | Von der Sicherheitsprüfung geforderte Begleitdateien fehlen. |
 | `ARCHIVE_SIZE_LIMIT` | Entpackte Gesamtgröße überschreitet 64 MiB. |
 | `ARCHIVE_CHECKSUM_MISMATCH` | Die ZIP-Integritätsprüfung hat einen beschädigten Eintrag gefunden. |
-| `CLIENT_UNREACHABLE` | Gateway/Client: Ein Client-Miniserver antwortet nicht; der Upload wurde nicht gestartet. Client einschalten oder neu starten, dann erneut versuchen. |
 | `HA_VALUES_PORT_IN_USE` | Weg 3: Der UDP-Port 55556 für HA-Werte ist im Programm schon von einem anderen virtuellen UDP-Eingang belegt. |
 
 `archive_details` enthält nur Dateizähler und gegebenenfalls fehlende Namen aus
@@ -129,6 +128,16 @@ der festen Liste `LoxAPP3.json`, `permissions.bin`, `Emergency.LoxCC`, `Music.js
 Andere Dateinamen und Inhalte werden nicht übernommen. Fehlende Begleitdateien
 beweisen kein beschädigtes Kundenprojekt: Der Archivaufbau kann abweichen.
 Diese Fehler entstehen vor Sicherung, FTP-Anmeldung und Upload.
+
+Vor jedem Upload fragt die Integration `/jdev/sps/state` beim Miniserver und im
+Gateway/Client-Verbund bei jedem Client ab (Schritt `plc_state_check`). Nur 5 (SPS läuft)
+gilt als Normalbetrieb; laut Loxone-Doku „Web Services“ bedeutet 0 kein Status, 1 Bootet,
+2 Programm geladen, 3 SPS gestartet, 4 Loxone Link gestartet, 6 Änderung, 7 Fehler und
+8 Update. Meldet ein Miniserver etwas anderes oder antwortet nicht, wird nichts geschrieben:
+Zustand `upload_deferred` mit `deferred_reason: miniserver_busy` und `plc_states` je
+Miniserver (`null` = keine Antwort). Nach der Verteilung an die Clients die Integration neu
+laden oder die Taste „HA-Werte ins Programm übernehmen“ drücken. Ein nach einem
+Verbindungsverlust verschobener Upload trägt `deferred_reason: connection_reload`.
 
 Beispiel: **Schritt: Archiv prüfen · Fehler: ARCHIVE_REQUIRED_FILES_MISSING ·
 Fehlende Pflichtdateien: Music.json.**

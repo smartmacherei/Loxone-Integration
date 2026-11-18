@@ -1,4 +1,5 @@
 """Offline project integrity and transaction failure tests; no Miniserver writes."""
+import base64
 import importlib.util
 import io
 import json
@@ -287,15 +288,20 @@ class FakeFTP:
 class FakeClient:
     def __init__(self, folder):
         self.folder = folder
+        self.host, self.port = "192.168.0.10", 80
         self.raw = archive()
         self.files, self.events = {}, []
         self.corrupt = self.changed = self.restart_fails = False
         self.calls = 0
+        # PLC state per host, 5 (running) unless a test sets another one.
+        self.plc, self.plc_queries = {}, []
     def current(self):
         self.calls += 1
         return "sps_1_20260905120000.zip", self.raw + (b"changed" if self.changed and self.calls > 1 else b"")
     def destination(self, port): return TARGET
-    def reachable(self, host, port): return not getattr(self, "client_down", False)
+    def plc_state(self, host, port):
+        self.plc_queries.append(host)
+        return self.plc.get(host, 5)
     def ftp(self):
         self.events.append("ftp")
         return FakeFTP(self)
@@ -458,8 +464,45 @@ def test_concurrent_install_is_not_started(tmp_path):
 def test_no_change_does_not_open_ftp(tmp_path):
     client = FakeClient(tmp_path)
     client.raw = program.prepare(client.raw, TARGET, {U})[0]
+    # Nothing to upload: a busy Miniserver is no reason to report a deferral.
+    client.plc[client.host] = 6
     assert run(client)["state"] == "configured"
-    assert client.events == []
+    assert client.events == [] and client.plc_queries == []
+
+
+def test_miniserver_not_running_defers_upload(tmp_path):
+    client = FakeClient(tmp_path)
+    client.plc[client.host] = 1  # PLC booting
+    result = run(client)
+    assert result["state"] == "upload_deferred" and result["deferred_reason"] == "miniserver_busy"
+    assert result["plc_states"] == {client.host: 1}
+    assert client.events == [] and list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("answer,expected", [
+    (b'{"LL":{"control":"dev/sps/state","value":"5","Code":"200"}}', 5),
+    (b'<html>garbage</html>', None),
+    (ConnectionRefusedError("refused"), None),
+], ids=["running", "garbage", "connection_error"])
+def test_plc_state_reads_the_ll_value(monkeypatch, answer, expected):
+    seen = {}
+
+    class Connection:
+        def __init__(self, host, port, timeout=None, source_address=None):
+            seen.update(host=host, port=port, source_address=source_address)
+        def request(self, method, path, headers):
+            if isinstance(answer, Exception): raise answer
+            seen.update(path=path, auth=headers["Authorization"])
+        def getresponse(self): return types.SimpleNamespace(status=200, read=lambda size=-1: answer)
+        def close(self): seen["closed"] = True
+    monkeypatch.setattr(installer.http.client, "HTTPConnection", Connection)
+    client = installer.ProgramClient("gateway.invalid", 80, "user", "pw", source_address=("10.0.0.5", 0))
+    assert client.plc_state("192.168.9.20", "80") == expected
+    assert (seen["host"], seen["port"], seen["source_address"]) == ("192.168.9.20", 80, ("10.0.0.5", 0))
+    assert seen["closed"]
+    if expected is not None:
+        assert seen["path"] == "/jdev/sps/state"
+        assert seen["auth"] == "Basic " + base64.b64encode(b"user:pw").decode()
 
 
 def test_incomplete_archive_rejected(tmp_path):
