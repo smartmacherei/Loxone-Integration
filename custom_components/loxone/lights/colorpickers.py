@@ -1,4 +1,5 @@
 import logging
+import re
 from functools import cached_property
 
 import homeassistant.util.color as color_util
@@ -14,6 +15,19 @@ from ..const import DOMAIN, SENDDOMAIN
 from ..helpers import get_or_create_device, hass_to_lox, lox_to_hass
 
 _LOGGER = logging.getLogger(__name__)
+
+_NUMBER = r"\s*(-?\d+(?:\.\d+)?)\s*"
+_COLOR = re.compile(rf"(hsv|temp)\({_NUMBER},{_NUMBER}(?:,{_NUMBER})?\)")
+
+
+def parse_color(text):
+    """("hsv", (h, s, v)) or ("temp", (brightness, kelvin)) of a colour state, else None."""
+    match = _COLOR.fullmatch(text) if isinstance(text, str) else None
+    if not match:
+        return None
+    kind, *numbers = match.groups()
+    values = tuple(float(_) for _ in numbers if _ is not None)
+    return (kind, values) if len(values) == (3 if kind == "hsv" else 2) else None
 
 
 class TunableWhiteLight(LoxoneEntity, LightEntity):
@@ -97,12 +111,12 @@ class TunableWhiteLight(LoxoneEntity, LightEntity):
         request_update = False
         if self._color_uuid in e.data:
             _color = e.data[self._color_uuid]
+            parsed = parse_color(_color)
 
-            if _color.startswith("temp"):
-                _color = _color.replace("temp", "")
-                _color = eval(_color)
+            if parsed and parsed[0] == "temp":
+                _color = parsed[1]
                 self._attr_color_mode = ColorMode.COLOR_TEMP
-                self._attr_color_temp_kelvin = _color[1]
+                self._attr_color_temp_kelvin = round(_color[1])
                 self._attr_brightness = round(255 * _color[0] / 100)
                 request_update = True
             else:
@@ -232,19 +246,18 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
         request_update = False
         if self._color_uuid in e.data:
             _color = e.data[self._color_uuid]
+            parsed = parse_color(_color)
 
-            if _color.startswith("hsv"):
-                _color = _color.replace("hsv", "")
-                _color = eval(_color)
+            if parsed and parsed[0] == "hsv":
+                _color = parsed[1]
                 self._attr_color_mode = ColorMode.HS
                 self._attr_hs_color = (_color[0], _color[1])
                 self._attr_brightness = lox_to_hass(_color[2])
                 request_update = True
-            elif _color.startswith("temp"):
-                _color = _color.replace("temp", "")
-                _color = eval(_color)
+            elif parsed:
+                _color = parsed[1]
                 self._attr_color_mode = ColorMode.COLOR_TEMP
-                self._attr_color_temp_kelvin = _color[1]
+                self._attr_color_temp_kelvin = round(_color[1])
                 self._attr_hs_color = None
                 self._attr_brightness = round(255 * _color[0] / 100)
                 request_update = True

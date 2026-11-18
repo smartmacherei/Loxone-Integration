@@ -48,3 +48,39 @@ class ContactPolarityHATest(unittest.IsolatedAsyncioTestCase):
         entity.async_schedule_update_ha_state = lambda: None
         await entity.event_handler(NS(data={"00000000-0000-0000-0000000000000001": 1.0}))
         self.assertTrue(entity.is_on)
+
+
+SMOKE = {"level": "00000000-0000-0000-0000000000000021",
+         "areAlarmSignalsOff": "00000000-0000-0000-0000000000000022"}
+
+
+@unittest.skipUnless(HAS_HA, "Run with the installed Home Assistant Python runtime")
+class SmokeAlarmHATest(unittest.IsolatedAsyncioTestCase):
+    """SmokeAlarm (Structure File 17.0): level 1 = pre-alarm, 2 = main alarm; areAlarmSignalsOff
+    only says the alarm signals were confirmed away."""
+
+    async def asyncSetUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="loxone_smoke_test_")
+        self.hass = HomeAssistant(self.directory.name)
+        self.entity = binary_sensor.LoxoneDigitalSensor(
+            name="Rauchmelder", uuidAction="00000000-0000-0000-0000000000000020", type="smoke",
+            details={}, states=SMOKE, room="", cat="")
+        self.entity.hass = self.hass
+        self.entity.async_schedule_update_ha_state = lambda: None
+
+    async def asyncTearDown(self):
+        await self.hass.async_stop(force=True)
+        self.directory.cleanup()
+
+    async def shown(self, level, signals_off):
+        await self.entity.event_handler(NS(data={SMOKE["level"]: level, SMOKE["areAlarmSignalsOff"]: signals_off}))
+        return self.entity.is_on
+
+    async def test_main_alarm_with_live_signals_shows_smoke(self):
+        self.assertIs(await self.shown(2.0, 0.0), True)
+
+    async def test_pre_alarm_shows_smoke(self):
+        self.assertIs(await self.shown(1.0, 0.0), True)
+
+    async def test_no_alarm_after_confirming_shows_clear(self):
+        self.assertIs(await self.shown(0.0, 1.0), False)

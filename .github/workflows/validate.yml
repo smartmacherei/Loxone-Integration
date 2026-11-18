@@ -23,3 +23,27 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
+
+  tests:
+    name: Tests (offline, Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install pytest pycryptodome websockets
+      - run: python -m pytest -q -p no:cacheprovider tests
+
+  tests-ha:
+    name: Tests (Home Assistant 2026.11.2, Python 3.14)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.14"
+      - run: pip install homeassistant==2026.11.2 pytest pycryptodome websockets
+      # faulthandler dumps the stacks of a hanging test before timeout kills the run.
+      - run: timeout 600 python -m pytest -q -p no:cacheprovider -o faulthandler_timeout=60 tests

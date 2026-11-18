@@ -57,6 +57,119 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   in PyLoxone; bisher rechnete sie ihn immer von der Komforttemperatur fürs Heizen aus, auch beim
   Kühlen. Bei „Aus“ und im Gebäudeschutz bleibt die Komforttemperatur der Bezug, sonst landete
   der Frostschutz-Sollwert im Offset. Issue #16.
+- Neu: Die automatischen Tests laufen in GitHub Actions bei jedem Push und Pull Request, ohne
+  Home Assistant unter Python 3.12 und mit Home Assistant 2026.11.2 unter Python 3.14. Drei
+  HA-Testdateien hingen seit HA 2026.11 im Aufbau, weil die Tests `async_initialize()` der
+  Konfigurationseinträge nicht aufriefen; sie laufen wieder.
+- Behoben: Die Raumzuordnung las die mit HA 2026.11 veraltete Geräte-Eigenschaft
+  `DeviceEntry.config_entries`, die mit HA 2027.10 wegfällt, und behandelte Geräte mit nur
+  `config_entry_id` als geteilt, ordnete sie also keinem Bereich zu. Jetzt liest sie
+  `config_entry_id` und ordnet solche Geräte wieder zu.
+- Behoben: Testpakete aus unveröffentlichten Ständen meldeten die Version der letzten
+  Veröffentlichung (z. B. 1.8.5b2), ihre Diagnosen ließen sich davon nicht unterscheiden. Jetzt
+  tragen sie eine Entwicklungsversion der nächsten (z. B. 1.8.5b3.dev5); die nächste
+  Veröffentlichung wird weiter als Update angeboten.
+- Behoben: Nach dem Umbenennen einer verdrahteten Parameter-Entität in HA zeigten die beiden
+  Eingangsverweise im hochgeladenen Programm noch auf die gelöschten UDP-Befehle, und HA zeigte
+  den Parameter trotzdem als von HA gesteuert. „HA-Werte ins Programm übernehmen“ verdrahtet ihn
+  jetzt neu mit den Befehlen der umbenannten Entität.
+- Behoben: Hatte man in Loxone Config nur den Analogspeicher der Integration gelöscht, scheiterte
+  danach jede Prüfung mit `Duplicate UUID in patched program`. Hatte man nur die beiden
+  Eingangsverweise gelöscht, galt der Parameter weiter als verdrahtet und wurde nie
+  wiederhergestellt. Jetzt entfernt die Integration die übrigen eigenen Objekte und baut die
+  Verdrahtung neu auf; steuert HA den Parameter nicht mehr, entfernt sie auch die Reste.
+- Verbessert: Fehlt beim Verdrahten der Anschluss eines Parameters, nennt der UDP-Status jetzt
+  die Prüfung (`Cannot locate parameter connector`) statt „Ursache unbestätigt“.
+- Behoben: Ein einzelnes fehlerhaftes Websocket-Paket des Miniservers (unbekannter
+  Nachrichtentyp, ungültiger Header, kaputtes JSON) beendete den Empfang; danach kamen keine
+  Zustandsänderungen mehr an. Jetzt wird es übersprungen, spätere Werte kommen weiter an.
+  Übersprungene und nicht zuordenbare Pakete werden ohne Inhalt protokolliert (nur Typ und
+  Länge), damit keine Token ins Log gelangen. Antworten mit Zeilenumbruch in einem Text (z. B.
+  das Echo einer Texteingabe) werden jetzt verarbeitet statt verworfen.
+- Behoben: Lehnte der Miniserver die Token-Anforderung ab, lieferte er einen leeren Token oder
+  meldete die Token-Anmeldung einen anderen Fehler als 401, blieb die Verbindung ohne Anmeldung
+  offen und lieferte keine Werte. Jetzt verwirft die Integration den Token und verbindet sich neu.
+- Behoben: Ein zweiter gesicherter Befehl (mit Visualisierungspasswort) vor der Antwort auf den
+  ersten ging verloren, und nach einer fehlerhaften Salt-Antwort scheiterten alle weiteren
+  gesicherten Befehle bis zum Neuladen. Jetzt können mehrere gleichzeitig unterwegs sein; jede
+  Antwort gibt genau ihren Befehl frei.
+- Behoben: Beim Fernzugriff über die Weiterleitung der Loxone-Cloud-DNS auf https öffnete die
+  Integration den Websocket mit unverschlüsseltem `ws://` und konnte sich nicht verbinden. Jetzt
+  übernimmt sie Schema und Port der Weiterleitung (`wss://`). Issue #12.
+- Behoben: Auf Miniservern mit Firmware vor 10.2 schlug die Token-Verlängerung fehl, weil im
+  Befehl ein Schrägstrich fehlte.
+- Behoben: Alte Raumregler (IRoomController) zeigten „Automatik kühlen“, „Manuell heizen“ und
+  „Manuell kühlen“ als „Aus“; „Aus“ schaltete auf Automatik kühlen, und „Heizen“/„Kühlen“
+  schickten Modi, die sich nicht wählen lassen. Jetzt erscheinen die Automatik-Modi als „Auto“,
+  Heiz- und Kühlmodi als „Heizen“/„Kühlen“. „Heizen“/„Kühlen“ wählen Automatik heizen/kühlen,
+  „Aus“ schaltet über den Servicemodus Heizen und Kühlen ab. Die Befehle heißen wie im
+  Structure File (`mode/`, `service/`, `settemp/`).
+- Behoben: Bei alten Raumreglern änderte eine Solltemperatur in „Automatik kühlen“ und
+  „Manuell kühlen“ die Heiztemperatur, und Regler in °F lehnten jede sinnvolle Solltemperatur ab
+  (Bereich 7–35 °F). Jetzt ändert sie in allen Kühlmodi die Kühltemperatur, und der Bereich gilt
+  in °C, umgerechnet in °F.
+- Behoben: „Einschalten“ stellte den Raumregler V2 auf manuell Heizen/Kühlen und Klimaanlagen
+  (AC Control) auf Heizen; „Aus“ setzte bei Klimaanlagen zusätzlich den Modus auf Automatik.
+  Jetzt schaltet „Einschalten“ den Raumregler V2 auf Automatik, alte Raumregler verlassen „Aus“
+  mit ihrem Modus, Klimaanlagen schalten nur ein. „Aus“ behält den eingestellten Modus.
+- Behoben: Klimaanlagen mit °F-Format zeigten Fahrenheit-Werte als Celsius, und HA 2026.11
+  meldete für alle Klima-Entitäten veraltete Temperatur-Eigenschaften, die ab HA 2027.11 nicht
+  mehr wirken. Jetzt wird die Einheit aus dem Format erkannt, und es gelten die neuen
+  Eigenschaften; ältere HA-Versionen funktionieren weiter.
+- Behoben: Eine Solltemperatur am Raumregler V2, bevor seine Zustände vom Miniserver da waren,
+  brach mit einem internen TypeError ab. Jetzt erscheint eine verständliche Fehlermeldung.
+- Sicherer: Farb- und Stimmungszustände vom Miniserver wurden mit `eval()` ausgewertet. Wer im
+  LAN Zustände in die unverschlüsselte Verbindung einschleusen konnte, konnte so Code in HA
+  ausführen. Jetzt werden Farben streng geparst und Stimmungslisten als JSON gelesen; ungültige
+  Werte werden protokolliert und ignoriert.
+- Behoben: Brand- und Wassermelder zeigten einen laufenden Alarm als „frei“ und erst den
+  quittierten als „Rauch erkannt“, weil der Zustand „Alarmsignale aus“ gelesen wurde. Jetzt
+  meldet der Sensor Vor- und Hauptalarm (`level` 1 und 2).
+- Behoben: „Einschalten“ eines laufenden Komfortschalters (Multifunktionsschalter) schaltete ihn
+  aus, weil immer `pulse` gesendet wurde. Jetzt bekommt ein eingeschalteter Komfortschalter
+  `on`; aus dem Aus-Zustand und beim Treppenlichtschalter startet `pulse` weiter den Nachlauf.
+- Behoben: Texteingaben (TextInput) zeigten immer einen leeren Text. Jetzt zeigen sie den Text
+  vom Miniserver, gekürzt auf die HA-Grenze von 255 Zeichen.
+- Behoben: Lüftungen bekamen Befehle mit erfundenen Modusnamen (z. B.
+  `setTimer/3600/50/Low/-1`), Voreinstellungen taten nichts, und „Einschalten“ ohne Drehzahl
+  sendete nichts. Jetzt sind die Voreinstellungen die Lüftungsmodi aus Loxone und die Befehle
+  tragen die Modus-ID. „Einschalten“ ohne Angabe kehrt zur Automatik zurück, „Ausschalten“
+  stellt die Drehzahl für eine Stunde auf 0.
+- Behoben: Ein Dimmer oder der Masterwert einer Lichtsteuerung auf seiner Mindesthelligkeit
+  erschien als aus. Jetzt gilt nur Position 0 als aus, und Anzeige und Stellwert rechnen gleich.
+- Behoben: Lichtstimmungen mit Komma im Namen ließen sich nicht auswählen (gesendet wurde z. B.
+  `changeTo/warm`, oder es gab einen Fehler), und Namen mit „true“ oder „false“ wurden
+  verfälscht. Jetzt wird genau die gewählte Stimmung aktiviert, die Namen bleiben unverändert.
+- Behoben: Die Seite „Systeminformationen“ brach beim Loxone-Abschnitt mit einem Fehler ab.
+  Jetzt zeigt sie Seriennummer, Projektname, lokale URL und Softwareversion des Miniservers.
+- Behoben: Beim Herunterfahren von HA, erstmals nach der Installation und nach jeder täglichen
+  Token-Erneuerung, wurde die Integration mitten im Shutdown neu geladen, samt neuer Verbindung,
+  Programm-Download und UDP-Prüfung. Ohne gültigen Token brach das Beenden mit einem Fehler ab
+  und ließ die Verbindung offen. Jetzt lädt nur eine Änderung der Optionen neu, und die
+  Verbindung wird immer geschlossen.
+- Behoben (Weg 2, Issue #17): Nach einem Token-Fehler lief neben dem markierten Neuladen ein
+  zweites, unmarkiertes, das die Sperre „nach Verbindungsabbruch kein Upload“ aus 1.8.5b2
+  aushebelte. Ein unerwarteter Fehler der Miniserver-Verbindung ließ alle Entitäten
+  stillschweigend einfrieren. Jetzt lädt jeder Verbindungsfehler genau einmal und markiert neu,
+  also ohne Programm-Upload.
+- Behoben: Lehnte der Miniserver das Token dauerhaft ab, lud die Integration etwa jede Sekunde
+  neu, jedes Mal mit Struktur- und Programm-Download. Jetzt verdoppelt sich die Wartezeit bis
+  höchstens 5 Minuten; das Log nennt den nächsten Versuch, nach einer erfolgreichen Anmeldung
+  beginnt sie wieder bei 1 s.
+- Behoben: Mit zwei Miniservern (zwei Integrationseinträge) bediente jeder Dienstaufruf nur den
+  zuletzt eingerichteten, jeder Entitätsbefehl ging an beide, und das Entladen eines Eintrags
+  entfernte die Dienste des anderen. Starteten beide gleichzeitig, konnten Startwerte und
+  Gerätezuordnung des einen verloren gehen. Jetzt geht jeder Befehl genau einmal an den
+  Miniserver, dem die UUID gehört, die Dienste bleiben bis zum letzten Eintrag, und ein
+  verpasster Startwert kommt spätestens mit der nächsten Abfrage an.
+- Behoben: Beim Start blockierten das Entpacken und das mehrfache Durchsuchen des
+  Miniserver-Programms HA für Sekunden. Jetzt läuft beides im Hintergrund.
+- Behoben (Weg 3): Mit einem Hostnamen statt einer IP löste jeder gesendete HA-Wert eine
+  blockierende DNS-Abfrage aus, drei je Parameteränderung; mit einer Adresse der Form
+  `https://host:port/pfad` kam kein Wert an. Jetzt wird der Name einmal im Hintergrund aufgelöst,
+  nach einem Fehler alle 5 Minuten erneut, mit einer einzigen Warnung.
+- Behoben: Ein in Loxone Config umbenanntes Gerät behielt in HA bis zum Neustart seinen alten
+  Namen. Jetzt reicht ein Neuladen der Integration.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

@@ -27,6 +27,7 @@ class AreaMappingHATest(unittest.IsolatedAsyncioTestCase):
         self.directory = tempfile.TemporaryDirectory(prefix="loxone_room_mapping_test_")
         self.hass = HomeAssistant(self.directory.name)
         self.hass.config_entries = ConfigEntries(self.hass, {})
+        await self.hass.config_entries.async_initialize()
         dr.async_setup(self.hass)
         await asyncio.gather(ar.async_load(self.hass), dr.async_load(self.hass), er.async_load(self.hass))
         self.office = ar.async_get(self.hass).async_create("Existing office")

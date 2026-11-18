@@ -1,10 +1,17 @@
-"""Room controller (IRoomControllerV2) operating modes with the real HA runtime; skipped without HA.
+"""Room controllers and AC control with the real HA runtime; skipped without HA.
 
-operatingMode (Loxone Structure File 17.0): 0 automatic heating and cooling, 1 automatic heating
-only, 2 automatic cooling only, 3/4/5 the same as manual modes, -1 off. The Loxone app offers
-Auto, Heizen, Kühlen and Aus, which are 0, 1, 2 and -1 (issue #16).
+IRoomControllerV2 operatingMode (Loxone Structure File 17.0): 0 automatic heating and cooling,
+1 automatic heating only, 2 automatic cooling only, 3/4/5 the same as manual modes, -1 off. The
+Loxone app offers Auto, Heizen, Kühlen and Aus, which are 0, 1, 2 and -1 (issue #16).
+
+IRoomController mode: 0 automatic (no period active), 1/2 automatic currently heating/cooling,
+3/4 automatic heating/cooling, 5/6 manual heating/cooling; only 0 and 3-6 can be selected.
+serviceMode 1 switches heating and cooling off.
 """
+from concurrent.futures import ThreadPoolExecutor
+import importlib
 import importlib.util
+import inspect
 from pathlib import Path
 import sys
 import tempfile
@@ -15,25 +22,30 @@ if HAS_HA:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from homeassistant.components.climate import HVACMode
     from homeassistant.core import HomeAssistant, callback
-    from custom_components.loxone.climate import LoxoneRoomControllerV2
+    from homeassistant.exceptions import HomeAssistantError
+    from custom_components.loxone.climate import (LoxoneAcControl, LoxoneRoomController,
+                                                  LoxoneRoomControllerV2)
     from custom_components.loxone.const import CONF_HVAC_AUTO_MODE, SENDDOMAIN
 
 STATES = {name: f"00000000-0000-0000-00000000000000{index}" for index, name in enumerate(
     ("operatingMode", "activeMode", "tempTarget", "comfortTemperature", "comfortTemperatureCool",
-     "comfortTemperatureOffset"), 11)}
+     "comfortTemperatureOffset", "tempActual", "prepareState"), 11)}
+IRC_STATES = {name: f"00000000-0000-0000-00000000000000{index}" for index, name in enumerate(
+    ("mode", "serviceMode", "currHeatTempIx", "currCoolTempIx", "tempTarget", "tempActual"), 31)}
+AC_STATES = {name: f"00000000-0000-0000-00000000000000{index}" for index, name in enumerate(
+    ("status", "mode", "temperature", "targetTemperature", "fan", "fanspeeds", "ventMode",
+     "airflows"), 51)}
 
 
-@unittest.skipUnless(HAS_HA, "Run with the installed Home Assistant Python runtime")
-class RoomControllerV2ModesHATest(unittest.IsolatedAsyncioTestCase):
+class ClimateHATestCase(unittest.IsolatedAsyncioTestCase):
+    states = STATES
+
     async def asyncSetUp(self):
         self.directory = tempfile.TemporaryDirectory(prefix="loxone_climate_test_")
         self.hass = HomeAssistant(self.directory.name)
         self.sent = []
         self.hass.bus.async_listen(SENDDOMAIN, callback(lambda event: self.sent.append(event.data["value"])))
-        self.entity = LoxoneRoomControllerV2(
-            hass=self.hass, name="Wohnzimmer", uuidAction="00000000-0000-0000-0000000000000010",
-            type="IRoomControllerV2", room="", cat="", details={"timerModes": []},
-            states=STATES, **{CONF_HVAC_AUTO_MODE: 0})
+        self.entity = self.create()
         self.entity.schedule_update_ha_state = lambda *args, **kwargs: None
 
     async def asyncTearDown(self):
@@ -42,20 +54,30 @@ class RoomControllerV2ModesHATest(unittest.IsolatedAsyncioTestCase):
 
     def state(self, **values):
         for name, value in values.items():
-            self.entity._stateAttribValues[STATES[name]] = value
-
-    def shown(self, operating_mode):
-        self.state(operatingMode=operating_mode)
-        return self.entity.hvac_mode
+            self.entity._stateAttribValues[self.states[name]] = value
 
     async def sent_by(self, action):
         self.sent.clear()
-        action()
+        if inspect.isawaitable(result := action()):
+            await result
         await self.hass.async_block_till_done()
         return self.sent
 
     async def send(self, hvac_mode):
         return await self.sent_by(lambda: self.entity.set_hvac_mode(hvac_mode))
+
+
+@unittest.skipUnless(HAS_HA, "Run with the installed Home Assistant Python runtime")
+class RoomControllerV2ModesHATest(ClimateHATestCase):
+    def create(self, **details):
+        return LoxoneRoomControllerV2(
+            hass=self.hass, name="Wohnzimmer", uuidAction="00000000-0000-0000-0000000000000010",
+            type="IRoomControllerV2", room="", cat="", details={"timerModes": [], **details},
+            states=STATES, **{CONF_HVAC_AUTO_MODE: 0})
+
+    def shown(self, operating_mode):
+        self.state(operatingMode=operating_mode)
+        return self.entity.hvac_mode
 
     async def test_app_modes_show_as_the_same_hvac_mode(self):
         assert [self.shown(mode) for mode in (0, 1, 2, -1)] == [
@@ -74,6 +96,12 @@ class RoomControllerV2ModesHATest(unittest.IsolatedAsyncioTestCase):
         for hvac_mode in self.entity.hvac_modes:
             command, = await self.send(hvac_mode)
             assert self.shown(int(command.rsplit("/", 1)[1])) == hvac_mode
+
+    async def test_turn_on_selects_automatic_and_turn_off_selects_off(self):
+        # HA's fallback turn_on picks HEAT_COOL from hvac_modes, the manual mode 3.
+        self.state(operatingMode=-1)
+        assert await self.sent_by(self.entity.async_turn_on) == ["setOperatingMode/0"]
+        assert await self.sent_by(self.entity.async_turn_off) == ["setOperatingMode/-1"]
 
     async def test_temperature_in_a_manual_mode_is_the_manual_temperature(self):
         self.state(operatingMode=5, tempTarget=24)
@@ -99,3 +127,134 @@ class RoomControllerV2ModesHATest(unittest.IsolatedAsyncioTestCase):
             assert await self.sent_temperature(22, operatingMode=operating_mode, activeMode=active_mode,
                                                comfortTemperature=21, comfortTemperatureOffset=0,
                                                tempTarget=6) == ("setComfortModeTemp", 1)
+
+    async def test_temperature_before_the_states_arrive_is_refused_with_a_clear_error(self):
+        for states in ({}, dict(operatingMode=0, activeMode=1), dict(operatingMode=0, activeMode=2)):
+            self.entity._stateAttribValues.clear()
+            self.state(**states)
+            with self.assertRaisesRegex(HomeAssistantError, "not been received"):
+                await self.sent_by(lambda: self.entity.set_temperature(temperature=22))
+            assert self.sent == []
+
+    async def test_temperatures_reach_home_assistant(self):
+        self.state(tempActual=21.5, tempTarget=22)
+        attributes = self.entity.state_attributes
+        assert (attributes["current_temperature"], attributes["temperature"]) == (21.5, 22)
+
+    async def test_fahrenheit_format_converts_the_temperatures(self):
+        self.entity = self.create(format="%.1f°F")
+        self.state(tempActual=77, tempTarget=68)
+        attributes = self.entity.state_attributes
+        assert (attributes["current_temperature"], attributes["temperature"]) == (25, 20)
+
+
+@unittest.skipUnless(HAS_HA, "Run with the installed Home Assistant Python runtime")
+class RoomControllerModesHATest(ClimateHATestCase):
+    states = IRC_STATES
+
+    def create(self, **details):
+        return LoxoneRoomController(
+            hass=self.hass, name="Bad", uuidAction="00000000-0000-0000-0000000000000030",
+            type="IRoomController", room="", cat="", details=details, states=IRC_STATES,
+            **{CONF_HVAC_AUTO_MODE: 0})
+
+    def shown(self, mode, service_mode=0):
+        self.state(mode=mode, serviceMode=service_mode)
+        return self.entity.hvac_mode
+
+    def apply(self, commands):
+        """What the Miniserver reports after the commands."""
+        for command in commands:
+            name, value = command.split("/")
+            self.state(**{{"mode": "mode", "service": "serviceMode"}[name]: int(value)})
+
+    async def test_modes_show_whether_the_controller_heats_or_cools(self):
+        assert [self.shown(mode) for mode in range(7)] == [
+            HVACMode.AUTO, HVACMode.AUTO, HVACMode.AUTO, HVACMode.HEAT, HVACMode.COOL,
+            HVACMode.HEAT, HVACMode.COOL]
+
+    async def test_heat_and_cool_select_automatic_heating_and_cooling(self):
+        self.state(serviceMode=0)
+        assert await self.send(HVACMode.AUTO) == ["mode/0"]
+        assert await self.send(HVACMode.HEAT) == ["mode/3"]
+        assert await self.send(HVACMode.COOL) == ["mode/4"]
+
+    async def test_off_is_the_service_mode_heating_and_cooling_off(self):
+        assert await self.send(HVACMode.OFF) == ["service/1"]
+        assert self.shown(4, service_mode=1) == HVACMode.OFF
+        assert await self.send(HVACMode.HEAT) == ["service/0", "mode/3"]
+
+    async def test_every_offered_mode_reads_back_as_itself(self):
+        self.state(mode=0, serviceMode=0)
+        for hvac_mode in self.entity.hvac_modes:
+            self.apply(await self.send(hvac_mode))
+            assert self.entity.hvac_mode == hvac_mode
+
+    async def test_turn_on_leaves_off_without_changing_the_mode(self):
+        self.state(mode=4, serviceMode=1)
+        assert await self.sent_by(self.entity.async_turn_on) == ["service/0"]
+        assert await self.sent_by(self.entity.async_turn_off) == ["service/1"]
+
+    async def test_temperature_changes_the_temperature_in_use_heating_or_cooling(self):
+        self.state(currHeatTempIx=1, currCoolTempIx=2)
+        for mode, index in ((0, 1), (1, 1), (2, 2), (3, 1), (4, 2), (5, 1), (6, 2)):
+            self.state(mode=mode)
+            assert await self.sent_by(lambda: self.entity.set_temperature(temperature=23)) == [
+                f"settemp/{index}/23"]
+
+    async def test_temperatures_reach_home_assistant(self):
+        self.state(tempActual=21.5, tempTarget=22)
+        attributes = self.entity.state_attributes
+        assert (attributes["current_temperature"], attributes["temperature"]) == (21.5, 22)
+
+    async def test_fahrenheit_range_allows_fahrenheit_targets(self):
+        # 7-35 taken as °F would refuse every sensible target.
+        self.entity = self.create(format="%.1f°F")
+        assert (round(self.entity.min_temp, 1), round(self.entity.max_temp, 1)) == (44.6, 95)
+
+
+@unittest.skipUnless(HAS_HA, "Run with the installed Home Assistant Python runtime")
+class AcControlHATest(ClimateHATestCase):
+    states = AC_STATES
+
+    def create(self, **details):
+        return LoxoneAcControl(
+            hass=self.hass, name="Klima", uuidAction="00000000-0000-0000-0000000000000050",
+            type="AcControl", room="", cat="", details=details, states=AC_STATES)
+
+    async def test_off_only_powers_off_and_keeps_the_configured_mode(self):
+        assert await self.send(HVACMode.OFF) == ["off"]
+
+    async def test_modes_power_on_and_select_the_mode(self):
+        assert await self.send(HVACMode.COOL) == ["on", "setMode/3"]
+        assert await self.send(HVACMode.HEAT) == ["on", "setMode/2"]
+        assert await self.send(HVACMode.AUTO) == ["on", "setMode/1"]
+
+    async def test_turn_on_only_powers_on_and_turn_off_only_powers_off(self):
+        # HA's fallback turn_on picks HEAT from hvac_modes.
+        self.state(status=0, mode=3)
+        assert await self.sent_by(self.entity.async_turn_on) == ["on"]
+        assert await self.sent_by(self.entity.async_turn_off) == ["off"]
+
+    async def test_temperature_unit_follows_the_format(self):
+        for details, expected in (({"format": "%.1f°F"}, (25, 20)), ({"format": "%.1f°C"}, (77, 68)),
+                                  ({"format": "%.1f"}, (77, 68)), ({}, (77, 68))):
+            self.entity = self.create(**details)
+            self.state(temperature=77, targetTemperature=68)
+            attributes = self.entity.state_attributes
+            assert (attributes["current_temperature"], attributes["temperature"]) == expected, details
+
+
+@unittest.skipUnless(HAS_HA, "Run with the installed Home Assistant Python runtime")
+class ClimateTemperatureApiHATest(unittest.TestCase):
+    def test_no_deprecated_temperature_api_is_reported(self):
+        # HA 2026.11 logs this at class creation; it stops working in 2027.11.
+        name = "custom_components.loxone.climate"
+        previous = sys.modules.pop(name)
+        try:
+            with self.assertNoLogs(name, "WARNING"), ThreadPoolExecutor(1) as executor:
+                # A thread without a running hass, as when HA imports the platform.
+                executor.submit(importlib.import_module, name).result()
+        finally:
+            sys.modules[name] = previous
+            sys.modules["custom_components.loxone"].climate = previous

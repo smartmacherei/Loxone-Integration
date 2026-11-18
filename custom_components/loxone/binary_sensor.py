@@ -183,7 +183,8 @@ class LoxoneDigitalSensor(LoxoneEntity, BinarySensorEntity):
         ):
             self._from_loxone_config = True
             if self.type == "smoke":
-                self._state_uuid = self.states["areAlarmSignalsOff"]
+                # level: 0 = no alarm, 1 = pre-alarm, 2 = main alarm
+                self._state_uuid = self.states["level"]
             if self.type == "presence":
                 self._state_uuid = self.states["active"]
             elif "active" in self.states:
@@ -248,7 +249,7 @@ class LoxoneDigitalSensor(LoxoneEntity, BinarySensorEntity):
             self._state = e.data[self._state_uuid]
             if self._state is None:
                 self._state = STATE_UNKNOWN
-            elif self._state == 1.0:
+            elif self._state == 1.0 or (self.type == "smoke" and self._state > 0):
                 self._state = self._on_state
             else:
                 self._state = self._off_state

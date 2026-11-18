@@ -87,7 +87,8 @@ edge (`<key>.set`). Single Miniserver only.
 
 The supplied September 9 test project contains 58 Air and 37 Tree devices plus Link
 products. Source code was imported in an isolated process using the installed HA
-2026.7.2 runtime. Construction and synthetic event processing succeeded for 1,213
+2026.7.2 runtime; the automated tests now run against HA 2026.11.2 in the GitHub
+Actions CI. Construction and synthetic event processing succeeded for 1,213
 direct terminal entities and 332 supplementary state sensors. Offline patching
 produced 820 signal references and one heartbeat; 393 selected terminals were not
 eligible for numeric UDP. Applying the patch twice made no further changes.

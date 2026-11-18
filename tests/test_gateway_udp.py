@@ -278,7 +278,8 @@ def test_reason_from_a_journal_is_checked_again():
 def own_messages():
     """Every text the program path raises as ValueError, read from the source."""
     constant, variable = set(), set()
-    for name in ("udp_program", "ha_values_program", "signal_bindings", "udp_install"):
+    for name in ("udp_program", "ha_values_program", "signal_bindings", "udp_install", "param_wiring",
+                 "block_parameters"):
         for node in ast.walk(ast.parse((ROOT / (name + ".py")).read_text(encoding="utf-8"))):
             if (isinstance(node, ast.Raise) and isinstance(node.exc, ast.Call)
                     and getattr(node.exc.func, "id", None) == "ValueError"):

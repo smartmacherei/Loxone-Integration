@@ -7,8 +7,7 @@ from homeassistant.helpers.entity import DeviceInfo
 
 from .. import LoxoneEntity
 from ..const import DOMAIN, SENDDOMAIN
-from ..helpers import (get_or_create_device, hass_to_lox, lox2hass_mapped,
-                       lox_to_hass)
+from ..helpers import get_or_create_device, hass_to_lox, lox_to_hass
 
 
 class LoxoneDimmer(LoxoneEntity, LightEntity):
@@ -96,17 +95,11 @@ class LoxoneDimmer(LoxoneEntity, LightEntity):
             request_update = True
 
         if self._position_uuid in e.data:
-            if (
-                self._min is not None
-                and self._max is not None
-                and self._min != STATE_UNKNOWN
-                and self._max != STATE_UNKNOWN
-            ):
-                self._attr_brightness = lox2hass_mapped(
-                    e.data[self._position_uuid], self._min, self._max
-                )
-            else:
-                self._attr_brightness = lox_to_hass(e.data[self._position_uuid])
+            # min is the lowest on-level; only position 0 is off
+            position = e.data[self._position_uuid]
+            if self._max is not None and self._max != STATE_UNKNOWN:
+                position = min(position, self._max)
+            self._attr_brightness = lox_to_hass(position)
             request_update = True
 
         self._attr_is_on = (

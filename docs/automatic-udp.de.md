@@ -139,7 +139,8 @@ Version 1.3.1 ergänzt Lebenszeichen, Empfangsüberwachung und Kontrollabfragen.
 [Geräteabdeckung und Abnahme](device-coverage.de.md) beschreiben den Rückfall
 auf Abfragen sowie die Grenzen lesender Sonderwerte.
 
-Automatische Fehlerfalltests und Prüfung unter HA 2026.7.2 sind vorhanden.
+Automatische Fehlerfalltests und Prüfung unter HA 2026.11.2 laufen in der
+GitHub-Actions-CI bei jedem Push und Pull Request.
 Mit Version 1.3.3 wurden Sicherung, Upload/Neustart und das aktive Programm am
 Demo-Miniserver 17.2.8.28 geprüft. UDP-Lebenszeichen und erneutes Laden sind bestätigt.
 Physische Zustandswechsel und Wiederherstellung sind weiterhin nicht abgenommen.

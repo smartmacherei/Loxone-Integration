@@ -21,15 +21,10 @@ from .miniserver import get_miniserver_from_hass
 
 _LOGGER = logging.getLogger(__name__)
 
+# Speed for a preset chosen while the fan stands still
 DEFAULT_FAN_SPEED_HOME = 30
-DEFAULT_FAN_SPEED_AWAY = 10
-DEFAULT_FAN_SPEED_BOOST = 100
-
-VENTELATION_INT_TO_STR = {2: "Low", 3: "Medium", 4: "High", 5: "Auto", 6: "Away"}
-
-STR_TO_VENTILATION_PROFILE_SETTABLE = {
-    value: key for (key, value) in VENTELATION_INT_TO_STR.items()
-}
+# Length of a manual timer in seconds
+TIMER_INTERVAL = 3600
 
 
 async def async_setup_platform(
@@ -152,14 +147,20 @@ class LoxoneVentilation(LoxoneEntity, FanEntity):
             return False
 
     @property
+    def _modes(self) -> dict[str, int]:
+        """Mode names and ids from details.modes."""
+        return {mode["name"]: mode["id"] for mode in self._details.get("modes", [])}
+
+    @property
     def preset_modes(self) -> list[str]:
         """Return a list of available preset modes."""
-        return list(STR_TO_VENTILATION_PROFILE_SETTABLE.keys())
+        return list(self._modes)
 
     @property
     def preset_mode(self) -> str | None:
-        """Return a list of available preset modes."""
-        return VENTELATION_INT_TO_STR.get(self.get_state_value("mode"))
+        """Return the current preset mode."""
+        mode = self.get_state_value("mode")
+        return next((name for name, id_ in self._modes.items() if id_ == mode), None)
 
     @property
     def percentage(self) -> Optional[int]:
@@ -179,23 +180,31 @@ class LoxoneVentilation(LoxoneEntity, FanEntity):
             self._stateAttribValues[uuid] if uuid in self._stateAttribValues else None
         )
 
-    def set_preset_mode(self, preset_mode: str) -> None:
-        """Set the preset mode of the fan."""
-
-    def set_percentage(self, percentage: int) -> None:
-        """Set the speed percentage of the fan."""
-        interval = 3600
-        self.hass.bus.fire(
+    def _set_timer(self, percentage: int | None, preset_mode: str | None = None) -> None:
+        """Start a manual timer; unset values keep the current speed and mode."""
+        if percentage is None:
+            percentage = round(self.percentage or 0)
+        if preset_mode is None:
+            mode = self.get_state_value("mode")
+            if mode is None:
+                mode = next(iter(self._modes.values()))
+        else:
+            mode = self._modes[preset_mode]
+        self.hass.bus.async_fire(
             SENDDOMAIN,
             dict(
                 uuid=self.uuidAction,
-                value=f'setTimer/{interval}/{percentage}/{VENTELATION_INT_TO_STR.get( self.get_state_value("mode") )}/-1',
+                value=f"setTimer/{TIMER_INTERVAL}/{percentage}/{int(mode)}/-1",
             ),
         )
 
-    # def turn_on(self, speed: Optional[str] = None, percentage: Optional[int] = None, preset_mode: Optional[str] = None,
-    #             **kwargs: Any) -> None:
-    #     """Turn on the fan."""
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set the preset mode of the fan."""
+        await self.async_turn_on(preset_mode=preset_mode)
+
+    async def async_set_percentage(self, percentage: int) -> None:
+        """Set the speed percentage of the fan."""
+        self._set_timer(percentage)
 
     async def async_turn_on(
         self,
@@ -203,23 +212,15 @@ class LoxoneVentilation(LoxoneEntity, FanEntity):
         preset_mode: str | None = None,
         **kwargs: Any,
     ) -> None:
-        """Turn the fan on."""
-        if preset_mode:
-            self.set_preset_mode(preset_mode)
-        if percentage:
-            self.set_percentage(percentage)
-        _LOGGER.debug("Turn on")
-
-    def turn_off(self, **kwargs: Any) -> None:
-        """Turn the fan off."""
-        if hasattr(self, "preset_mode"):
-            self.set_preset_mode(kwargs.get("preset_mode", "Auto"))
-        self.set_percentage(0)
+        """Turn the fan on; without speed or preset back to automatic."""
+        if percentage is None and preset_mode is None:
+            self.hass.bus.async_fire(SENDDOMAIN, dict(uuid=self.uuidAction, value="setTimer/0"))
+            return
+        if percentage is None and not self.is_on:
+            percentage = DEFAULT_FAN_SPEED_HOME
+        self._set_timer(percentage, preset_mode)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the fan off."""
-        if not self.is_on:
-            return
-        else:
-            self.set_preset_mode("Auto")
-            self.set_percentage(0)
+        if self.is_on:
+            self._set_timer(0)

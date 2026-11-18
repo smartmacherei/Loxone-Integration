@@ -33,7 +33,8 @@ class LoxoneCoordinator(DataUpdateCoordinator):
 
         self.api: LoxoneConnection | None = None
         self.miniserver: MiniServer | None = None
-        self.listeners = []
+        # Options this setup runs with; only a change of these needs a reload.
+        self.applied_options = dict(config_entry.options)
 
     async def async_config_entry_first_refresh(self) -> None:
         _LOGGER.debug("async_config_entry_first_refresh")
@@ -95,13 +96,6 @@ class LoxoneCoordinator(DataUpdateCoordinator):
 
     async def async_cleanup(self):
         """Clean up resources."""
-        if hasattr(self, "listeners"):
-            # Clean up all event listeners
-            for listener in self.listeners:
-                if listener is not None:
-                    listener()
-            self.listeners = []
-
         # Close API connection
         if hasattr(self, "api"):
             await self.api.close()

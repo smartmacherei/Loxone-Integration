@@ -78,6 +78,77 @@ def test_second_run_changes_nothing_and_unwiring_restores_the_original():
     assert restored.find("In") is None and restored.get("Nc") is None and restored.get("Def") == "75"
 
 
+def assert_wired_to(xml, key):
+    """Our three objects exist once and every link resolves to the commands of ``key``."""
+    root = ET.fromstring(xml)
+    i = params.ids("18f7cbc0-0000-0000-ffffa13734b4be2f", TIME_END)
+    uids = [el.get("U") for el in root.iter("C")]
+    assert [uids.count(i[name]) for name in ("memory", "value_ref", "set_ref")] == [1, 1, 1]
+    found = {el.get("U"): el for el in root.iter("C")}
+    commands = {c.get("Check"): c for c in root.iter("C") if c.get("Type") == "VirtualUdpInCmd"}
+    for ref, check in (("value_ref", key + "=\\v"), ("set_ref", key + ".set=\\v")):
+        command = commands[check]
+        outputs = {co.get("K"): co.get("U") for co in command.findall("Co")}
+        assert found[i[ref]].get("Ref") == command.get("U")
+        assert [In.get("Input") for In in found[i[ref]].iter("In")] == [outputs["AQ"], outputs["Q"]]
+    memory = found[i["memory"]]
+    assert memory.find("Co[@K='Input']/In").get("Input") == i["value_ref_AQ"]
+    assert memory.find("Co[@K='Trigger']/In").get("Input") == i["set_ref_Q"]
+    assert connector(xml, TIME_END).find("In").get("Input") == i["memory_AQ"]
+
+
+def without(xml, *types):
+    """What Config leaves after the user deleted our objects of ``types``: no links to them."""
+    root = ET.fromstring(xml)
+    gone = set()
+    for page in root.iter("C"):
+        for el in page.findall("C"):
+            if el.get("Type") in types:
+                page.remove(el)
+                gone |= {co.get("U") for co in el.iter("Co")}
+    for co in root.iter("Co"):
+        for link in co.findall("In"):
+            if link.get("Input") in gone:
+                co.remove(link)
+    return ET.tostring(root, encoding="utf-8")
+
+
+def test_renamed_entity_is_rewired_to_its_new_commands():
+    once, _ = patch(SINGLE, [ENTRY])
+    renamed = "number.beschattung_oeffnungsdauer"
+    xml, report = patch(once, [{**ENTRY, "key": renamed, "entity_id": renamed}])
+    assert report["param_wired"] == 1
+    assert_wired_to(xml, renamed)
+
+
+def test_deleted_memory_is_rebuilt_without_duplicate_ids():
+    once, _ = patch(SINGLE, [ENTRY])
+    xml, report = patch(without(once, "AMemory"), [ENTRY])
+    assert report["param_wired"] == 1
+    assert_wired_to(xml, KEY)
+
+
+def test_deleted_input_refs_are_rebuilt():
+    once, _ = patch(SINGLE, [ENTRY])
+    xml, report = patch(without(once, "InputRef"), [ENTRY])
+    assert report["param_wired"] == 1
+    assert_wired_to(xml, KEY)
+
+
+def test_leftovers_of_an_unwanted_parameter_are_removed():
+    once, _ = patch(SINGLE, [ENTRY])
+    xml, _ = patch(without(once, "AMemory"), [])
+    i = params.ids("18f7cbc0-0000-0000-ffffa13734b4be2f", TIME_END)
+
+    def dangling(xml):
+        root = ET.fromstring(xml)
+        uids = {el.get("U") for el in root.iter() if el.get("U")}
+        assert not uids & {i["memory"], i["value_ref"], i["set_ref"]}
+        links = {el.get("Ref") for el in root.iter("C") if el.get("Ref")} | {el.get("Input") for el in root.iter("In")}
+        return links - uids
+    assert dangling(xml) == dangling(SINGLE)
+
+
 def test_user_wired_parameter_is_never_rewired():
     xml, report = patch(SINGLE, [{**ENTRY, "target": USER_WIRED}])
     assert report["param_wired"] == 0 and report["param_skipped"] == [USER_WIRED.lower()]
@@ -110,6 +181,7 @@ def test_value_goes_out_before_the_trigger_edge():
               loop=NS(call_later=lambda delay, func, *args: later.append((delay, func, args))))
     sender = values.HaValuesSender(hass, [ENTRY], "ms.invalid", 55556)
     sender.socket = Socket()
+    sender.address = ("192.0.2.1", 55556)  # resolved at start
     sender.send_all()
     for _, func, args in sorted(later, key=lambda item: item[0]):
         func(*args)

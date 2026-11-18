@@ -26,6 +26,7 @@ class HaValuesHATest(unittest.IsolatedAsyncioTestCase):
         self.directory = tempfile.TemporaryDirectory(prefix="loxone_ha_values_test_")
         self.hass = HomeAssistant(self.directory.name)
         self.hass.config_entries = ConfigEntries(self.hass, {})
+        await self.hass.config_entries.async_initialize()
         dr.async_setup(self.hass)
         await asyncio.gather(dr.async_load(self.hass), er.async_load(self.hass), lr.async_load(self.hass))
         self.receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -68,6 +69,7 @@ class HaValuesHATest(unittest.IsolatedAsyncioTestCase):
         entries, _, _ = ha_values.desired(self.hass, 500, "de")
         sender = ha_values.HaValuesSender(self.hass, entries, "127.0.0.1", self.receiver.getsockname()[1])
         sender.start()
+        await self.hass.async_block_till_done()  # the address is resolved off the loop first
         self.assertEqual(self.received(5), {"climate.demo_thermo=1", "climate.demo_thermo.current_temperature=34",
                                             "climate.demo_thermo.temperature=23", "climate.demo_thermo.hvac_action=4",
                                             "sensor.demo_pool=21.5"})

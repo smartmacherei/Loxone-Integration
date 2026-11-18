@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import socket
 from datetime import timedelta
+from urllib.parse import urlparse
 
 from .ha_values_program import PORT
 from .param_wiring import SET_SUFFIX
@@ -194,6 +195,9 @@ class HaValuesSender:
     def __init__(self, hass, entries, host, port=PORT):
         self.hass, self.entries, self.host, self.port = hass, entries, host, port
         self.socket = None
+        # Resolved once off the loop: sendto with a name looks it up in the loop for every datagram.
+        self.address = None
+        self.resolving = self.resolve_failed = False
         self.unsub = []
 
     def start(self):
@@ -204,6 +208,29 @@ class HaValuesSender:
         if ids:
             self.unsub.append(async_track_state_change_event(self.hass, ids, self._changed))
             self.unsub.append(async_track_time_interval(self.hass, self._tick, RESEND))
+        self._resolve_soon()
+
+    def _resolve_soon(self):
+        if self.host and not self.resolving:
+            self.resolving = True
+            self.hass.async_create_task(self._resolve())
+
+    async def _resolve(self):
+        # The stored host may be "https://host:8443/path"; the datagram needs the bare name.
+        host = str(self.host)
+        if "/" in host:
+            host = urlparse(host if "://" in host else "//" + host).hostname or host
+        try:
+            infos = await self.hass.loop.getaddrinfo(host, self.port, family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        except OSError as err:
+            if not self.resolve_failed:
+                _LOGGER.warning("Loxone HA values: %s not resolvable, retrying every 5 minutes: %s", host, err)
+            self.resolve_failed = True
+            return
+        finally:
+            self.resolving = False
+        self.resolve_failed = False
+        self.address = infos[0][4]
         self.send_all()
 
     @callback
@@ -213,13 +240,16 @@ class HaValuesSender:
 
     @callback
     def _tick(self, _now):
-        self.send_all()
+        if self.address is None:
+            self._resolve_soon()  # sends everything once resolved
+        else:
+            self.send_all()
 
     def send_all(self):
         self.send(self.entries)
 
     def send(self, entries):
-        if self.socket is None or not self.host:
+        if self.socket is None or self.address is None:
             return
         for entry in entries:
             value = value_of(entry, self.hass.states.get(entry["entity_id"]))
@@ -237,7 +267,7 @@ class HaValuesSender:
         if self.socket is None:
             return
         try:
-            self.socket.sendto(text.encode(), (self.host, self.port))
+            self.socket.sendto(text.encode(), self.address)
         except OSError as err:
             _LOGGER.debug("Loxone HA values: send failed: %s", err)
 
