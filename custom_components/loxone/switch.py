@@ -121,7 +121,11 @@ class LoxoneTimedSwitch(LoxoneEntity, SwitchEntity):
 
     def turn_on(self, **kwargs):
         """Turn the switch on."""
-        self.hass.bus.fire(SENDDOMAIN, dict(uuid=self.uuidAction, value="pulse"))
+        # pulse starts the countdown from off and restarts a stairwell countdown,
+        # but turns a running comfort switch off.
+        stairway = getattr(self, "details", {}).get("isStairwayLs", False)
+        command = "pulse" if stairway or self._attr_is_on is False else "on"
+        self.hass.bus.fire(SENDDOMAIN, dict(uuid=self.uuidAction, value=command))
         self._attr_is_on = True
         self.schedule_update_ha_state()
 

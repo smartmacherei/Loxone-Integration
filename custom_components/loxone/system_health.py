@@ -20,10 +20,13 @@ def async_register(
 
 async def system_health_info(hass: HomeAssistant) -> dict[str, Any]:
     """Get info for the info page."""
-    for k, v in hass.data[DOMAIN].items():
+    for coordinator in hass.data.get(DOMAIN, {}).values():
+        miniserver = coordinator.miniserver
+        ms_info = miniserver.lox_config.get("msInfo", {})
         return {
-            "Loxone Miniserver Serial": v.serial,
-            "Project Name": v.project_name,
-            "Local Url": v.local_url,
-            "Loxone Software Version": v.software_version,
+            "Loxone Miniserver Serial": miniserver.serial,
+            "Project Name": ms_info.get("projectName"),
+            "Local Url": ms_info.get("localUrl"),
+            "Loxone Software Version": miniserver.software_version,
         }
+    return {}

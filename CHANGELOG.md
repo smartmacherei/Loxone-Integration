@@ -118,6 +118,30 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   Eigenschaften; ältere HA-Versionen funktionieren weiter.
 - Behoben: Eine Solltemperatur am Raumregler V2, bevor seine Zustände vom Miniserver da waren,
   brach mit einem internen TypeError ab. Jetzt erscheint eine verständliche Fehlermeldung.
+- Sicherer: Farb- und Stimmungszustände vom Miniserver wurden mit `eval()` ausgewertet. Wer im
+  LAN Zustände in die unverschlüsselte Verbindung einschleusen konnte, konnte so Code in HA
+  ausführen. Jetzt werden Farben streng geparst und Stimmungslisten als JSON gelesen; ungültige
+  Werte werden protokolliert und ignoriert.
+- Behoben: Brand- und Wassermelder zeigten einen laufenden Alarm als „frei“ und erst den
+  quittierten als „Rauch erkannt“, weil der Zustand „Alarmsignale aus“ gelesen wurde. Jetzt
+  meldet der Sensor Vor- und Hauptalarm (`level` 1 und 2).
+- Behoben: „Einschalten“ eines laufenden Komfortschalters (Multifunktionsschalter) schaltete ihn
+  aus, weil immer `pulse` gesendet wurde. Jetzt bekommt ein eingeschalteter Komfortschalter
+  `on`; aus dem Aus-Zustand und beim Treppenlichtschalter startet `pulse` weiter den Nachlauf.
+- Behoben: Texteingaben (TextInput) zeigten immer einen leeren Text. Jetzt zeigen sie den Text
+  vom Miniserver, gekürzt auf die HA-Grenze von 255 Zeichen.
+- Behoben: Lüftungen bekamen Befehle mit erfundenen Modusnamen (z. B.
+  `setTimer/3600/50/Low/-1`), Voreinstellungen taten nichts, und „Einschalten“ ohne Drehzahl
+  sendete nichts. Jetzt sind die Voreinstellungen die Lüftungsmodi aus Loxone und die Befehle
+  tragen die Modus-ID. „Einschalten“ ohne Angabe kehrt zur Automatik zurück, „Ausschalten“
+  stellt die Drehzahl für eine Stunde auf 0.
+- Behoben: Ein Dimmer oder der Masterwert einer Lichtsteuerung auf seiner Mindesthelligkeit
+  erschien als aus. Jetzt gilt nur Position 0 als aus, und Anzeige und Stellwert rechnen gleich.
+- Behoben: Lichtstimmungen mit Komma im Namen ließen sich nicht auswählen (gesendet wurde z. B.
+  `changeTo/warm`, oder es gab einen Fehler), und Namen mit „true“ oder „false“ wurden
+  verfälscht. Jetzt wird genau die gewählte Stimmung aktiviert, die Namen bleiben unverändert.
+- Behoben: Die Seite „Systeminformationen“ brach beim Loxone-Abschnitt mit einem Fehler ab.
+  Jetzt zeigt sie Seriennummer, Projektname, lokale URL und Softwareversion des Miniservers.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

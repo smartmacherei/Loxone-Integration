@@ -9,7 +9,6 @@ import logging
 
 from homeassistant.components.text import TextEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
@@ -65,7 +64,6 @@ class LoxoneText(LoxoneEntity, TextEntity):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         """Initialize the Loxone text."""
-        self._state = STATE_UNKNOWN
         self._icon = None
         self._assumed = False
         self._native_value = ""
@@ -96,18 +94,11 @@ class LoxoneText(LoxoneEntity, TextEntity):
         return self._assumed
 
     async def event_handler(self, e):
-        if self.uuidAction in e.data:
-            data = e.data[self.uuidAction]
-            if isinstance(data, (list, dict)):
-                data = str(data)
-                if len(data) >= 255:
-                    self._state = data[:255]
-                else:
-                    self._state = data
-            else:
-                self._state = data
-
-            self.schedule_update_ha_state()
+        if self.states["text"] in e.data:
+            data = e.data[self.states["text"]]
+            # HA states hold at most 255 characters
+            self._native_value = str(data)[:255]
+            self.async_schedule_update_ha_state()
 
     @property
     def extra_state_attributes(self):

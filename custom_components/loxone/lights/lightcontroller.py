@@ -1,3 +1,5 @@
+import json
+import logging
 from collections import OrderedDict
 from functools import cached_property
 
@@ -9,8 +11,9 @@ from homeassistant.helpers.entity import DeviceInfo
 
 from .. import LoxoneEntity
 from ..const import DOMAIN, SENDDOMAIN, STATE_OFF
-from ..helpers import (get_or_create_device, hass_to_lox, lox2hass_mapped,
-                       lox_to_hass)
+from ..helpers import get_or_create_device, hass_to_lox, lox_to_hass
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class LoxoneLightControllerV2(LoxoneEntity, LightEntity):
@@ -107,35 +110,24 @@ class LoxoneLightControllerV2(LoxoneEntity, LightEntity):
         return None
 
     async def got_effect(self, **kwargs):
-        effects = kwargs["effect"].split(",")
-        if len(effects) == 1:
-            mood_id = self.get_id_by_moodname(kwargs["effect"])
-            if mood_id != kwargs["effect"]:
-                self.hass.bus.async_fire(
-                    SENDDOMAIN,
-                    dict(uuid=self.uuidAction, value="changeTo/{}".format(mood_id)),
-                )
-            else:
-                self.hass.bus.async_fire(
-                    SENDDOMAIN, dict(uuid=self.uuidAction, value="plus")
-                )
-        else:
-            effect_ids = []
-            for _ in effects:
-                mood_id = self.get_id_by_moodname(_.strip())
-                if mood_id != _:
-                    effect_ids.append(mood_id)
+        effect = kwargs["effect"]
+        # A mood name may itself contain commas, so the whole name wins over a list
+        names = [effect] if effect in self.effect_list else [_.strip() for _ in effect.split(",")]
+        effect_ids = [self.get_id_by_moodname(_) for _ in names if _ in self.effect_list]
+        if not effect_ids:
+            self.hass.bus.async_fire(SENDDOMAIN, dict(uuid=self.uuidAction, value="plus"))
+            return
 
+        self.hass.bus.async_fire(
+            SENDDOMAIN,
+            dict(uuid=self.uuidAction, value="changeTo/{}".format(effect_ids[0])),
+        )
+
+        for _ in effect_ids[1:]:
             self.hass.bus.async_fire(
                 SENDDOMAIN,
-                dict(uuid=self.uuidAction, value="changeTo/{}".format(effect_ids[0])),
+                dict(uuid=self.uuidAction, value="addMood/{}".format(_)),
             )
-
-            for _ in effect_ids[1:]:
-                self.hass.bus.async_fire(
-                    SENDDOMAIN,
-                    dict(uuid=self.uuidAction, value="addMood/{}".format(_)),
-                )
 
     async def async_turn_on(self, **kwargs) -> None:
         if ATTR_EFFECT in kwargs:
@@ -177,43 +169,30 @@ class LoxoneLightControllerV2(LoxoneEntity, LightEntity):
             request_update = True
 
         if self._master_position_uuid and self._master_position_uuid in event.data:
-            if (
-                self._master_min is not None
-                and self._master_max is not None
-                and self._master_min != "unknown"
-                and self._master_max != "unknown"
-            ):
-                self._attr_brightness = lox2hass_mapped(
-                    event.data[self._master_position_uuid],
-                    self._master_min,
-                    self._master_max,
-                )
-            else:
-                self._attr_brightness = lox_to_hass(
-                    event.data[self._master_position_uuid]
-                )
+            # min is the lowest on-level; only position 0 is off
+            position = event.data[self._master_position_uuid]
+            if self._master_max is not None and self._master_max != STATE_UNKNOWN:
+                position = min(position, self._master_max)
+            self._attr_brightness = lox_to_hass(position)
             request_update = True
 
-        if self.states["activeMoods"] in event.data:
-            self._active_moods = eval(event.data[self.states["activeMoods"]])
+        active_moods = self._json_list(event.data, "activeMoods")
+        if active_moods is not None:
+            self._active_moods = active_moods
             if self._active_moods != [778]:
                 self._attr_is_on = True
             else:
                 self._attr_is_on = False
             request_update = True
 
-        if self.states["moodList"] in event.data:
-            event.data[self.states["moodList"]] = event.data[
-                self.states["moodList"]
-            ].replace("true", "True")
-            event.data[self.states["moodList"]] = event.data[
-                self.states["moodList"]
-            ].replace("false", "False")
-            self._moodlist = eval(event.data[self.states["moodList"]])
+        mood_list = self._json_list(event.data, "moodList")
+        if mood_list is not None:
+            self._moodlist = mood_list
             request_update = True
 
-        if self.states["additionalMoods"] in event.data:
-            self._additional_moodlist = eval(event.data[self.states["additionalMoods"]])
+        additional_moods = self._json_list(event.data, "additionalMoods")
+        if additional_moods is not None:
+            self._additional_moodlist = additional_moods
             request_update = True
 
         if request_update:
@@ -223,6 +202,19 @@ class LoxoneLightControllerV2(LoxoneEntity, LightEntity):
                 if attr_is_on_is_not_unknown or both_master_values_are_not_unknown:
                     self._attr_available = True
             self.async_schedule_update_ha_state()
+
+    def _json_list(self, data, state):
+        """The JSON array of a mood state, or None when absent or invalid."""
+        if self.states[state] not in data:
+            return None
+        try:
+            value = json.loads(data[self.states[state]], strict=False)
+        except (TypeError, ValueError):
+            value = None
+        if not isinstance(value, list):
+            _LOGGER.warning("Ignoring invalid %s of %s: %r", state, self.name, data[self.states[state]])
+            return None
+        return value
 
 
     @property
