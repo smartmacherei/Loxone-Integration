@@ -51,6 +51,9 @@ Nach einem neuen Upload aus Loxone Config zuerst die Verteilung an alle Clients
 abwarten, dann die Integration in HA neu laden. Nach einer Programmanpassung durch
 HA ebenfalls Programmstart und Client-Verteilung abwarten und zur Kontrolle erneut
 neu laden. Der UDP-Status zeigt bis dahin **Integration nach Programmstart neu laden**.
+Lädt die Integration nur wegen einer unterbrochenen Verbindung neu, zum Beispiel beim Speichern aus
+Config, ändert sie das Programm nicht. Der Status zeigt dann **Anpassung offen, nichts hochgeladen**;
+die Anpassung folgt erst beim nächsten ausdrücklichen Neuladen.
 Während der Einrichtung nicht gleichzeitig aus Config speichern. Vor späteren
 Änderungen das aktuelle Programm aus dem Miniserver laden.
 

@@ -1,6 +1,9 @@
 """UDP setup runs once on load; explicit HA-values checks still read the program."""
 import asyncio
+import json
 import sys
+from pathlib import Path
+from types import SimpleNamespace as NS
 
 from test_udp_diagnostics import manager, reporting  # noqa: F401 (pytest fixture)
 from test_udp_install import archive, XML
@@ -83,3 +86,77 @@ def test_unload_during_startup_delay_prevents_program_access(reporting, tmp_path
         await closing
         assert setup.client.calls == 0 and setup.client.events == []
     asyncio.run(run())
+
+
+def _immediate(reporting, monkeypatch):
+    async def immediate_delay(seconds):
+        return None
+    monkeypatch.setattr(reporting.setup.asyncio, "sleep", immediate_delay)
+
+
+def test_load_after_connection_loss_reports_change_without_upload(reporting, tmp_path, monkeypatch):
+    setup = manager(reporting, tmp_path)
+    _immediate(reporting, monkeypatch)
+
+    async def run():
+        setup.hass.async_create_task = asyncio.create_task
+        setup.start(after_connection_loss=True)
+        await setup.task
+        assert setup.status["state"] == "upload_deferred"
+        assert setup.client.events == [] and setup.client.calls == 1
+        assert list(tmp_path.glob("*.zip")) == []
+        assert "nichts hochgeladen" in reporting.messages[-1]
+        # A deliberate check afterwards (button, reload) may change the program.
+        await setup.check()
+        assert setup.status["state"] == "reload_required"
+        assert setup.client.events == ["ftp", "upload", "activate", "restart"]
+        await setup.close()
+    asyncio.run(run())
+
+
+def test_load_after_connection_loss_still_confirms_unchanged_program(reporting, tmp_path, monkeypatch):
+    setup = manager(reporting, tmp_path)
+    asyncio.run(setup.check())
+    activated = setup.client.files.pop("sps_new.zip")
+    reloaded = manager(reporting, tmp_path)
+    reloaded.client.raw = activated
+    _immediate(reporting, monkeypatch)
+
+    async def run():
+        reloaded.hass.async_create_task = asyncio.create_task
+        reloaded.start(after_connection_loss=True)
+        await reloaded.task
+        assert reloaded.status["state"] == "configured"
+        assert reloaded.client.events == []
+        await reloaded.close()
+    asyncio.run(run())
+
+
+def test_load_without_connection_loss_still_uploads(reporting, tmp_path, monkeypatch):
+    setup = manager(reporting, tmp_path)
+    _immediate(reporting, monkeypatch)
+
+    async def run():
+        setup.hass.async_create_task = asyncio.create_task
+        setup.start()
+        await setup.task
+        assert setup.status["state"] == "reload_required"
+        await setup.close()
+    asyncio.run(run())
+
+
+def test_connection_reload_mark_applies_to_every_entry_once(reporting):
+    entries = [NS(entry_id="a"), NS(entry_id="b")]
+    hass = NS(data={}, config_entries=NS(async_entries=lambda domain: entries))
+    reporting.setup.mark_connection_reload(hass)
+    assert reporting.setup.take_connection_reload(hass, "a") is True
+    assert reporting.setup.take_connection_reload(hass, "a") is False
+    assert reporting.setup.take_connection_reload(hass, "b") is True
+    assert reporting.setup.take_connection_reload(hass, "other") is False
+
+
+def test_upload_deferred_state_is_translated():
+    root = Path(__file__).parents[1] / "custom_components/loxone/translations"
+    for language in ("de", "en"):
+        data = json.loads((root / (language + ".json")).read_text(encoding="utf-8"))
+        assert "upload_deferred" in data["entity"]["sensor"]["udp_status"]["state"]

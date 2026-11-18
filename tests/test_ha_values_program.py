@@ -279,3 +279,36 @@ def test_command_switched_to_analog_gets_the_value_placeholder_too():
     block, commands = managed(rebuilt)
     assert commands[0][2] == "sensor.pool=\\v" and block.find("C").get("Analog") == "true"
     assert values.patch_ha_values(rebuilt, [{"key": "sensor.pool", "title": "Pool", "digital": False}])[1]["ha_values_changed"] is False
+
+
+def test_config_save_of_an_older_project_waits_for_a_deliberate_check(tmp_path):
+    """Reported case: 1.8.5b1 made a command analog, Config saved the older digital one again."""
+    import io
+    import threading
+    import zipfile
+    from test_gateway_udp import archive
+    from test_udp_install import TARGET, FakeClient, installer, program
+    entries = [{"key": "light.whirlpool", "title": "Whirlpool", "digital": True}]
+    select = lambda raw, xml: set()
+    current = program.prepare(archive(FULL, (PART_GW, PART_CL)), TARGET, set(), gateway=True, ha_values=entries)[0]
+    assert program.prepare(current, TARGET, set(), gateway=True, ha_values=entries)[0] == current
+
+    def older(xml):
+        return xml.replace(b' Analog="true"', b"").replace(b"light.whirlpool=\v", b"light.whirlpool=1")
+    output = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(current)) as source, zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as target:
+        for name in source.namelist():
+            content = source.read(name)
+            if name == "sps.Loxone":
+                content = older(content)
+            elif name.startswith("sps") and name.endswith(".LoxCC"):
+                content = program.encode(older(program.decode(content)))
+            target.writestr(name, content)
+    client = FakeClient(tmp_path)
+    client.raw = output.getvalue()
+    deferred = installer.install(client, str(tmp_path), 55555, select, threading.Event(), gateway=True,
+                                 ha_values=entries, allow_upload=False)
+    assert deferred["state"] == "upload_deferred" and client.events == []
+    deliberate = installer.install(client, str(tmp_path), 55555, select, threading.Event(), gateway=True,
+                                   ha_values=entries)
+    assert deliberate["state"] == "restarting" and client.events == ["ftp", "upload", "activate", "restart"]
