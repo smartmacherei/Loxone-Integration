@@ -18,7 +18,8 @@ if HAS_HA:
     from custom_components.loxone.climate import LoxoneRoomControllerV2
     from custom_components.loxone.const import CONF_HVAC_AUTO_MODE, SENDDOMAIN
 
-OPERATING_MODE = "00000000-0000-0000-0000000000000011"
+STATES = {name: f"00000000-0000-0000-00000000000000{index}" for index, name in enumerate(
+    ("operatingMode", "tempTarget", "comfortTemperature", "comfortTemperatureCool", "comfortTemperatureOffset"), 11)}
 
 
 @unittest.skipUnless(HAS_HA, "Run with the installed Home Assistant Python runtime")
@@ -31,22 +32,29 @@ class RoomControllerV2ModesHATest(unittest.IsolatedAsyncioTestCase):
         self.entity = LoxoneRoomControllerV2(
             hass=self.hass, name="Wohnzimmer", uuidAction="00000000-0000-0000-0000000000000010",
             type="IRoomControllerV2", room="", cat="", details={"timerModes": []},
-            states={"operatingMode": OPERATING_MODE}, **{CONF_HVAC_AUTO_MODE: 0})
+            states=STATES, **{CONF_HVAC_AUTO_MODE: 0})
         self.entity.schedule_update_ha_state = lambda *args, **kwargs: None
 
     async def asyncTearDown(self):
         await self.hass.async_stop(force=True)
         self.directory.cleanup()
 
+    def state(self, **values):
+        for name, value in values.items():
+            self.entity._stateAttribValues[STATES[name]] = value
+
     def shown(self, operating_mode):
-        self.entity._stateAttribValues[OPERATING_MODE] = operating_mode
+        self.state(operatingMode=operating_mode)
         return self.entity.hvac_mode
 
-    async def send(self, hvac_mode):
+    async def sent_by(self, action):
         self.sent.clear()
-        self.entity.set_hvac_mode(hvac_mode)
+        action()
         await self.hass.async_block_till_done()
         return self.sent
+
+    async def send(self, hvac_mode):
+        return await self.sent_by(lambda: self.entity.set_hvac_mode(hvac_mode))
 
     async def test_app_modes_show_as_the_same_hvac_mode(self):
         assert [self.shown(mode) for mode in (0, 1, 2, -1)] == [
@@ -65,3 +73,16 @@ class RoomControllerV2ModesHATest(unittest.IsolatedAsyncioTestCase):
         for hvac_mode in self.entity.hvac_modes:
             command, = await self.send(hvac_mode)
             assert self.shown(int(command.rsplit("/", 1)[1])) == hvac_mode
+
+    async def test_temperature_in_a_manual_mode_is_the_manual_temperature(self):
+        self.state(operatingMode=5, tempTarget=24)
+        assert await self.sent_by(lambda: self.entity.set_temperature(temperature=23)) == ["setManualTemperature/23"]
+
+    async def test_temperature_while_cooling_automatically_shifts_the_offset_from_the_current_target(self):
+        # The Miniserver takes setComfortModeTemp as the new comfortTemperatureOffset (PyLoxone
+        # issue #544). While cooling, the target follows comfortTemperatureCool, not comfortTemperature.
+        self.state(operatingMode=2, comfortTemperature=21, comfortTemperatureCool=24, comfortTemperatureOffset=0,
+                   tempTarget=24)
+        command, = await self.sent_by(lambda: self.entity.set_temperature(temperature=23))
+        name, value = command.rsplit("/", 1)
+        assert (name, float(value)) == ("setComfortModeTemp", -1)

@@ -409,10 +409,12 @@ class LoxoneRoomControllerV2(LoxoneEntity, ClimateEntity, ABC):
                     value=f'setManualTemperature/{kwargs["temperature"]}',
                 ),
             )
-        else:  # Set comfort temp offset otherwise
-            new_offset = kwargs["temperature"] - self.get_state_value(
-                "comfortTemperature"
-            )
+        else:
+            # The Miniserver takes setComfortModeTemp as the new comfortTemperatureOffset
+            # (PyLoxone issue #544). Shift the current offset by the requested change of the
+            # target: while cooling, the target follows comfortTemperatureCool, not comfortTemperature.
+            new_offset = round(kwargs["temperature"] - self.get_state_value("tempTarget")
+                               + (self.get_state_value("comfortTemperatureOffset") or 0), 2)
             self.hass.bus.fire(
                 SENDDOMAIN,
                 dict(uuid=self.uuidAction, value=f"setComfortModeTemp/{new_offset}"),

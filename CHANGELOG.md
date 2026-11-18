@@ -52,7 +52,9 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   erschien als „Heizen/Kühlen“. HA zeigt jetzt Heizen bzw. Kühlen. „Heizen“ und „Kühlen“ aus HA
   schalten wie die App in diese Automatik-Betriebsarten statt in die manuellen. Eine in HA
   gesetzte Temperatur ändert dann die Komforttemperatur bis zum Ende des nächsten
-  Komfortzeitraums, statt eine manuelle Temperatur zu setzen. Issue #16.
+  Komfortzeitraums, statt eine manuelle Temperatur zu setzen. Dafür verschiebt sie den
+  Komfort-Offset um die gewünschte Änderung des aktuellen Sollwerts, wie in PyLoxone. Bisher
+  rechnete sie ihn immer von der Komforttemperatur fürs Heizen aus, auch beim Kühlen. Issue #16.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 
