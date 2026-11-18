@@ -195,6 +195,11 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
   funktioniert. Jetzt sendet die Integration die Anmeldung als eigenen Authorization-Header, mit
   derselben Zeichenkodierung wie bisher (latin-1), ohne Warnung und auch mit älteren
   HA-Versionen.
+- Behoben: Dienstaufrufe wie `loxone.event_websocket_command` scheiterten mit „Action not
+  found“, solange die Integration neu lud, zum Beispiel nach einer Programmanpassung oder einem
+  Verbindungsabbruch; Skripte brachen dabei ab. Jetzt bleiben die Dienste die ganze Laufzeit von
+  HA registriert, ein Aufruf ohne verbundenen Miniserver wird mit einer Warnung übersprungen.
+  Beobachtet am Demo-Koffer.
 
 ## [1.8.5b2] - 2026-10-30 (Vorabversion)
 

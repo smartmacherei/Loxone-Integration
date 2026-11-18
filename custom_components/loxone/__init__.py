@@ -129,9 +129,6 @@ async def async_unload_entry(hass, config_entry):
 
     from . import helpers as _lox_helpers
     _lox_helpers.release(config_entry.entry_id)
-    # Services and command listeners serve every Miniserver: they go with the last one.
-    if not hass.data.get(DOMAIN):
-        _async_remove_commands(hass)
 
     # Unload
     unload_ok = await hass.config_entries.async_unload_platforms(
@@ -153,6 +150,9 @@ async def async_setup(hass, config):
 
     hass.services.async_register(DOMAIN, "check_connection", check_connection,
         schema=vol.Schema({vol.Required("entry_id"): cv.string}))
+    # Command services and listeners belong to the integration, not to an entry: a reload
+    # (connection loss, program upload) must not leave scripts with "Action not found".
+    _async_setup_commands(hass)
     if DOMAIN in config:
         hass.async_create_task(
             hass.config_entries.flow.async_init(
@@ -503,9 +503,6 @@ async def _async_load_topology(hass, config_entry, coordinator, _router):
 
 
 COMMANDS = DOMAIN + "_commands"
-# Domain services; quick_shade & co. are the cover platform's entity services, shared as well.
-SHARED_SERVICES = ("event_websocket_command", "event_secured_websocket_command", "sync_areas", "reload",
-                   "quick_shade", "enable_sun_automation", "disable_sun_automation")
 
 
 def _owns(config, uuid):
@@ -533,17 +530,24 @@ def _call_target(hass, data):
     """uuid and coordinators of a service call: the entity's own Miniserver, else the uuid's owner."""
     if data.get(ATTR_DEVICE) is None:
         entity_uuid = data.get(ATTR_UUID, DEFAULT)
-        return entity_uuid, _command_coordinators(hass, entity_uuid)
-    entity = er.async_get(hass).async_get(data.get(ATTR_DEVICE))
-    coordinator = hass.data.get(DOMAIN, {}).get(entity.config_entry_id)
-    return entity.unique_id, [coordinator] if coordinator else _command_coordinators(hass, entity.unique_id)
+        coordinators = _command_coordinators(hass, entity_uuid)
+    else:
+        entity = er.async_get(hass).async_get(data.get(ATTR_DEVICE))
+        entity_uuid = entity.unique_id
+        coordinator = hass.data.get(DOMAIN, {}).get(entity.config_entry_id)
+        coordinators = [coordinator] if coordinator else _command_coordinators(hass, entity_uuid)
+    if not coordinators:
+        # While an entry reloads no Miniserver is connected; a script keeps running.
+        _LOGGER.warning("Loxone: no Miniserver connected, command for %s not sent", entity_uuid)
+    return entity_uuid, coordinators
 
 
 def _async_setup_commands(hass):
-    """Command services and listeners exist once for all Miniservers.
+    """Command services and listeners exist once for all Miniservers, for the whole HA run.
 
     Registered per entry, the last entry's closures served every service call and every
-    entity command went to every Miniserver.
+    entity command went to every Miniserver; removed with the last entry, a reload left
+    scripts with "Action not found".
     """
     if COMMANDS in hass.data:
         return
@@ -637,14 +641,6 @@ def _async_setup_commands(hass):
         hass.bus.async_listen(SENDDOMAIN, loxone_send),
         hass.bus.async_listen(SECUREDSENDDOMAIN, loxone_send),
     ]
-
-
-def _async_remove_commands(hass):
-    """With the last Miniserver: services, command listeners and the cover entity services."""
-    for unsubscribe in hass.data.pop(COMMANDS, ()):
-        unsubscribe()
-    for service in SHARED_SERVICES:
-        hass.services.async_remove(DOMAIN, service)
 
 
 async def async_setup_entry(hass, config_entry):
@@ -991,8 +987,6 @@ async def _async_setup_entry(hass, config_entry):
     from .lifecycle import listen_once
     listen_once(hass, config_entry, EVENT_HOMEASSISTANT_STOP, stop_event)
     listen_once(hass, config_entry, EVENT_HOMEASSISTANT_STARTED, loxone_discovered)
-
-    _async_setup_commands(hass)
 
     await start_event()
 
