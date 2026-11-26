@@ -18,6 +18,9 @@ hardware or of support for every command.
 - Existing native HA platforms remain responsible for supported visualization
   controls. Other control types expose their named WebSocket states as read-only
   sensors, including structured values. No control commands or units are guessed.
+- The Energy Flow Monitor turns the values documented in Loxone's Structure File into
+  real sensors: grid, production and storage power and the power of each node in the
+  block's unit (usually kW), the CO2 factor in kg/kWh. Its other states stay raw values.
 - These additional sensors do not provide complete native Wallbox, Touch Display,
   pool or access-control user interfaces. Existing supported Loxone controls may
   provide part of the device's functionality.

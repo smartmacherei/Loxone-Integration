@@ -17,6 +17,10 @@ vollständige Bedienbarkeit sind unterschiedliche Fähigkeiten.
 - Bisher nicht nativ unterstützte Visu-Controls erhalten Sensoren für ihre benannten
   WebSocket-Zustände. Das ermöglicht keine vollständige native Bedienung etwa von
   Wallbox, Touch Display, Pool oder Zutrittssteuerung. Befehle werden nicht geraten.
+- Der Energieflussmonitor macht die im Structure File von Loxone dokumentierten Werte
+  zu echten Sensoren: Netz-, Produktions- und Speicherleistung und die Leistung jedes
+  Knotens in der Einheit des Bausteins (meist kW), den CO2-Faktor in kg/kWh. Seine
+  übrigen Zustände bleiben Rohwerte.
 - Neue protokollspezifische Ausgänge bleiben lesend. Bereits unterstützte physische
   Schalter behalten ihre Funktion; ihre Verwendung muss zum Loxone-Programm passen.
 - Leere 1-Wire-/M-Bus-Extensions belegen keine Messwertunterstützung. Dafür sind

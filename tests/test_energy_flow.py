@@ -47,9 +47,24 @@ def test_documented_states_become_values_with_their_format():
     assert values["Pri"]["format"] == "%.3f"
 
 
+def test_actual_state_is_named_after_its_top_level_node_only():
+    # Real structures: a child node inside a group can repeat the actualEfmState of a
+    # top-level node. The Structure File gives actualEfmState to top-level nodes only.
+    group = {"title": "PV Halle DC", "nodeType": "Group", "actualEfmState": uid(11),
+             "nodes": [{"title": "PV Halle DC2", "nodeType": "Production", "actualEfmState": uid(12)}]}
+    storage = {"title": "Speicher", "nodeType": "Storage", "actualEfmState": uid(12)}
+    for nodes in ([group, storage], [storage, group]):
+        efm = dict(EFM, details=dict(EFM["details"], nodes=nodes))
+        names = {v["state"]: v["name"] for v in states.efm_values(efm)}
+        assert names["actual2"] == "Energieflussmonitor Speicher"
+        assert names["actual1"] == "Energieflussmonitor PV Halle DC"
+
+
 def test_without_actual_format_power_states_stay_raw():
     efm = dict(EFM, details={})
     assert {v["state"] for v in states.efm_values(efm)} == {"CO2", "Pre", "Pri"}
+    raw = {s["state_key"] for s in states.state_inventory({"controls": {uid(1): efm}})}
+    assert {"Ppwr", "Gpwr", "Spwr", "actual0", "actual1", "actual2"} <= raw
 
 
 def test_inventory_keeps_only_undocumented_states_raw_under_the_control_name():

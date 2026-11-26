@@ -20,24 +20,24 @@ EFM_OTHER = {"CO2": ("CO2 factor", "%.3f kg/kWh"), "Pre": ("Export price", "%.3f
 EFM_ACTUAL = re.compile(r"actual\d+")
 
 
-def _efm_nodes(nodes):
-    for node in nodes if isinstance(nodes, list) else []:
-        if isinstance(node, dict):
-            yield node
-            yield from _efm_nodes(node.get("nodes"))
-
-
 def efm_values(control):
     """Documented EFM states as ``[{"state", "uuid", "name", "format"}]``.
 
-    ``actualN`` is named after the node whose ``actualEfmState`` points at it.
-    Without ``actualFormat`` the power states stay raw: their unit would be a guess.
+    ``actualN`` is named after the top-level node whose ``actualEfmState`` points at
+    it; only top-level nodes carry it, and a child node in a group can repeat the
+    state of another node. Without ``actualFormat`` the power states stay raw: their
+    unit would be a guess.
     """
     details = control.get("details") or {}
     name = control.get("name") or control.get("type", "EFM")
     power_format = details.get("actualFormat")
+    if not isinstance(power_format, str):
+        power_format = None
+    nodes = details.get("nodes")
     titles = {}
-    for node in _efm_nodes(details.get("nodes")):
+    for node in nodes if isinstance(nodes, list) else []:
+        if not isinstance(node, dict):
+            continue
         ref, title = node.get("actualEfmState"), node.get("title")
         if isinstance(ref, str) and isinstance(title, str) and title:
             titles.setdefault(ref.lower(), title)

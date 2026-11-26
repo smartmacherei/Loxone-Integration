@@ -83,3 +83,20 @@ class EnergyFlowMonitorHATest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({r.name for r in raw}, {"Energieflussmonitor: jLocked", "Energieflussmonitor: selfConsumption",
                                                  "Energieflussmonitor: totalSelfConsumption"})
         self.assertEqual({r.device_info["name"] for r in raw}, {"Energieflussmonitor"})
+
+    def test_every_state_is_exactly_one_entity(self):
+        from custom_components.loxone.control_states import state_inventory
+        from test_energy_flow import EFM
+        native = {e.unique_id for e in sensor.efm_sensors(self.cfg, None, None)}
+        raw = {s["uuidAction"] for s in state_inventory(self.cfg)}
+        self.assertFalse(native & raw)
+        self.assertEqual(native | raw, set(EFM["states"].values()))
+
+    def test_other_controls_name_their_device_after_the_control(self):
+        from custom_components.loxone.control_states import state_inventory
+        from custom_components.loxone.raw_sensor import RawValueSensor
+        from test_energy_flow import uid
+        cfg = {"controls": {uid(50): {"type": "Wallbox2", "name": "Wallbox", "uuidAction": uid(50),
+                                      "states": {"active": uid(51), "power": uid(52)}}}}
+        raw = [RawValueSensor(**state) for state in state_inventory(cfg)]
+        self.assertEqual({r.device_info["name"] for r in raw}, {"Wallbox"})
