@@ -78,6 +78,26 @@ class HaValuesHATest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.received(1), {"sensor.demo_pool=22"})
         sender.stop()
 
+    async def test_button_names_a_missing_udp_receiver_instead_of_the_option(self):
+        # Issue #28: the option was on, but no UDP receiver ran, and the message asked to switch it on.
+        from homeassistant.components import persistent_notification
+        original = persistent_notification.async_create
+        for reason, expected in (("receiver_failed", "custom_components.loxone"),
+                                 ("discovery_off", "Discover additional inputs and outputs"),
+                                 ("udp_port_off", "set a UDP port")):
+            created = []
+            persistent_notification.async_create = lambda hass, message, **kw: created.append(message)
+            self.hass.data.setdefault("loxone_udp_unavailable", {})[self.entry.entry_id] = reason
+            try:
+                await ha_values.async_apply(self.hass, self.entry)
+            finally:
+                persistent_notification.async_create = original
+            self.assertEqual(len(created), 1)
+            self.assertIn(expected, created[0])
+            self.assertNotIn("enable “Set up real-time values over UDP automatically”", created[0])
+            self.hass.data[ha_values.KEY][self.entry.entry_id]["sender"].stop()
+        self.hass.data["loxone_udp_unavailable"].pop(self.entry.entry_id)
+
     async def test_button_without_way_two_stores_wish_list_and_notifies(self):
         created = []
         from homeassistant.components import persistent_notification

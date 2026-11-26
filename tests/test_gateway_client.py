@@ -7,6 +7,8 @@ import sys
 from types import ModuleType
 import zipfile
 
+import pytest
+
 from test_udp_install import program
 
 ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "loxone"
@@ -91,6 +93,22 @@ def test_client_hosts_only_for_client_terminals():
     assert top.client_hosts(SINGLE, [GW_IN]) == {}
 
 
+def test_client_on_a_non_default_port_keeps_the_port_out_of_the_host():
+    # Issue #28: Config writes the port into the address of a client on port 88.
+    full = (FULL.replace(b'IntAddr="192.168.9.12"', b'IntAddr="192.168.9.12:88"')
+            .replace(b'IP="192.168.9.12" Serial="0002" Type="1" Port="8080"',
+                     b'IP="192.168.9.12:88" Serial="0002" Type="1" Port="88"'))
+    servers = {m["uuid"]: m for m in top.miniservers(full)}
+    assert (servers[CL]["host"], servers[CL]["port"]) == ("192.168.9.12", 88)
+    assert top.client_hosts(full, [CL_IN]) == {CL_IN: ("192.168.9.12", 88)}
+    # Without a Port attribute the port in the address counts, not the external port ExP.
+    servers = {m["uuid"]: m for m in top.miniservers(full.replace(b' Port="88"', b""))}
+    assert (servers[CL]["host"], servers[CL]["port"]) == ("192.168.9.12", 88)
+    # The gateway's Port attribute for the client wins over a port in the address.
+    servers = {m["uuid"]: m for m in top.miniservers(full.replace(b' Port="88"', b' Port="8080"'))}
+    assert (servers[CL]["host"], servers[CL]["port"]) == ("192.168.9.12", 8080)
+
+
 def test_values_are_fetched_from_the_owning_miniserver(monkeypatch):
     from types import SimpleNamespace
     monkeypatch.setitem(sys.modules, "aiohttp", SimpleNamespace(ClientTimeout=lambda total: total))
@@ -132,6 +150,45 @@ def test_udp_receiver_accepts_every_miniserver_address():
             transport.close()
 
     assert asyncio.run(run()) == {"127.0.0.1", "127.0.0.2"}
+
+
+def test_unresolvable_sender_address_does_not_stop_the_receiver():
+    # Issue #28: one address that did not resolve stopped the whole UDP receiver.
+    import socket
+    spec_udp = importlib.util.spec_from_file_location("gateway_udp_push_unresolved", ROOT / "udp_push.py")
+    udp = importlib.util.module_from_spec(spec_udp)
+    spec_udp.loader.exec_module(udp)
+
+    class Loop:
+        def __init__(self, loop):
+            self.loop = loop
+
+        async def getaddrinfo(self, host, *args, **kwargs):
+            if host == "client.invalid":
+                raise socket.gaierror("Name or service not known")
+            if host == "192.168..12":
+                raise UnicodeError("label empty or too long")  # what getaddrinfo raises for it
+            return await self.loop.getaddrinfo(host, *args, **kwargs)
+
+        def create_datagram_endpoint(self, *args, **kwargs):
+            return self.loop.create_datagram_endpoint(*args, **kwargs)
+
+    async def run(sources):
+        loop = asyncio.get_running_loop()
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        transport, protocol = await udp.async_start_udp_push(
+            Loop(loop), port, lambda values: None, host="127.0.0.1", source_host=sources)
+        try:
+            return protocol._allowed_hosts
+        finally:
+            transport.close()
+
+    assert asyncio.run(run(["127.0.0.1", "client.invalid", "192.168..12"])) == {"127.0.0.1"}
+    # If no address resolves, the receiver must fail as before, not drop every packet.
+    with pytest.raises(OSError):
+        asyncio.run(run(["client.invalid"]))
 
 
 def test_device_internals_start_disabled_and_disabled_entities_are_not_polled(monkeypatch):

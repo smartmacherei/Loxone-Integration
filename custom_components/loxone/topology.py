@@ -225,7 +225,12 @@ def miniservers(program_xml: bytes) -> list[dict]:
             raw_index = (client.get("ProgType") if client is not None else None) or (slave.get("Type") if slave is not None else None) or "0"
             index = int(raw_index) if str(raw_index).isdigit() else 0
         host = (slave.get("IP") if slave is not None and slave.get("IP") else live.get("IntAddr", "")) or ""
-        raw_port = (slave.get("Port") if slave is not None and slave.get("Port") else live.get("ExP")) or "80"
+        # A Miniserver on a non-default port carries it in its address, "192.168.1.11:88" (#28).
+        embedded = re.fullmatch(r"([^:\s]+):(\d{1,5})", host)
+        if embedded:
+            host = embedded.group(1)
+        raw_port = ((slave.get("Port") if slave is not None and slave.get("Port") else None)
+                    or (embedded.group(2) if embedded else None) or live.get("ExP") or "80")
         result.append({"uuid": uuid, "name": live.get("Title", ""), "serial": live.get("Serial", ""),
                        "role": role, "index": index, "host": host,
                        "port": int(raw_port) if str(raw_port).isdigit() else 80})
