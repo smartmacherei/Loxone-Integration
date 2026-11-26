@@ -49,6 +49,9 @@ class UdpStatusSensor(SensorEntity):
         manager = self.hass.data.get(DOMAIN + "_udp_setup", {}).get(self.entry_id)
         receiver = self.hass.data.get(DOMAIN + "_udp", {}).get(self.entry_id)
         status = slim_status(manager.status) if manager else {"state": "manual"}
+        reason = None if manager else self.hass.data.get(DOMAIN + "_udp_unavailable", {}).get(self.entry_id)
+        if reason:
+            status["reason"] = reason  # option on, no UDP receiver (#28)
         if manager is None and receiver is not None:
             # Platforms can perform their first update before async_setup_entry
             # registers the automatic setup manager. Do not imply manual success.

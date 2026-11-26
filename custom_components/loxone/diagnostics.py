@@ -22,6 +22,7 @@ async def async_get_config_entry_diagnostics(
     receiver = hass.data.get(DOMAIN + "_udp", {}).get(config_entry.entry_id)
     router = hass.data.get(DOMAIN + "_transport", {}).get(config_entry.entry_id)
     area_mapping = hass.data.get(DOMAIN + "_area_mapping", {}).get(config_entry.entry_id)
+    unavailable = hass.data.get(DOMAIN + "_udp_unavailable", {}).get(config_entry.entry_id)  # option on, no receiver
     return {
         # The explicit support download includes unredacted archive evidence.
         # Keep it separate from safe status fields and never log this payload.
@@ -36,7 +37,7 @@ async def async_get_config_entry_diagnostics(
             "manual_device_overrides": len(area_mapping.owned.get("overridden_devices", [])),
             "manual_entity_overrides": len(area_mapping.owned.get("overridden_entities", [])),
         } if area_mapping else None,
-        "udp_setup": dict(manager.status) if manager else {"state": "disabled"},
+        "udp_setup": dict(manager.status) if manager else {"state": "disabled", **({"reason": unavailable} if unavailable else {})},
         "topology": hass.data.get(DOMAIN + "_topology", {}).get(config_entry.entry_id),
         "transport": router.diagnostics() if router else None,
         "udp_receiver": {

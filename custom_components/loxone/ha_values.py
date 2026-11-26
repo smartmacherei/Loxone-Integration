@@ -330,11 +330,28 @@ async def async_apply(hass, entry):
     manager = hass.data.get(DOMAIN + "_udp_setup", {}).get(entry.entry_id)
     notification_id = "loxone_ha_values_" + entry.entry_id
     if manager is None:
-        persistent_notification.async_create(
-            hass, ("Weg 3 braucht Weg 2: Bitte in den Optionen „Echtzeitwerte per UDP automatisch einrichten“ "
-                   "einschalten, dann den Knopf erneut drücken." if german else
-                   "Way 3 needs way 2: enable “Set up real-time values over UDP automatically” in the options, "
-                   "then press the button again."), title="Loxone HA → Loxone", notification_id=notification_id)
+        # Option on but no UDP receiver: say why, not "switch the option on" (#28).
+        reason = hass.data.get(DOMAIN + "_udp_unavailable", {}).get(entry.entry_id)
+        if reason == "receiver_failed":
+            message = ("Weg 2 ist eingeschaltet, aber der UDP-Empfang läuft nicht: Der UDP-Port ist belegt oder "
+                       "eine Miniserver-Adresse lässt sich nicht auflösen. Die Ursache steht im Log unter "
+                       "custom_components.loxone; danach die Integration neu laden und den Knopf erneut drücken."
+                       if german else
+                       "Way 2 is switched on, but the UDP receiver is not running: the UDP port is in use or a "
+                       "Miniserver address cannot be resolved. The log names the cause under custom_components.loxone; "
+                       "then reload the integration and press the button again.")
+        elif reason == "receiver_off":
+            message = ("Weg 2 ist eingeschaltet, braucht aber den UDP-Empfang: In den Optionen „Weitere Ein- und "
+                       "Ausgänge erkennen“ einschalten und einen UDP-Port eintragen, dann den Knopf erneut drücken."
+                       if german else
+                       "Way 2 is switched on but needs the UDP receiver: enable “Discover additional inputs and "
+                       "outputs” in the options and set a UDP port, then press the button again.")
+        else:
+            message = ("Weg 3 braucht Weg 2: Bitte in den Optionen „Echtzeitwerte per UDP automatisch einrichten“ "
+                       "einschalten, dann den Knopf erneut drücken." if german else
+                       "Way 3 needs way 2: enable “Set up real-time values over UDP automatically” in the options, "
+                       "then press the button again.")
+        persistent_notification.async_create(hass, message, title="Loxone HA → Loxone", notification_id=notification_id)
         return
     if manager.task is not None and not manager.task.done():
         persistent_notification.async_create(

@@ -500,3 +500,16 @@ def test_format_check_names_every_approved_format():
     errors = module("udp_errors")
     for value in program.FORMATS + program.GATEWAY_FORMATS:
         assert value in errors.FORMAT_CHECK[0] and value in errors.FORMAT_CHECK[1]
+
+
+def test_diagnostics_name_a_missing_udp_receiver(reporting, tmp_path):
+    # Issue #28: with the option on but no UDP receiver, diagnostics only said "disabled".
+    setup = manager(reporting, tmp_path)
+    setup.hass.data = {"loxone_udp_unavailable": {"demo": "receiver_failed"}}
+    result = asyncio.run(reporting.diagnostics.async_get_config_entry_diagnostics(setup.hass, setup.entry))
+    assert result["udp_setup"] == {"state": "disabled", "reason": "receiver_failed"}
+    sensor = reporting.status.UdpStatusSensor("demo", "serial")
+    sensor.hass = NS(data=setup.hass.data, config_entries=NS(async_get_entry=lambda _: None))
+    asyncio.run(sensor.async_update())
+    assert sensor._attr_native_value == "disabled"
+    assert sensor._attr_extra_state_attributes["reason"] == "receiver_failed"

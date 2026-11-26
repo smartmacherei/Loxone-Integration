@@ -103,6 +103,7 @@ async def async_unload_entry(hass, config_entry):
     if manager is not None:
         await manager.close()
     hass.data.get(DOMAIN + "_udp", {}).pop(config_entry.entry_id, None)
+    hass.data.get(DOMAIN + "_udp_unavailable", {}).pop(config_entry.entry_id, None)
 
     # Connection close
     if coordinator is not None:
@@ -759,7 +760,8 @@ async def _async_setup_entry(hass, config_entry):
     # discoverable terminals is monitored so a later Config upload is detected.
     _udp_ready = False
     _udp_port = int(config_entry.options.get(CONF_UDP_PORT, DEFAULT_UDP_PORT) or 0)
-    if _udp_port and config_entry.options.get(CONF_AUTO_DISCOVERY, DEFAULT_AUTO_DISCOVERY):
+    _udp_wanted = bool(_udp_port and config_entry.options.get(CONF_AUTO_DISCOVERY, DEFAULT_AUTO_DISCOVERY))
+    if _udp_wanted:
         from .udp_push import async_start_udp_push
         try:
             _udp_transport, _udp_proto = await async_start_udp_push(
@@ -999,6 +1001,11 @@ async def _async_setup_entry(hass, config_entry):
     if _udp_ready and config_entry.options.get("auto_configure_udp", False):
         manager = UdpSetup(hass, config_entry)
         hass.data.setdefault(DOMAIN + "_udp_setup", {})[config_entry.entry_id] = manager
+    elif config_entry.options.get("auto_configure_udp", False):
+        # The option is on, but no UDP receiver runs: the button, the status and the
+        # diagnostics name that instead of asking to switch the option on (#28).
+        hass.data.setdefault(DOMAIN + "_udp_unavailable", {})[config_entry.entry_id] = (
+            "receiver_failed" if _udp_wanted else "receiver_off")
 
     # Weg 3: stored wish list to the manager, sender for the labelled entities. Runs before
     # the manager starts, so even a first check already knows a freshly seeded value.

@@ -147,7 +147,11 @@ async def async_start_udp_push(loop: asyncio.AbstractEventLoop, port: int, callb
         sources = [source_host] if isinstance(source_host, str) else list(source_host)
         allowed = set()
         for source in sources:
-            allowed |= {item[4][0] for item in await loop.getaddrinfo(source, port, family=socket.AF_INET)}
+            try:
+                allowed |= {item[4][0] for item in await loop.getaddrinfo(source, port, family=socket.AF_INET)}
+            except OSError:
+                # One address that does not resolve must not stop the receiver for the others (#28).
+                _LOGGER.warning("Loxone UDP: address %s cannot be resolved; packets from it are ignored", source)
     transport, protocol = await loop.create_datagram_endpoint(
         lambda: LoxoneUdpPushProtocol(callback, known, dedupe, allowed), local_addr=(host, port)
     )
