@@ -4,6 +4,41 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.5b4] - 2026-11-26 (Vorabversion)
+
+- Behoben: Loxone Config 17.3 speichert alle Objekte im Format 179. Die automatische
+  UDP-Einrichtung ließ nur 175 und 178 zu (im Gateway/Client-Verbund zusätzlich 174) und brach
+  bei jedem mit 17.3 gespeicherten Projekt mit `PROGRAM_FORMAT_UNSUPPORTED` ab, bei Einzelanlagen
+  wie im Verbund. 179 ist jetzt freigegeben. Im Vergleich mit Format 174 (Config 16.1) im selben
+  Kundenprojekt behalten alle Objekttypen, die die Integration schreibt, ihre Attribute und
+  Kindelemente. Mit dem 17.3-Programm aus Issue #23 (Gateway und 3 Clients) findet die
+  Einrichtung alle Objekte und ändert nichts. Das Neuanlegen an einem Miniserver mit 17.3 ist
+  nicht an Hardware geprüft. Issue #23.
+- Verbessert: Scheitert die Einrichtung an einem nicht freigegebenen Programmformat, nennen
+  Status, Log, Diagnose und Benachrichtigung das gefundene Objektformat und die Config-Version,
+  z. B. „Gespeichert mit Loxone Config 17.3.11.12“, und als nächsten Schritt die freigegebenen
+  Formate: bei einem älteren Projekt mit Config 17.1 oder neuer speichern, bei einem neueren auf
+  ein Update warten. Ausgegeben werden nur ASCII-Ziffern (`format_details`). Fehlt dagegen der
+  Miniserver-Bezug eines Programms, nennt die Meldung kein Format.
+- Neu: Energieflussmonitor. Netz-, Produktions- und Speicherleistung (`Gpwr`, `Ppwr`, `Spwr`)
+  und die Leistung jedes Knotens (`actual0…N`, benannt nach dem Knoten der obersten Ebene, auf
+  den `actualEfmState` zeigt) erscheinen als Sensoren in der Einheit des Bausteins
+  (`actualFormat`, meist kW) mit Geräteklasse Leistung und Zustandsklasse `measurement`.
+  Vorzeichen wie von Loxone: Netz > 0 = Bezug, Speicher > 0 = Entladung. Dazu der CO2-Faktor in
+  kg/kWh und der Export- und Importpreis je kWh als Zahl ohne Währung. Grundlage ist der
+  Abschnitt EnergyFlowMonitor im Structure File von Loxone. Nicht dokumentierte Werte
+  (`selfConsumption`, `storageChargeFromProduction`, deren Summen, `jLocked`) bleiben Rohwerte.
+  Bestehende Entitäten behalten Entity-ID und Verlauf. Issue #22.
+- Behoben: Rohwerte von Bausteinen ohne eigene Umsetzung legten ihr Gerät unter dem Namen des
+  zuerst angelegten Zustands an, etwa „Energieflussmonitor: jLocked“. Das Gerät heißt jetzt wie
+  der Baustein. Das betrifft alle solchen Bausteine; selbst vergebene Gerätenamen bleiben.
+- Behoben: Farblichter (RGB, LumiTech, Tunable White) unter einer Lichtsteuerung blieben aus,
+  wenn eine Szene Farbe oder Farbtemperatur zusammen mit Helligkeit setzte. Gesendet wurde die
+  gespeicherte Helligkeit, nach dem Ausschalten also 0. Jetzt gilt die Helligkeit aus dem Aufruf,
+  sonst die letzte Helligkeit über 0, sonst 100 %. Einfaches Einschalten sendet die letzte Farbe
+  bzw. Farbtemperatur mit dieser Helligkeit statt `On`, das `ColorPickerV2` nicht kennt.
+  Beitrag von BlackEntrance, PR #13, Issue #24.
+
 ## [1.8.5b3] - 2026-11-18 (Vorabversion)
 
 - Neu: Bausteinparameter in HA. Jeder Funktionsbaustein bringt seine Parameter (z. B. Fahrzeit
