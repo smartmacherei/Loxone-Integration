@@ -149,9 +149,12 @@ async def async_start_udp_push(loop: asyncio.AbstractEventLoop, port: int, callb
         for source in sources:
             try:
                 allowed |= {item[4][0] for item in await loop.getaddrinfo(source, port, family=socket.AF_INET)}
-            except OSError:
+            except (OSError, UnicodeError):  # UnicodeError: malformed name such as "192.168..11"
                 # One address that does not resolve must not stop the receiver for the others (#28).
                 _LOGGER.warning("Loxone UDP: address %s cannot be resolved; packets from it are ignored", source)
+        if not allowed:
+            # An empty allowlist would drop every packet without a trace; fail as before.
+            raise OSError("no Miniserver address resolves")
     transport, protocol = await loop.create_datagram_endpoint(
         lambda: LoxoneUdpPushProtocol(callback, known, dedupe, allowed), local_addr=(host, port)
     )

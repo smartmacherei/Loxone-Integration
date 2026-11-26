@@ -772,8 +772,10 @@ async def _async_setup_entry(hass, config_entry):
                 + [m["host"] for m in _servers if m["role"] != "single" and m["host"]],
                 dedupe=False,
             )
-        except OSError:
-            _LOGGER.warning("Loxone UDP port %s unavailable; automatic program changes disabled", _udp_port)
+        except OSError as err:
+            # Port in use, or no Miniserver address resolves (udp_push); err names which.
+            _LOGGER.warning("Loxone UDP receiver on port %s not started (%s); automatic program changes disabled",
+                            _udp_port, err)
         else:
             config_entry.async_on_unload(_udp_transport.close)
             hass.data.setdefault(DOMAIN + "_udp", {})[config_entry.entry_id] = _udp_proto
@@ -998,6 +1000,8 @@ async def _async_setup_entry(hass, config_entry):
     from .udp_setup import UdpSetup, take_connection_reload
     after_connection_loss = take_connection_reload(hass, config_entry.entry_id)
     manager = None
+    # A failed earlier setup does not run async_unload_entry; start without its reason.
+    hass.data.get(DOMAIN + "_udp_unavailable", {}).pop(config_entry.entry_id, None)
     if _udp_ready and config_entry.options.get("auto_configure_udp", False):
         manager = UdpSetup(hass, config_entry)
         hass.data.setdefault(DOMAIN + "_udp_setup", {})[config_entry.entry_id] = manager
@@ -1005,7 +1009,7 @@ async def _async_setup_entry(hass, config_entry):
         # The option is on, but no UDP receiver runs: the button, the status and the
         # diagnostics name that instead of asking to switch the option on (#28).
         hass.data.setdefault(DOMAIN + "_udp_unavailable", {})[config_entry.entry_id] = (
-            "receiver_failed" if _udp_wanted else "receiver_off")
+            "receiver_failed" if _udp_wanted else "udp_port_off" if not _udp_port else "discovery_off")
 
     # Weg 3: stored wish list to the manager, sender for the labelled entities. Runs before
     # the manager starts, so even a first check already knows a freshly seeded value.

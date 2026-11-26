@@ -7,6 +7,8 @@ import sys
 from types import ModuleType
 import zipfile
 
+import pytest
+
 from test_udp_install import program
 
 ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "loxone"
@@ -102,6 +104,9 @@ def test_client_on_a_non_default_port_keeps_the_port_out_of_the_host():
     # Without a Port attribute the port in the address counts, not the external port ExP.
     servers = {m["uuid"]: m for m in top.miniservers(full.replace(b' Port="88"', b""))}
     assert (servers[CL]["host"], servers[CL]["port"]) == ("192.168.9.12", 88)
+    # The gateway's Port attribute for the client wins over a port in the address.
+    servers = {m["uuid"]: m for m in top.miniservers(full.replace(b' Port="88"', b' Port="8080"'))}
+    assert (servers[CL]["host"], servers[CL]["port"]) == ("192.168.9.12", 8080)
 
 
 def test_values_are_fetched_from_the_owning_miniserver(monkeypatch):
@@ -161,24 +166,29 @@ def test_unresolvable_sender_address_does_not_stop_the_receiver():
         async def getaddrinfo(self, host, *args, **kwargs):
             if host == "client.invalid":
                 raise socket.gaierror("Name or service not known")
+            if host == "192.168..12":
+                raise UnicodeError("label empty or too long")  # what getaddrinfo raises for it
             return await self.loop.getaddrinfo(host, *args, **kwargs)
 
         def create_datagram_endpoint(self, *args, **kwargs):
             return self.loop.create_datagram_endpoint(*args, **kwargs)
 
-    async def run():
+    async def run(sources):
         loop = asyncio.get_running_loop()
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
             probe.bind(("127.0.0.1", 0))
             port = probe.getsockname()[1]
         transport, protocol = await udp.async_start_udp_push(
-            Loop(loop), port, lambda values: None, host="127.0.0.1", source_host=["127.0.0.1", "client.invalid"])
+            Loop(loop), port, lambda values: None, host="127.0.0.1", source_host=sources)
         try:
             return protocol._allowed_hosts
         finally:
             transport.close()
 
-    assert asyncio.run(run()) == {"127.0.0.1"}
+    assert asyncio.run(run(["127.0.0.1", "client.invalid", "192.168..12"])) == {"127.0.0.1"}
+    # If no address resolves, the receiver must fail as before, not drop every packet.
+    with pytest.raises(OSError):
+        asyncio.run(run(["client.invalid"]))
 
 
 def test_device_internals_start_disabled_and_disabled_entities_are_not_polled(monkeypatch):

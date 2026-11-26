@@ -83,7 +83,8 @@ class HaValuesHATest(unittest.IsolatedAsyncioTestCase):
         from homeassistant.components import persistent_notification
         original = persistent_notification.async_create
         for reason, expected in (("receiver_failed", "custom_components.loxone"),
-                                 ("receiver_off", "Discover additional inputs and outputs")):
+                                 ("discovery_off", "Discover additional inputs and outputs"),
+                                 ("udp_port_off", "set a UDP port")):
             created = []
             persistent_notification.async_create = lambda hass, message, **kw: created.append(message)
             self.hass.data.setdefault("loxone_udp_unavailable", {})[self.entry.entry_id] = reason

@@ -340,12 +340,18 @@ async def async_apply(hass, entry):
                        "Way 2 is switched on, but the UDP receiver is not running: the UDP port is in use or a "
                        "Miniserver address cannot be resolved. The log names the cause under custom_components.loxone; "
                        "then reload the integration and press the button again.")
-        elif reason == "receiver_off":
+        elif reason == "discovery_off":
             message = ("Weg 2 ist eingeschaltet, braucht aber den UDP-Empfang: In den Optionen „Weitere Ein- und "
-                       "Ausgänge erkennen“ einschalten und einen UDP-Port eintragen, dann den Knopf erneut drücken."
+                       "Ausgänge erkennen“ einschalten, dann den Knopf erneut drücken."
                        if german else
                        "Way 2 is switched on but needs the UDP receiver: enable “Discover additional inputs and "
-                       "outputs” in the options and set a UDP port, then press the button again.")
+                       "outputs” in the options, then press the button again.")
+        elif reason == "udp_port_off":
+            message = ("Weg 2 ist eingeschaltet, braucht aber den UDP-Empfang: In den Optionen einen UDP-Port "
+                       "eintragen (Standard 55555), dann den Knopf erneut drücken."
+                       if german else
+                       "Way 2 is switched on but needs the UDP receiver: set a UDP port in the options "
+                       "(default 55555), then press the button again.")
         else:
             message = ("Weg 3 braucht Weg 2: Bitte in den Optionen „Echtzeitwerte per UDP automatisch einrichten“ "
                        "einschalten, dann den Knopf erneut drücken." if german else
