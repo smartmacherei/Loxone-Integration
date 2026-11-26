@@ -472,3 +472,16 @@ def test_other_http_errors_keep_the_generic_code(monkeypatch):
         http_status(monkeypatch, 500).current()
     assert not isinstance(caught.value, PermissionError)
     assert errors.failure("program_download", caught.value)["code"] == "PROGRAM_DOWNLOAD_FAILED"
+
+
+def test_format_details_leave_only_as_digits():
+    # Issue #23: found format and Config version are project data, so only digits pass.
+    errors = module("udp_errors")
+    data = errors.restore_failure({
+        "code": "PROGRAM_FORMAT_UNSUPPORTED", "step": "program_format", "exception_type": "ValueError",
+        "timestamp": "2026-11-26T09:29:22+00:00",
+        "format_details": {"program_formats": ["179", "17<x>", 5, "1234567"], "config_version": "1703111<"}})
+    assert data["format_details"] == {"program_formats": ["179"]}
+    text = errors.notification(dict(data, format_details={"program_formats": ["179"], "config_version": "17031112"}), "de")
+    assert "179" in text and "17.3.11.12" in text
+    assert "PROGRAM_FORMAT_UNSUPPORTED" in text

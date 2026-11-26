@@ -224,7 +224,8 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
         raise ValueError("Unsupported Document UUID")
     programs = [el for el in root.iter("C") if el.get("Type") == "Program"]
     # Format 174 (older Config) is only admitted on the gateway beta path.
-    allowed = {"175", "178"} | ({"174"} if gateway else set())
+    # 179 is Config 17.3 (issue #23): same structure for every object type written here.
+    allowed = {"175", "178", "179"} | ({"174"} if gateway else set())
     if gateway:
         scopes = programs
         unsupported = not scopes or any(p.get("V") not in allowed or not p.get("Ref") for p in scopes)
@@ -232,7 +233,11 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
         scopes = programs
         unsupported = len(programs) != 1 or programs[0].get("V") not in allowed
     if unsupported:
-        raise coded_error("PROGRAM_FORMAT_UNSUPPORTED", "Program format has not been validated for automatic editing", ValueError)
+        error = coded_error("PROGRAM_FORMAT_UNSUPPORTED", "Program format has not been validated for automatic editing", ValueError)
+        # udp_errors.safe_format_details lets only digits through.
+        error.format_details = {"program_formats": sorted({p.get("V") for p in programs if p.get("V")}),
+                                "config_version": document.get("ConfigVersion")}
+        raise error
 
     mark("program_prepare")
     objects = list(root.iter("C"))

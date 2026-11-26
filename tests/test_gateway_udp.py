@@ -185,6 +185,14 @@ def test_format_174_is_only_accepted_on_the_gateway_path():
     assert caught.value.udp_code == "PROGRAM_FORMAT_UNSUPPORTED"
 
 
+def test_format_179_from_config_17_3_is_accepted():
+    # Config 17.3 saves every object as format 179 (issue #23), single and Gateway/Client.
+    changed, report = program.patch_xml(XML.replace(b'V="178"', b'V="179"'), TARGET, {U})
+    assert report["managed"] == 1 and b'Type="Page" V="179"' in changed
+    changed, report = program.patch_xml(PART_GW.replace(b'V="174"', b'V="179"'), TARGET, {GW_IN}, gateway=True)
+    assert report["managed"] == 2 and b'Type="Page" V="179"' in changed
+
+
 def test_install_uploads_the_whole_archive_to_the_gateway_only(tmp_path):
     client = FakeClient(tmp_path)
     client.raw = archive()

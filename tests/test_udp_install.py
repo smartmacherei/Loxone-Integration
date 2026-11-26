@@ -316,6 +316,20 @@ def run(client):
     return installer.install(client, str(client.folder), 55555, lambda raw, xml: {U}, threading.Event())
 
 
+def test_unsupported_format_names_the_found_format_and_config_version(tmp_path):
+    # Issue #23: the error alone did not tell which format the project had.
+    client = FakeClient(tmp_path)
+    client.raw = archive(XML.replace(b'V="178"', b'V="999"')
+                        .replace(b'V="17020828"', b'V="17020828" ConfigVersion="17031112"'))
+    with pytest.raises(ValueError) as caught:
+        run(client)
+    data = caught.value.udp_failure
+    assert data["code"] == "PROGRAM_FORMAT_UNSUPPORTED"
+    assert data["format_details"] == {"program_formats": ["999"], "config_version": "17031112"}
+    assert "999" in data["description"] and "17.3.11.12" in data["description"]
+    assert "179" in data["next_check"]
+
+
 def fake_ftp_classes(auth_error, login_error=None):
     """FTP_TLS/FTP stand-ins; AUTH TLS fails with auth_error, login with login_error."""
     calls = []

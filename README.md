@@ -212,7 +212,8 @@ native controls, read-only states, special formats and the tested project covera
 - Existing visualization controls continue to use their established live connection.
   No additional visualization entries are needed for supported discovered terminals.
 - Automatic editing currently supports the tested Loxone Config 17.1/17.2 program
-  formats. Unsupported formats are left unchanged.
+  formats and Config 17.3 (format 179, checked offline against a 17.3 project, not
+  yet on hardware). Unsupported formats are left unchanged.
 - Physical output switches write directly to terminals. Review their use if the
   Loxone program also controls those outputs; disable unwanted entities or discovery.
 - The integration does not automatically discover a changed Miniserver IP address.

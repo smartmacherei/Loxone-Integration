@@ -218,7 +218,8 @@ Bedienfunktionen, lesende Zustände und Sonderformate mit dem aktuellen Prüfsta
 - Bereits visualisierte Bausteine nutzen weiterhin ihre bestehende Live-Verbindung.
   Für unterstützte entdeckte Klemmen sind keine zusätzlichen Visu-Einträge nötig.
 - Automatische Programmanpassungen sind derzeit auf die geprüften Programmformate
-  von Loxone Config 17.1/17.2 begrenzt. Andere Formate bleiben unverändert.
+  von Loxone Config 17.1/17.2 und Config 17.3 (Format 179, offline an einem 17.3-Projekt
+  geprüft, noch nicht an Hardware) begrenzt. Andere Formate bleiben unverändert.
 - Entdeckte Ausgangsschalter schreiben direkt auf die Klemme. Wenn das Loxone-Programm
   diese ebenfalls steuert, die gewünschten Entities prüfen oder Discovery abschalten.
 - Die Miniserver-IP wird nicht automatisch nachgeführt. Eine stabile Adresse nutzen

@@ -29,8 +29,10 @@ Programmprüfung und gegebenenfalls eine Anpassung aus.
 
 Voraussetzungen sind ein vollständiges aktuelles Programm-ZIP, geeignete Lese-,
 Upload- und Aktivierungsberechtigungen, FTP/FTPS auf Port 21, eine IPv4-Verbindung
-und ein freier UDP-Port auf HA. Automatische Bearbeitung ist auf die geprüften
-Objektformate `175` und `178` begrenzt. Router und Firewall werden nicht umkonfiguriert.
+und ein freier UDP-Port auf HA. Automatische Bearbeitung ist auf die Objektformate
+`175`, `178` und `179` (Config 17.3) begrenzt, im Gateway/Client-Verbund zusätzlich `174`.
+Bei einem anderen Format nennt die Fehlermeldung das gefundene Format und die
+Config-Version. Router und Firewall werden nicht umkonfiguriert.
 
 ## Ablauf
 
