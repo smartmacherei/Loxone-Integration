@@ -177,12 +177,30 @@ def test_format_174_is_only_accepted_on_the_gateway_path():
     with pytest.raises(ValueError) as caught:
         program.patch_xml(single, TARGET, {U})
     assert caught.value.udp_code == "PROGRAM_FORMAT_UNSUPPORTED"
+    assert caught.value.format_details["program_formats"] == ["174"]
     changed, report = program.patch_xml(PART_GW, TARGET, {GW_IN}, gateway=True)
     assert report["managed"] == 2 and b'Type="Page" V="174"' in changed
-    # A program without its Miniserver reference cannot be scoped and is refused.
+    # A program without its Miniserver reference cannot be scoped and is refused,
+    # without blaming its approved format.
     with pytest.raises(ValueError) as caught:
         program.patch_xml(PART_GW.replace(f' Ref="{GW}"'.encode(), b""), TARGET, {GW_IN}, gateway=True)
     assert caught.value.udp_code == "PROGRAM_FORMAT_UNSUPPORTED"
+    assert getattr(caught.value, "format_details", None) is None
+    assert "179" not in errors.failure("program_format", caught.value)["next_check"]
+
+
+def test_format_179_from_config_17_3_is_accepted():
+    # Config 17.3 saves every object as format 179 (issue #23), single and Gateway/Client.
+    changed, report = program.patch_xml(XML.replace(b'V="178"', b'V="179"'), TARGET, {U})
+    assert report["managed"] == 1 and b'Type="Page" V="179"' in changed
+    changed, report = program.patch_xml(PART_GW.replace(b'V="174"', b'V="179"'), TARGET, {GW_IN}, gateway=True)
+    assert report["managed"] == 2 and b'Type="Page" V="179"' in changed
+    # Whole Gateway/Client archive: project and every partial program.
+    parts = tuple(part.replace(b'V="174"', b'V="179"') for part in (PART_GW, PART_CL))
+    changed, report = program.prepare(archive(FULL.replace(b'V="174"', b'V="179"'), parts=parts),
+                                      TARGET, {GW_IN, CL_IN}, gateway=True)
+    assert report["managed"] == 4
+    assert all(b'Type="Page" V="179"' in part for part in program.program_members(changed).values())
 
 
 def test_install_uploads_the_whole_archive_to_the_gateway_only(tmp_path):

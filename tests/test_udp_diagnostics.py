@@ -472,3 +472,31 @@ def test_other_http_errors_keep_the_generic_code(monkeypatch):
         http_status(monkeypatch, 500).current()
     assert not isinstance(caught.value, PermissionError)
     assert errors.failure("program_download", caught.value)["code"] == "PROGRAM_DOWNLOAD_FAILED"
+
+
+def test_format_details_leave_only_as_digits():
+    # Issue #23: found format and Config version are project data, so only digits pass.
+    errors = module("udp_errors")
+    data = errors.restore_failure({
+        "code": "PROGRAM_FORMAT_UNSUPPORTED", "step": "program_format", "exception_type": "ValueError",
+        "timestamp": "2026-11-26T09:29:22+00:00",
+        "format_details": {"program_formats": ["179", "17<x>", 5, "1234567", "١٧٩"], "config_version": "１７０３１１１２"}})
+    assert data["format_details"] == {"program_formats": ["179"]}
+    text = errors.notification(dict(data, format_details={"program_formats": ["179"], "config_version": "17031112"}), "de")
+    assert "179" in text and "17.3.11.12" in text
+    assert "PROGRAM_FORMAT_UNSUPPORTED" in text
+
+
+def test_several_found_formats_are_listed_in_numeric_order():
+    errors = module("udp_errors")
+    data = errors.restore_failure({
+        "code": "PROGRAM_FORMAT_UNSUPPORTED", "step": "program_format", "exception_type": "ValueError",
+        "timestamp": "2026-11-26T09:29:22+00:00", "format_details": {"program_formats": ["1000", "180"]}})
+    assert data["format_details"]["program_formats"] == ["180", "1000"]
+    assert "Found object formats: 180, 1000." in data["description"]
+
+
+def test_format_check_names_every_approved_format():
+    errors = module("udp_errors")
+    for value in program.FORMATS + program.GATEWAY_FORMATS:
+        assert value in errors.FORMAT_CHECK[0] and value in errors.FORMAT_CHECK[1]

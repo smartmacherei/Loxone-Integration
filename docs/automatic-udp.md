@@ -31,8 +31,10 @@ explicitly checks and, when needed, updates the program.
 
 Automatic setup requires a complete current program ZIP, permission to read/upload
 and activate the program, local FTP/FTPS on port 21, an IPv4 route to the Miniserver,
-and a free UDP port on HA. Automatic editing currently accepts object formats `175`
-and `178`. Other formats remain unchanged. No router or firewall settings are changed.
+and a free UDP port on HA. Automatic editing currently accepts object formats `175`,
+`178` and `179` (Config 17.3), plus `174` in a Gateway/Client system. Other formats
+remain unchanged; the error then names the found format and Config version. No router
+or firewall settings are changed.
 
 ## Before enabling automatic setup
 
