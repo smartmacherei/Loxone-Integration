@@ -282,6 +282,8 @@ async def async_setup_entry(
                 }
                 entities.append(LoxoneMeterSensor(**subsensor))
 
+    entities.extend(efm_sensors(loxconfig, async_add_entities, config_entry))
+
     @callback
     def async_add_sensors(_):
         async_add_entities(_, True)
@@ -293,6 +295,29 @@ async def async_setup_entry(
     )
 
     async_add_entities(entities, update_before_add=True)
+
+
+def efm_sensors(loxconfig, async_add_entities, config_entry) -> list:
+    """Energy Flow Monitor values with unit (issue #22); see control_states.efm_values.
+
+    The unique ID stays the state UUID, so an entity that was a raw value before
+    keeps its entity ID and gains unit, device class and state class.
+    """
+    from .control_states import efm_values
+
+    entities = []
+    for control in get_all(loxconfig, "EFM"):
+        control = add_room_and_cat_to_value_values(loxconfig, control)
+        # Same device as the undocumented states left as raw values (parent_name).
+        device_info = get_or_create_device(control["uuidAction"], control.get("name", "EFM"), "EFM",
+                                           control.get("room", ""))
+        for value in efm_values(control):
+            entities.append(LoxoneMeterSensor(
+                device_info=device_info, parent_id=control["uuidAction"], uuidAction=value["uuid"],
+                type="analog", room=control.get("room", ""), cat=control.get("cat", ""),
+                name=value["name"], details={"format": value["format"]},
+                async_add_devices=async_add_entities, config_entry=config_entry))
+    return entities
 
 
 class LoxoneCustomSensor(LoxoneEntity, SensorEntity):

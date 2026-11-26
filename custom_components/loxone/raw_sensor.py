@@ -13,8 +13,10 @@ class RawValueSensor(LoxoneEntity, SensorEntity):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        # A control state names its device after the control, not after whichever
+        # state was created first ("Energieflussmonitor: jLocked", issue #22).
         self._attr_device_info = get_or_create_device(
-            kwargs.get("parent_id") or self.uuidAction, self.name,
+            kwargs.get("parent_id") or self.uuidAction, kwargs.get("parent_name") or self.name,
             kwargs.get("control_type", "Terminal"), kwargs.get("room", ""))
         self._attr_extra_state_attributes.update(
             representation="read_only", loxone_format=kwargs.get("auto_format"),
