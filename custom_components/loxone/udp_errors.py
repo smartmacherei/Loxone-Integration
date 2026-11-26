@@ -59,8 +59,10 @@ REASONS = {
 CHECKS = {
     "MINISERVER_ACCESS_DENIED": ("In Loxone Config unter Benutzerverwaltung der Benutzergruppe dieses Benutzers die Rechte „Web-Interface / Apps“, „FTP“ und „Loxone Config“ geben (geprüft: Gruppe „Vollzugriff“), in den Miniserver speichern und die Integration neu laden.", "In Loxone Config user management, give this user's group the rights 'Web interface / Apps', 'FTP' and 'Loxone Config' (verified: group 'Full access'), save to the Miniserver and reload the integration."),
     "MINISERVER_LOGIN_REJECTED": ("Benutzername und Passwort in den Optionen der Integration mit der Benutzerverwaltung in Loxone Config abgleichen.", "Compare username and password in the integration options with the user management in Loxone Config."),
-    "PROGRAM_FORMAT_UNSUPPORTED": ("Freigegeben sind die Objektformate 175, 178 und 179 (Loxone Config 17.1 bis 17.3), im Gateway/Client-Verbund zusätzlich 174 (Config 16). Bei einer neueren Config-Version auf ein Update der Integration warten; das Originalprojekt bleibt unverändert.", "Approved object formats are 175, 178 and 179 (Loxone Config 17.1 to 17.3), plus 174 (Config 16) in a Gateway/Client system. With a newer Config version, wait for an integration update; the original project stays unchanged."),
 }
+# Next check when a refused format was found (udp_program.FORMATS / GATEWAY_FORMATS).
+FORMAT_CHECK = ("Freigegeben sind die Objektformate 175, 178 und 179 (Loxone Config 17.1 bis 17.3), im Gateway/Client-Verbund zusätzlich 174 (Config 16). Ist das Projekt mit einer älteren Config-Version gespeichert, es mit Config 17.1 oder neuer speichern; bei einer neueren Version auf ein Update der Integration warten. Das Originalprojekt bleibt unverändert.",
+                "Approved object formats are 175, 178 and 179 (Loxone Config 17.1 to 17.3), plus 174 (Config 16) in a Gateway/Client system. If the project was saved with an older Config version, save it with Config 17.1 or newer; with a newer version, wait for an integration update. The original project stays unchanged.")
 # Our own ValueError texts on the program path, none with a code in REASONS. Each names a
 # failed check and no value, so it holds neither credentials nor project content.
 # tests/test_gateway_udp.py compares this list with the raise statements in the source.
@@ -169,8 +171,11 @@ def details(data, language):
     else:
         description = "Der Schritt ist fehlgeschlagen; eine genauere Ursache ist nicht bestätigt." if de else "The step failed; a more specific cause is unconfirmed."
     found = safe_format_details(data.get("format_details"))
-    if found.get("program_formats"):
-        description += (" Gefundenes Objektformat: " if de else " Found object format: ") + ", ".join(found["program_formats"]) + "."
+    formats = found.get("program_formats", [])
+    if formats:
+        label = ((" Gefundene Objektformate: " if de else " Found object formats: ") if len(formats) > 1
+                 else (" Gefundenes Objektformat: " if de else " Found object format: "))
+        description += label + ", ".join(formats) + "."
     if found.get("config_version"):
         description += (" Gespeichert mit Loxone Config " if de else " Saved with Loxone Config ") + config_label(found["config_version"]) + "."
     if step == "archive_check" and code.startswith("ARCHIVE_"):
@@ -179,6 +184,8 @@ def details(data, language):
         if missing:
             description += (" Fehlende Pflichtdateien: " if de else " Missing required files: ") + ", ".join(missing) + "."
         return description, ("Archivaufbau anhand der Diagnosedaten prüfen; bei Master-/Client-Verbund die Programmzuordnung klären. Schutzprüfung nicht umgehen." if de else "Check archive layout using diagnostics; clarify program ownership in a master/client installation. Do not bypass the safety check.")
+    if code == "PROGRAM_FORMAT_UNSUPPORTED" and found:
+        return description, FORMAT_CHECK[0 if de else 1]
     if code in CHECKS:
         return description, CHECKS[code][0 if de else 1]
     return description, STEPS[step][2 if de else 3]
@@ -197,17 +204,17 @@ def safe_archive_details(value):
 
 
 def safe_format_details(value):
-    """Found program formats and the Config version: digits only, never other project text."""
+    """Found program formats and the Config version: ASCII digits only, never other project text."""
     if not isinstance(value, dict):
         return {}
     result = {}
     formats = value.get("program_formats")
     if isinstance(formats, list):
-        found = sorted({f for f in formats if isinstance(f, str) and re.fullmatch(r"\d{1,6}", f)})[:10]
+        found = sorted({f for f in formats if isinstance(f, str) and re.fullmatch(r"[0-9]{1,6}", f)}, key=int)[:10]
         if found:
             result["program_formats"] = found
     version = value.get("config_version")
-    if isinstance(version, str) and re.fullmatch(r"\d{8}", version):
+    if isinstance(version, str) and re.fullmatch(r"[0-9]{8}", version):
         result["config_version"] = version
     return result
 

@@ -129,6 +129,12 @@ Andere Dateinamen und Inhalte werden nicht übernommen. Fehlende Begleitdateien
 beweisen kein beschädigtes Kundenprojekt: Der Archivaufbau kann abweichen.
 Diese Fehler entstehen vor Sicherung, FTP-Anmeldung und Upload.
 
+`format_details` steht nur bei `PROGRAM_FORMAT_UNSUPPORTED` und nur, wenn ein nicht
+freigegebenes Objektformat gefunden wurde: `program_formats` (die gefundenen Werte von
+`Program/@V`) und `config_version` (`ConfigVersion` des Projekts, z. B. `17031112` für
+Config 17.3.11.12). Übernommen werden nur ASCII-Ziffern. Beschreibung und Meldung nennen
+beides und die freigegebenen Formate.
+
 Vor jedem Upload fragt die Integration `/jdev/sps/state` beim Miniserver und im
 Gateway/Client-Verbund bei jedem Client ab (Schritt `plc_state_check`). Nur 5 (SPS läuft)
 gilt als Normalbetrieb; laut Loxone-Doku „Web Services“ bedeutet 0 kein Status, 1 Bootet,

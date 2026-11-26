@@ -26,6 +26,11 @@ TITLE = "Home Assistant - Loxone nach HA (UDP)"
 # ("HA UDP (smartmacherei)" up to 1.6.2, "HA UDP" up to 1.8.1).
 LEGACY_TITLES = {"HA UDP (smartmacherei)", "HA UDP"}
 MAX_SIZE = 64 * 1024 * 1024
+# Program object formats (Program/@V) approved for editing; udp_errors.FORMAT_CHECK names them.
+# 175/178: Config 17.1/17.2. 179: Config 17.3 (issue #23), same structure for every object
+# type written here. 174: Config 16, only on the Gateway/Client beta path.
+FORMATS = ("175", "178", "179")
+GATEWAY_FORMATS = ("174",)
 
 
 def digest(data: bytes) -> str:
@@ -223,9 +228,7 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
     if not re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{16}", doc_id):
         raise ValueError("Unsupported Document UUID")
     programs = [el for el in root.iter("C") if el.get("Type") == "Program"]
-    # Format 174 (older Config) is only admitted on the gateway beta path.
-    # 179 is Config 17.3 (issue #23): same structure for every object type written here.
-    allowed = {"175", "178", "179"} | ({"174"} if gateway else set())
+    allowed = set(FORMATS) | (set(GATEWAY_FORMATS) if gateway else set())
     if gateway:
         scopes = programs
         unsupported = not scopes or any(p.get("V") not in allowed or not p.get("Ref") for p in scopes)
@@ -234,9 +237,11 @@ def patch_xml(xml: bytes, target: str, selected: set[str], gateway: bool = False
         unsupported = len(programs) != 1 or programs[0].get("V") not in allowed
     if unsupported:
         error = coded_error("PROGRAM_FORMAT_UNSUPPORTED", "Program format has not been validated for automatic editing", ValueError)
-        # udp_errors.safe_format_details lets only digits through.
-        error.format_details = {"program_formats": sorted({p.get("V") for p in programs if p.get("V")}),
-                                "config_version": document.get("ConfigVersion")}
+        found = sorted({p.get("V") for p in programs if p.get("V")})
+        # Only a refused format is named (not a missing Ref or a second Program);
+        # udp_errors.safe_format_details lets only ASCII digits through.
+        if any(value not in allowed for value in found):
+            error.format_details = {"program_formats": found, "config_version": document.get("ConfigVersion")}
         raise error
 
     mark("program_prepare")
