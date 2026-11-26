@@ -4,6 +4,26 @@ Alle nennenswerten Änderungen an dieser Integration.
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 Versionierung nach [Semantic Versioning](https://semver.org/lang/de/).
 
+## [1.8.5b5] - 2026-11-26 (Vorabversion)
+
+- Behoben: Gateway/Client-Anlagen mit einem Client auf einem anderen Port als 80. Loxone Config
+  schreibt den Port in die Adresse des Clients („192.168.1.11:88“), die Integration übernahm ihn in
+  den Host. Der UDP-Empfang konnte den Client deshalb nicht als Absender auflösen, meldete
+  „UDP-Port nicht verfügbar“ und startete nicht. Ohne ihn gab es keine automatische
+  UDP-Einrichtung, und „HA-Werte ins Programm übernehmen“ verlangte eine Option, die schon
+  eingeschaltet war. Mit demselben Host scheiterten auch die Abfrage der Client-Klemmen und die
+  SPS-Zustandsprüfung vor einem Upload. Der Port wird jetzt abgetrennt; es gilt `SLAVE/@Port`, dann
+  der Port aus der Adresse, dann `ExP`. Issue #28.
+- Robuster: Lässt sich eine Miniserver-Adresse nicht auflösen, überspringt der UDP-Empfang nur
+  diesen Absender und warnt im Log; für die übrigen läuft er weiter. Löst keine Adresse auf, startet
+  er wie bisher nicht, statt jedes Paket stillschweigend zu verwerfen. Das Log nennt jetzt den Grund,
+  warum der Empfang nicht startet.
+- Verbessert: Ist „Echtzeitwerte per UDP automatisch einrichten“ eingeschaltet, läuft aber kein
+  UDP-Empfang, nennen der Knopf „HA-Werte ins Programm übernehmen“, der UDP-Status und die Diagnose
+  die Ursache: `receiver_failed` (Port belegt oder keine Adresse auflösbar), `discovery_off`
+  („Weitere Ein- und Ausgänge erkennen“ aus) oder `udp_port_off` (kein UDP-Port). Bisher verlangten
+  sie, die schon eingeschaltete Option einzuschalten.
+
 ## [1.8.5b4] - 2026-11-26 (Vorabversion)
 
 - Behoben: Loxone Config 17.3 speichert alle Objekte im Format 179. Die automatische
