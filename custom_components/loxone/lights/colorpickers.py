@@ -44,6 +44,7 @@ class TunableWhiteLight(LoxoneEntity, LightEntity):
         self._attr_is_on = STATE_UNKNOWN
         self._attr_unique_id = self.uuidAction
         self._attr_color_mode = ColorMode.UNKNOWN
+        self._last_brightness = None
         self._color_uuid = kwargs.get("states", {}).get("color", None)
 
         self._async_add_devices = kwargs["async_add_devices"]
@@ -82,6 +83,11 @@ class TunableWhiteLight(LoxoneEntity, LightEntity):
         self.async_schedule_update_ha_state()
 
     async def async_turn_on(self, **kwargs) -> None:
+        brightness = (
+            kwargs[ATTR_BRIGHTNESS]
+            if ATTR_BRIGHTNESS in kwargs
+            else self._attr_brightness or self._last_brightness or 255
+        )
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
             self._attr_color_temp_kelvin = kwargs[ATTR_COLOR_TEMP_KELVIN]
             self.hass.bus.async_fire(
@@ -89,7 +95,7 @@ class TunableWhiteLight(LoxoneEntity, LightEntity):
                 dict(
                     uuid=self.uuidAction,
                     value="temp({},{})".format(
-                        hass_to_lox(self._attr_brightness), self._attr_color_temp_kelvin
+                        hass_to_lox(brightness), self._attr_color_temp_kelvin
                     ),
                 ),
             )
@@ -105,7 +111,15 @@ class TunableWhiteLight(LoxoneEntity, LightEntity):
                 ),
             )
         else:
-            self.hass.bus.async_fire(SENDDOMAIN, dict(uuid=self.uuidAction, value="On"))
+            if self._attr_color_temp_kelvin:
+                value = "temp({},{})".format(
+                    hass_to_lox(brightness), self._attr_color_temp_kelvin
+                )
+            else:
+                value = "setBrightness/{}".format(hass_to_lox(brightness))
+            self.hass.bus.async_fire(
+                SENDDOMAIN, dict(uuid=self.uuidAction, value=value)
+            )
 
     async def event_handler(self, e):
         request_update = False
@@ -123,6 +137,9 @@ class TunableWhiteLight(LoxoneEntity, LightEntity):
                 _LOGGER.error("Not handled command -> %s", _color)
 
         if request_update:
+            # Off events report zero; keep the last active level for turn_on.
+            if self._attr_brightness and self._attr_brightness > 0:
+                self._last_brightness = self._attr_brightness
             if not self._attr_available:
                 self._attr_available = True
             self.async_schedule_update_ha_state()
@@ -149,6 +166,7 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
         """Initialize the LumiTech."""
         self._attr_unique_id = self.uuidAction
         self._attr_color_mode = ColorMode.UNKNOWN
+        self._last_brightness = None
         self._color_uuid = kwargs.get("states", {}).get("color", None)
         self._sequence_uuid = kwargs.get("states", {}).get("sequence", None)
 
@@ -188,6 +206,11 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
         self.async_schedule_update_ha_state()
 
     async def async_turn_on(self, **kwargs) -> None:
+        brightness = (
+            kwargs[ATTR_BRIGHTNESS]
+            if ATTR_BRIGHTNESS in kwargs
+            else self._attr_brightness or self._last_brightness or 255
+        )
         if ATTR_HS_COLOR in kwargs:
             r, g, b = color_util.color_hs_to_RGB(
                 kwargs[ATTR_HS_COLOR][0], kwargs[ATTR_HS_COLOR][1]
@@ -198,7 +221,7 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
                 dict(
                     uuid=self.uuidAction,
                     value="hsv({},{},{})".format(
-                        h, s, hass_to_lox(self._attr_brightness)
+                        h, s, hass_to_lox(brightness)
                     ),
                 ),
             )
@@ -209,7 +232,7 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
                 dict(
                     uuid=self.uuidAction,
                     value="temp({},{})".format(
-                        hass_to_lox(self._attr_brightness), self._attr_color_temp_kelvin
+                        hass_to_lox(brightness), self._attr_color_temp_kelvin
                     ),
                 ),
             )
@@ -240,7 +263,30 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
                     ),
                 )
         else:
-            self.hass.bus.async_fire(SENDDOMAIN, dict(uuid=self.uuidAction, value="On"))
+            # Restore the last known color and brightness when turning on
+            # without explicit light parameters (e.g. from an HA light group).
+
+            if self._attr_color_mode == ColorMode.HS and self.hs_color:
+                value = "hsv({},{},{})".format(
+                    self.hs_color[0],
+                    self.hs_color[1],
+                    hass_to_lox(brightness),
+                )
+            elif (
+                self._attr_color_mode == ColorMode.COLOR_TEMP
+                and self._attr_color_temp_kelvin
+            ):
+                value = "temp({},{})".format(
+                    hass_to_lox(brightness),
+                    self._attr_color_temp_kelvin,
+                )
+            else:
+                value = "setBrightness/{}".format(hass_to_lox(brightness))
+
+            self.hass.bus.async_fire(
+                SENDDOMAIN,
+                dict(uuid=self.uuidAction, value=value),
+            )
 
     async def event_handler(self, e):
         request_update = False
@@ -265,6 +311,9 @@ class RGBColorPicker(LoxoneEntity, LightEntity):
                 _LOGGER.error("Not handled command -> %s", _color)
 
         if request_update:
+            # Off events report zero; keep the last active level for turn_on.
+            if self._attr_brightness and self._attr_brightness > 0:
+                self._last_brightness = self._attr_brightness
             if not self._attr_available:
                 self._attr_available = True
             self.async_schedule_update_ha_state()
